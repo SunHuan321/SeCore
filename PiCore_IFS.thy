@@ -13,24 +13,24 @@ begin
 subsection \<open>Information Flow Security Definition\<close>
 
 (*identifying an action: the action type, its event, the execution core, and its execution domain*)
-record ('l,'p,'k,'s,'d) action = 
-        actk :: "('l,'p,'k,'s) actk"
-        eventof :: "('l,'p,'k,'s) event"
+record ('l,'k,'s,'d) action = 
+        actk :: "('l,'k,'s) actk"
+        eventof :: "('l,'k,'s) event"
         domain ::  "'d"
 (*
-primrec dom_helper :: "('s \<Rightarrow> 'k \<Rightarrow> ('l,'p,'k,'s) event \<Rightarrow> 'd) \<Rightarrow> 's \<Rightarrow> ('l,'p,'k,'s) x 
-                        \<Rightarrow> ('l,'p,'k,'s) act \<Rightarrow> 'k \<Rightarrow> 'd" where
+primrec dom_helper :: "('s \<Rightarrow> 'k \<Rightarrow> ('l,'k,'s) event \<Rightarrow> 'd) \<Rightarrow> 's \<Rightarrow> ('l,'k,'s) x 
+                        \<Rightarrow> ('l,'k,'s) act \<Rightarrow> 'k \<Rightarrow> 'd" where
   dom_Comp:   "dom_helper dome s x (Cmd c) k = dome s k (x k)" |
   dom_EnvEnt: "dom_helper dome s x (EvtEnt e) k = dome s k e"
 *)
 
 locale InfoFlow = 
-  fixes C0  ::  "('l,'p,'k,'s) pesconf"
-  fixes step :: "('l,'p,'k,'s,'d) action \<Rightarrow> (('l,'p,'k,'s) pesconf \<times> ('l,'p,'k,'s) pesconf) set"
+  fixes C0  ::  "('l,'k,'s) pesconf"
+  fixes step :: "('l,'k,'s,'d) action \<Rightarrow> (('l,'k,'s) pesconf \<times> ('l,'k,'s) pesconf) set"
   fixes interference :: "'d \<Rightarrow> 'd \<Rightarrow> bool" ("(_ \<leadsto> _)" [70,71] 60)
   fixes vpeq ::  "'s \<Rightarrow> 'd \<Rightarrow> 's \<Rightarrow> bool" ("(_ \<sim>_\<sim> _)" [70,69,70] 60)
   fixes obs ::  "'s \<Rightarrow> 'd \<Rightarrow> 'o" (infixl "\<guillemotright>"  55)
-  fixes dome :: "'s \<Rightarrow> 'k \<Rightarrow> ('l,'p,'k,'s) event \<Rightarrow> 'd"
+  fixes dome :: "'s \<Rightarrow> 'k \<Rightarrow> ('l,'k,'s) event \<Rightarrow> 'd"
   assumes vpeq_transitive : "\<forall> a b c u. (a \<sim> u \<sim> b) \<and> (b \<sim> u \<sim> c) \<longrightarrow> (a \<sim> u \<sim> c)"
     and   vpeq_symmetric : "\<forall> a b u. (a \<sim> u \<sim> b) \<longrightarrow> (b \<sim> u \<sim> a)"
     and   vpeq_reflexive : "\<forall> a u. (a \<sim> u \<sim> a)"
@@ -47,21 +47,21 @@ definition noninterf :: "'d \<Rightarrow> 'd \<Rightarrow> bool" ("(_ \<setminus
  where "u \<setminus>\<leadsto> v \<equiv> \<not> (u \<leadsto> v)"
 
 (*
-primrec dom' :: "'s \<Rightarrow> ('l,'p,'k,'s) x \<Rightarrow> ('l,'p,'k,'s) act \<Rightarrow> 'k \<Rightarrow> 'd" where
+primrec dom' :: "'s \<Rightarrow> ('l,'k,'s) x \<Rightarrow> ('l,'k,'s) act \<Rightarrow> 'k \<Rightarrow> 'd" where
   dom_Comp:   "dom' s x (Cmd c) k = dome s k (x k)" |
   dom_EnvEnt: "dom' s x (EvtEnt e) k = dome s k e"
 
-definition dom :: "'s \<Rightarrow> ('l,'p,'k,'s) x \<Rightarrow> ('l,'p,'k,'s) actk \<Rightarrow> 'd" where
+definition dom :: "'s \<Rightarrow> ('l,'k,'s) x \<Rightarrow> ('l,'k,'s) actk \<Rightarrow> 'd" where
   "dom s x a \<equiv> dom' s x (Act a) (K a)"
 
-definition domc :: "('l,'p,'k,'s) pesconf \<Rightarrow> ('l,'p,'k,'s) actk \<Rightarrow> 'd"
+definition domc :: "('l,'k,'s) pesconf \<Rightarrow> ('l,'k,'s) actk \<Rightarrow> 'd"
   where "domc C a \<equiv> dom (gets C) (getx C) a"
 
-definition step :: "('l,'p,'k,'s,'d) action \<Rightarrow> (('l,'p,'k,'s) pesconf \<times> ('l,'p,'k,'s) pesconf) set" where
+definition step :: "('l,'k,'s,'d) action \<Rightarrow> (('l,'k,'s) pesconf \<times> ('l,'k,'s) pesconf) set" where
   "step a \<equiv> {(P,Q). (P -p-(actk a)\<rightarrow> Q) \<and> domc P (actk a) = domain a}"
 *)
 
-definition vpeqc :: "('l,'p,'k,'s) pesconf \<Rightarrow> 'd \<Rightarrow> ('l,'p,'k,'s) pesconf \<Rightarrow> bool" ("(_ \<sim>._.\<sim> _)" [70,71] 60)
+definition vpeqc :: "('l,'k,'s) pesconf \<Rightarrow> 'd \<Rightarrow> ('l,'k,'s) pesconf \<Rightarrow> bool" ("(_ \<sim>._.\<sim> _)" [70,71] 60)
    where "vpeqc C1 u C2 \<equiv> (gets C1) \<sim>u\<sim> (gets C2)"
 
 lemma vpeqc_transitive: "\<forall> a b c u. (a \<sim>.u.\<sim> b) \<and> (b \<sim>.u.\<sim> c) \<longrightarrow> (a \<sim>.u.\<sim> c)"
@@ -76,29 +76,29 @@ lemma vpeqc_reflexive: "\<forall> a u. (a \<sim>.u.\<sim> a)"
 definition ivpeq :: "'s \<Rightarrow> 'd set \<Rightarrow> 's \<Rightarrow> bool" ("(_ \<approx> _ \<approx> _)" [70,71] 60)
     where "ivpeq s D t \<equiv> \<forall> d \<in> D. (s \<sim> d \<sim> t)"
 
-definition ivpeqc :: "('l,'p,'k,'s) pesconf \<Rightarrow> 'd set \<Rightarrow> ('l,'p,'k,'s) pesconf \<Rightarrow> bool" ("(_ \<approx>._.\<approx> _)" [70,71] 60)
+definition ivpeqc :: "('l,'k,'s) pesconf \<Rightarrow> 'd set \<Rightarrow> ('l,'k,'s) pesconf \<Rightarrow> bool" ("(_ \<approx>._.\<approx> _)" [70,71] 60)
     where "ivpeqc C1 D C2 \<equiv> \<forall> d \<in> D. (C1 \<sim>.d.\<sim> C2)"
 
 (*
-definition step :: "('l,'p,'k,'s,'d) action \<Rightarrow> (('l,'p,'k,'s) pesconf \<times> ('l,'p,'k,'s) pesconf) set" where
+definition step :: "('l,'k,'s,'d) action \<Rightarrow> (('l,'k,'s) pesconf \<times> ('l,'k,'s) pesconf) set" where
   "step a \<equiv> {(P,Q). (P -p-(actk a)\<rightarrow> Q) \<and> domc P (actk a) = domain a}"
 *)
 
 (*the next configuration set of executing an action from one configuration*)
-definition nextc :: "('l,'p,'k,'s) pesconf \<Rightarrow> ('l,'p,'k,'s,'d) action \<Rightarrow>  ('l,'p,'k,'s) pesconf set" where
+definition nextc :: "('l,'k,'s) pesconf \<Rightarrow> ('l,'k,'s,'d) action \<Rightarrow>  ('l,'k,'s) pesconf set" where
   "nextc P a \<equiv> {Q. (P,Q)\<in>step a}"
 
-definition stepable :: "('l,'p,'k,'s) pesconf \<Rightarrow> bool" where
+definition stepable :: "('l,'k,'s) pesconf \<Rightarrow> bool" where
   "stepable C \<equiv> \<exists>a C'. (C,C')\<in>step a"
       
 
-primrec run :: "('l,'p,'k,'s,'d) action list \<Rightarrow> (('l,'p,'k,'s) pesconf \<times> ('l,'p,'k,'s) pesconf) set" where
+primrec run :: "('l,'k,'s,'d) action list \<Rightarrow> (('l,'k,'s) pesconf \<times> ('l,'k,'s) pesconf) set" where
   run_Nil:  "run [] = Id (*{(P,P). True}*) " |
   run_Cons: "run (a#as) = {(P,Q). (\<exists>R. (P,R) \<in> step a \<and> (R,Q) \<in> run as)}"
 
 
 (* only require that there is at least one executable path*)
-definition runnable :: "('l,'p,'k,'s) pesconf \<Rightarrow> ('l,'p,'k,'s,'d) action list \<Rightarrow> bool" ("(_ \<^bsub> _)" [70,70] 60)
+definition runnable :: "('l,'k,'s) pesconf \<Rightarrow> ('l,'k,'s,'d) action list \<Rightarrow> bool" ("(_ \<^bsub> _)" [70,70] 60)
   where "runnable C as \<equiv> \<exists>C'. (C,C') \<in> run as"
 
 lemma runnable_empty : "runnable C []"
@@ -135,10 +135,10 @@ lemma run_trans : "\<forall>C T V as bs. (C,T)\<in>run as \<and> (T,V)\<in>run b
   then show ?thesis by auto
   qed
 
-definition reachable :: "('l,'p,'k,'s) pesconf \<Rightarrow> ('l,'p,'k,'s) pesconf \<Rightarrow> bool" ("(_ \<hookrightarrow> _)" [70,71] 60) where
+definition reachable :: "('l,'k,'s) pesconf \<Rightarrow> ('l,'k,'s) pesconf \<Rightarrow> bool" ("(_ \<hookrightarrow> _)" [70,71] 60) where
   "reachable C1 C2 \<equiv>  (\<exists>as. (C1,C2) \<in> run as)"
 
-definition reachable0 :: "('l,'p,'k,'s) pesconf \<Rightarrow> bool"  where
+definition reachable0 :: "('l,'k,'s) pesconf \<Rightarrow> bool"  where
   "reachable0 C \<equiv> reachable C0 C"
 
 lemma reachableC0 : "reachable0 C0"
@@ -214,14 +214,14 @@ lemma reachableStep : "\<lbrakk>reachable0 C; (C,C')\<in>step a\<rbrakk> \<Longr
 lemma reachable0_reach : "\<lbrakk>reachable0 C; reachable C C'\<rbrakk> \<Longrightarrow> reachable0 C'"
   using reachable0_def reachable_trans by blast
   
-primrec sources :: "('l,'p,'k,'s,'d) action list \<Rightarrow> 'd \<Rightarrow> 'd set" where
+primrec sources :: "('l,'k,'s,'d) action list \<Rightarrow> 'd \<Rightarrow> 'd set" where
   sources_Nil:  "sources [] u = {u}" |
   sources_Cons: "sources (a#as) u = (sources as u) \<union> (*(\<Union>c\<in>nextc P a. sources as c u) \<union>*)
                                        {w. w = domain a \<and> (\<exists>v. (w \<leadsto> v) \<and> v \<in> sources as u)}"
 declare sources_Nil [simp del]     
 declare sources_Cons [simp del]
 
-primrec ipurge :: "('l,'p,'k,'s,'d) action list \<Rightarrow> 'd \<Rightarrow> ('l,'p,'k,'s,'d) action list" where
+primrec ipurge :: "('l,'k,'s,'d) action list \<Rightarrow> 'd \<Rightarrow> ('l,'k,'s,'d) action list" where
   ipurge_Nil:   "ipurge [] u = []" |
   ipurge_Cons:  "ipurge (a#as) u = (if  domain a \<in> sources (a#as) u then
                                           a # ipurge as u
@@ -311,8 +311,8 @@ lemma ipurge_eq: "ipurge as u = ipurge (ipurge as u) u"
     then show ?thesis by auto
   qed
 
-definition exec_equiv :: "('l,'p,'k,'s) pesconf \<Rightarrow> ('l,'p,'k,'s,'d) action list \<Rightarrow> 'd \<Rightarrow> ('l,'p,'k,'s) pesconf \<Rightarrow> 
-           ('l,'p,'k,'s,'d) action list \<Rightarrow> bool" ("(_ \<lhd> _ \<simeq> _ \<simeq> _ \<lhd> _)" [80,80,80,80,80] 75)
+definition exec_equiv :: "('l,'k,'s) pesconf \<Rightarrow> ('l,'k,'s,'d) action list \<Rightarrow> 'd \<Rightarrow> ('l,'k,'s) pesconf \<Rightarrow> 
+           ('l,'k,'s,'d) action list \<Rightarrow> bool" ("(_ \<lhd> _ \<simeq> _ \<simeq> _ \<lhd> _)" [80,80,80,80,80] 75)
     where "exec_equiv S as u T bs \<equiv> \<forall>S' T'. ((S,S')\<in> run as \<and> (T,T')\<in> run bs) \<longrightarrow>  (gets S' \<guillemotright> u = gets T' \<guillemotright> u)"
 
 lemma exec_equiv_sym : "(S \<lhd> as \<simeq> u \<simeq> T \<lhd> bs) \<Longrightarrow> (T \<lhd> bs \<simeq> u \<simeq> S \<lhd> as)"

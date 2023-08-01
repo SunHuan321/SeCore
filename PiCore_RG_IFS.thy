@@ -12,18 +12,18 @@ begin
 
 (*declare [[show_types]]*)
 locale RG_InfoFlow = InfoFlow C0 step interference vpeq obs dome
-  for C0  ::  "('l,'p,'k,'s) pesconf"
-  and step :: "('l,'p,'k,'s,'d) action \<Rightarrow> (('l,'p,'k,'s) pesconf \<times> ('l,'p,'k,'s) pesconf) set"
+  for C0  ::  "('l,'k,'s) pesconf"
+  and step :: "('l,'k,'s,'d) action \<Rightarrow> (('l,'k,'s) pesconf \<times> ('l,'k,'s) pesconf) set"
   and interference :: "'d \<Rightarrow> 'd \<Rightarrow> bool" ("(_ \<leadsto> _)" [70,71] 60)
   and vpeq ::  "'s \<Rightarrow> 'd \<Rightarrow> 's \<Rightarrow> bool" ("(_ \<sim>_\<sim> _)" [70,69,70] 60)
   and obs ::  "'s \<Rightarrow> 'd \<Rightarrow> 'o" (infixl "\<guillemotright>"  55)
-  and dome :: "'s \<Rightarrow> 'k \<Rightarrow> ('l,'p,'k,'s) event \<Rightarrow> 'd"
+  and dome :: "'s \<Rightarrow> 'k \<Rightarrow> ('l,'k,'s) event \<Rightarrow> 'd"
   +
-  fixes pesf :: "('l,'p,'k,'s) rgformula_par"
+  fixes pesf :: "('l,'k,'s) rgformula_par"
   fixes s0 :: "'s"
-  fixes x0 :: "('l,'p,'k,'s) x"
-  fixes evtrgfs :: "('l,'p,'k,'s) event \<Rightarrow> 's rgformula option" (*a set of events and their rg conditions*)
-  fixes spec_of_parsys :: "('l,'p,'k,'s) paresys"
+  fixes x0 :: "('l,'k,'s) x"
+  fixes evtrgfs :: "('l,'k,'s) event \<Rightarrow> 's rgformula option" (*a set of events and their rg conditions*)
+  fixes spec_of_parsys :: "('l,'k,'s) paresys"
   assumes C0_ParSys: "C0 = (paresys_spec pesf, s0, x0)"
     and   spec_of_parsys: "spec_of_parsys = paresys_spec pesf"
     and   all_evts_are_basic: "\<forall>ef\<in>all_evts pesf. is_basicevt (E\<^sub>e ef)"
@@ -65,7 +65,7 @@ lemma cpt_is_run:
   proof -
   {
     fix C2 c
-    assume a0: "(c::('l,'p,'k,'s) pesconfs)\<in>cpts_pes"
+    assume a0: "(c::('l,'k,'s) pesconfs)\<in>cpts_pes"
     then have "\<forall>C1. c!0 = C1 \<and> last c = C2 \<and> (\<forall>j. Suc j < length c \<longrightarrow> \<not>(c!j-pese\<rightarrow>c!Suc j)) 
             \<longrightarrow> (\<exists>as.  (C1,C2) \<in> run as \<and> Suc (length as) = length c \<and>
                        (\<forall>j. Suc j < length c \<longrightarrow> (c!j-pes-(actk (as!j))\<rightarrow>c!Suc j)) )"
@@ -125,7 +125,7 @@ lemma cpt_is_run:
               proof(induct tr)
                 case (Cmd cmd)
                 assume d0: "ct = Cmd cmd\<sharp>k"
-                obtain a1 where d1: "actk (a1::('l,'p,'k,'s,'d) action) = ((Cmd cmd)\<sharp>k) \<and> eventof a1 = (getx C1) k 
+                obtain a1 where d1: "actk (a1::('l,'k,'s,'d) action) = ((Cmd cmd)\<sharp>k) \<and> eventof a1 = (getx C1) k 
                                           \<and> dome (gets C1) k (eventof a1) = domain a1"
                   using action.select_convs(1) by fastforce 
                 then obtain as1 where d2: "as1 = a1#as" by simp
@@ -144,7 +144,7 @@ lemma cpt_is_run:
               next
                 case (EvtEnt ev)
                 assume d0: "ct = EvtEnt ev\<sharp>k"
-                obtain a1 where d1: "actk (a1::('l,'p,'k,'s,'d) action) = ((EvtEnt ev)\<sharp>k) \<and> eventof a1 = ev 
+                obtain a1 where d1: "actk (a1::('l,'k,'s,'d) action) = ((EvtEnt ev)\<sharp>k) \<and> eventof a1 = ev 
                                           \<and> dome (gets C1) k ev = domain a1"
                   using action.select_convs(1) by fastforce 
                 then obtain as1 where d2: "as1 = a1#as" by simp
@@ -254,7 +254,7 @@ lemma rg_lr_imp_lr: "locally_respect_event \<Longrightarrow> locally_respect"
       {
         fix a u C
         assume a0: "reachable0 C"
-          and  a1: "(domain (a::('l,'p,'k,'s,'d) action)) \<setminus>\<leadsto> u"
+          and  a1: "(domain (a::('l,'k,'s,'d) action)) \<setminus>\<leadsto> u"
         have "\<forall> C'. (C'\<in>nextc C a) \<longrightarrow> (C \<sim>.u.\<sim> C')"
           proof -
           {
@@ -345,7 +345,7 @@ lemma rg_lr_imp_lr: "locally_respect_event \<Longrightarrow> locally_respect"
                     obtain cc :: cmd and kk :: 'k where
                       f1: "act_k = Cmd cc\<sharp>kk \<and> eventof a = getx C kk \<and> dome (gets C) kk (eventof a) = domain a"
                       using c70 by blast
-                    then have "(Cmd cc::('l, 'p, 'k, 's) act) = Cmd x \<and> kk = k"
+                    then have "(Cmd cc::('l,  'k, 's) act) = Cmd x \<and> kk = k"
                       by (simp add: c0 get_actk_def)
                     then show ?thesis
                       using f1 by meson
@@ -382,7 +382,7 @@ lemma rg_sc_imp_sc: "step_consistent_event \<Longrightarrow> step_consistent"
       {
         fix a u C1 C2
         assume a0: "(reachable0 C1) \<and> (reachable0 C2)"
-          and  a1: "(C1 \<sim>.u.\<sim> C2) \<and> (((domain (a::('l,'p,'k,'s,'d) action)) \<leadsto> u) \<longrightarrow> (C1 \<sim>.(domain a).\<sim> C2))"
+          and  a1: "(C1 \<sim>.u.\<sim> C2) \<and> (((domain (a::('l,'k,'s,'d) action)) \<leadsto> u) \<longrightarrow> (C1 \<sim>.(domain a).\<sim> C2))"
         have "\<forall>C1' C2'. (C1'\<in>nextc C1 a) \<and> (C2'\<in>nextc C2 a) \<longrightarrow> (C1' \<sim>.u.\<sim> C2')" 
           proof-
           {
@@ -521,7 +521,7 @@ lemma rg_sc_imp_sc: "step_consistent_event \<Longrightarrow> step_consistent"
                     obtain cc :: cmd and kk :: 'k where
                       f1: "act_k = Cmd cc\<sharp>kk \<and> eventof a = getx C1 kk \<and> dome (gets C1) kk (eventof a) = domain a"
                       using c13 by blast
-                    then have "(Cmd cc::('l, 'p, 'k, 's) act) = Cmd x \<and> kk = k"
+                    then have "(Cmd cc::('l,  'k, 's) act) = Cmd x \<and> kk = k"
                       by (simp add: c0 get_actk_def)
                     then show ?thesis
                       using f1 by meson

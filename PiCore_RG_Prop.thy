@@ -1612,9 +1612,7 @@ lemma act_cpts_evtsys_sat_guar_curevt_gen0_new2[rule_format]:
                   from d5 have "?elstk!1 = drop (si+n) (take (ti+n) ?esl) ! 1" by simp
                   moreover
                   from d0 d5 have "drop (si+n) (take (ti+n) ?esl) ! 1 = ?esl!(Suc (si+n))"
-                    by (metis (no_types, lifting) One_nat_def Suc_eq_plus1 Suc_leI Suc_lessI 
-                      add_diff_cancel_left' append_is_Nil_conv append_take_drop_id
-                      drop_eq_Nil length_drop not_less nth_append nth_drop zero_less_Suc) 
+                    by (metis add.commute add_lessD1 drop_take_sametrace plus_1_eq_Suc)
                   ultimately have d7: "?elstk!1 = ?esl!(Suc (si+n))" by simp
 
                   
@@ -1805,9 +1803,8 @@ lemma act_cpts_evtsys_sat_guar_curevt_gen0_new2[rule_format]:
                   from d5 have "?elstl!1 = drop (si+n) (take (ti+n) ?esl) ! 1" by simp
                   moreover
                   from d0 d5 have "drop (si+n) (take (ti+n) ?esl) ! 1 = ?esl!(Suc (si+n))"
-                    by (metis (no_types, lifting) One_nat_def Suc_eq_plus1 Suc_leI Suc_lessI 
-                      add_diff_cancel_left' append_is_Nil_conv append_take_drop_id
-                      drop_eq_Nil length_drop not_less nth_append nth_drop zero_less_Suc) 
+                    by (simp add: drop_take_sametrace)
+
                   ultimately have d7: "?elstl!1 = ?esl!(Suc (si+n))" by simp
 
                   from c37 d4 have d71: "ti > si + 2" using drop_take_ln[of ?elstl si ti ?esl1 2]

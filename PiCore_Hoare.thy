@@ -710,7 +710,7 @@ lemma rely_takedrop_rely: "\<lbrakk>\<forall>i. Suc i<length l \<longrightarrow>
     have a1: "\<forall>i. Suc i<length ?subl1 \<longrightarrow> ?subl1!i -ese\<rightarrow> ?subl1!(Suc i) 
         \<longrightarrow> (gets_es (?subl1!i), gets_es (?subl1!Suc i)) \<in> rely"
       using a0 p1 rely_drop_rely by blast 
-    show ?thesis by (simp add: a1 a0) 
+    show ?thesis using a0 a1 by auto 
   qed
 
 
@@ -1434,7 +1434,7 @@ apply(rule conjI)
   apply(subgoal_tac "x\<in> cpts_of_p (Some(Await b P)) s")
   apply(erule_tac i=i in unique_ctran_Await,force,simp_all)
   apply(simp add:cpts_of_p_def)
---\<open>here starts the different part.\<close>
+(*here starts the different part.*)
  apply(erule ptran.cases,simp_all)
  apply(drule Star_imp_cptn)
  apply clarify
@@ -1711,7 +1711,7 @@ apply(case_tac "\<exists>i<length x. fst(x!i)=Some Q")
   apply(simp add:getspc_p_def gets_p_def)
   apply(simp only:last_lift_not_None)
  apply simp
---\<open>@{text "\<exists>i<length x. fst (x ! i) = Some Q"}\<close>
+(*@{text "\<exists>i<length x. fst (x ! i) = Some Q"}*)
 apply(erule exE)
 apply(drule_tac n=i and P="\<lambda>i. i < length x \<and> fst (x ! i) = Some Q" in Ex_first_occurrence)
 apply clarify
@@ -1858,13 +1858,13 @@ lemma While_sound_aux [rule_format]:
 apply(erule cpt_p_mod.induct)
 apply safe
 apply (simp_all del:last.simps)
---\<open>5 subgoals left\<close>
+(*5 subgoals left*)
 apply(simp add:commit_p_def getspc_p_def gets_p_def)
---\<open>4 subgoals left\<close>
+(*4 subgoals left*)
 apply(rule etran_in_comm)
 apply(erule mp)
 apply(erule tl_of_assum_in_assum,simp)
---\<open>While-None\<close>
+(*While-None*)
 apply(ind_cases "((Some (While b P), s), None, t) \<in> ptran" for s t)
 apply(simp add:commit_p_def)
 apply(simp add:cpts_iff_cpt_p_mod [THEN sym])
@@ -1891,7 +1891,7 @@ apply(frule_tac j="0" and k="length ((None, s) # xs) - 1" and p=post in stabilit
  apply simp
 apply clarify
 apply (simp add:last_length)
---\<open>WhileOne\<close>
+(*WhileOne*)
 apply(thin_tac "P = While b P \<longrightarrow> Q" for Q)
 apply(rule ctran_in_comm,simp)
 apply(simp add:Cons_lift del:list.map)
@@ -1927,23 +1927,23 @@ apply(rule conjI)
  apply(case_tac "fst(xs!i)")
   apply force
  apply force
---\<open>last=None\<close>
+(*last=None*)
 apply clarify
 apply(subgoal_tac "(map (lift (While b P)) ((Some P, sa) # xs))\<noteq>[]")
  apply(drule last_conv_nth)
  apply (simp add:getspc_p_def gets_p_def del:list.map)
  apply(simp only:last_lift_not_None)
 apply simp
---\<open>WhileMore\<close>
+(*WhileMore*)
 apply(thin_tac "P = While b P \<longrightarrow> Q" for Q)
 apply(rule ctran_in_comm,simp del:last.simps)
---\<open>metiendo la hipotesis antes de dividir la conclusion.\<close>
+(*metiendo la hipotesis antes de dividir la conclusion.*)
 apply(subgoal_tac "(Some (While b P), snd (last ((Some P, sa) # xs))) # ys \<in> assume_p (pre, rely)")
  apply (simp del:last.simps)
  prefer 2
  apply(erule assum_after_body)
   apply (simp del:last.simps)+
---\<open>lo de antes.\<close>
+(*lo de antes.*)
 apply(simp add:commit_p_def getspc_p_def gets_p_def del:list.map last.simps)
 apply(rule conjI)
  apply clarify
@@ -1979,7 +1979,7 @@ apply(rule conjI)
   apply(case_tac "fst(xs!i)")
    apply force
  apply force
---\<open>@{text "i \<ge> length xs"}\<close>
+(*@{text "i \<ge> length xs"}*)
 apply(subgoal_tac "i-length xs <length ys")
  prefer 2
  apply arith
@@ -1990,7 +1990,7 @@ apply(case_tac "i=length xs")
  apply(erule mp)
  apply(case_tac "last((Some P, sa) # xs)")
  apply(simp add:lift_def del:last.simps)
---\<open>@{text "i>length xs"}\<close>
+(*@{text "i>length xs"}*)
 apply(case_tac "i-length xs")
  apply arith
 apply(simp add:nth_append del:list.map last.simps)
@@ -1999,7 +1999,7 @@ apply(subgoal_tac "i- Suc (length xs)=nat")
  prefer 2
  apply arith
 apply simp
---\<open>last=None\<close>
+(*last=None*)
 apply clarify
 apply(case_tac ys)
  apply(simp add:Cons_lift del:list.map last.simps)
@@ -2492,9 +2492,10 @@ lemma BasicEvt_sound:
                                   using d0 by auto
                                 with g0 f2 show ?thesis by simp
                               qed
-                            then show ?thesis
-                              by (metis (no_types, lifting) Suc_lessD add_Suc_right 
-                                add_diff_inverse_nat d0 f1 less_imp_le_nat not_less_eq nth_drop)
+                              then show ?thesis
+                                by (smt Suc_diff_Suc Suc_less_SucD add_Suc 
+                                   add_diff_cancel_left' c1 e1 f1 less_imp_Suc_add 
+                                   less_imp_le_nat nth_drop)
                           qed
                       qed
                    }

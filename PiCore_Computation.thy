@@ -1557,20 +1557,20 @@ lemma cpts_onlyif_cpt_p_mod_aux [rule_format]:
   \<longrightarrow> (Some a, s) # (Q, t) # xs \<in> cpt_p_mod"
 apply(induct a)
 apply simp_all
---\<open>basic\<close>
+(*basic*)
 apply clarify
 apply(erule ptran.cases,simp_all)
 apply(rule CptPModNone,rule Basic,simp)
 apply clarify
 apply(erule ptran.cases,simp_all)
---\<open>Seq1\<close>
+(*Seq1*)
 apply(rule_tac xs="[(None,ta)]" in CptPModSeq2)
   apply(erule CptPModNone)
   apply(rule CptPModOne)
  apply simp
 apply simp
 apply(simp add:lift_def)
---\<open>Seq2\<close>
+(*Seq2*)
 apply(erule_tac x=sa in allE)
 apply(erule_tac x="Some P2" in allE)
 apply(erule allE,erule impE, assumption)
@@ -1587,12 +1587,12 @@ apply(erule_tac CptPModSeq2)
   apply (simp add:last_length)
  apply (simp add:last_length)
 apply(simp add:lift_def)
---\<open>Cond\<close>
+(*Cond*)
 apply clarify
 apply(erule ptran.cases,simp_all)
 apply(force elim: CptPModCondT)
 apply(force elim: CptPModCondF)
---\<open>While\<close>
+(*While*)
 apply  clarify
 apply(erule ptran.cases,simp_all)
 apply(rule CptPModNone,erule WhileF,simp)
@@ -1602,11 +1602,11 @@ apply (erule disjE)
  apply(force elim:CptPModWhile1)
 apply clarify
 apply(force simp add:last_length elim:CptPModWhile2)
---\<open>await\<close>
+(*await*)
 apply clarify
 apply(erule ptran.cases,simp_all)
 apply(rule CptPModNone,erule Await,simp+)
---\<open>nondt\<close>
+(*nondt*)
 apply clarify
 apply(erule ptran.cases,simp_all)
 apply(rule CptPModNone,erule Nondt,simp+)
@@ -1678,7 +1678,7 @@ apply(erule cpt_p_mod.induct)
       apply(erule CondT,simp)
     apply(rule CptsPComp)
      apply(erule CondF,simp)
---\<open>Seq1\<close>
+(*Seq1*)
 apply(erule cpts_p.cases,simp_all)
   apply(rule CptsPOne)
  apply clarify
@@ -1698,7 +1698,7 @@ apply(rule CptsPComp)
  apply(rule Seq2,simp)
 apply(drule_tac P=P1 in lift_is_cptn)
 apply(simp add:lift_def)
---\<open>Seq2\<close>
+(*Seq2*)
 apply(rule cptn_append_is_cptn)
   apply(drule_tac P=P1 in lift_is_cptn)
   apply(simp add:lift_def)
@@ -1708,12 +1708,12 @@ apply(frule_tac P=P1 in last_lift)
  apply(rule last_fst_esp)
  apply (simp add:last_length)
 apply(simp add:Cons_lift lift_def split_def last_conv_nth)
---\<open>While1\<close>
+(*While1*)
 apply(rule CptsPComp)
  apply(rule WhileT,simp)
 apply(drule_tac P="While b P" in lift_is_cptn)
 apply(simp add:lift_def)
---\<open>While2\<close>
+(*While2*)
 apply(rule CptsPComp)
  apply(rule WhileT,simp)
 apply(rule cptn_append_is_cptn)
@@ -1968,8 +1968,9 @@ lemma drop_n_conjoin: "\<lbrakk>c \<propto> cs; n \<le> length c; c1 = drop n c;
               using f1 by (simp add: b1 p2)
           qed
           
-        with p1 p2 b1 b2[of "n + j" k] b0 have "gets (c1!j) = gets_es ((cs1 k)!j) \<and> getx (c1!j) = getx_es ((cs1 k)!j)"
-          by (metis (no_types, lifting) a1 add.commute length_drop less_diff_conv less_or_eq_imp_le nth_drop) 
+          with p1 p2 b1 b2[of "n + j" k] b0 have "gets (c1!j) = gets_es ((cs1 k)!j) \<and> getx (c1!j) = getx_es ((cs1 k)!j)"
+            by (metis (no_types, lifting) a1 add.commute drop_drop drop_eq_Nil gr_implies_not_zero 
+                leD leI length_0_conv length_greater_0_conv nat_le_linear nth_drop)
       }
       then show ?thesis by (simp add:same_state_def)
       qed
@@ -2016,11 +2017,10 @@ lemma drop_n_conjoin: "\<lbrakk>c \<propto> cs; n \<le> length c; c1 = drop n c;
         from p2 b0 have "c!Suc (n+j) = c1!Suc j" by simp
         moreover
         from p1 p2 p3 a1 b0 have "\<forall>k. cs1 k!j = cs k!(n+j)"
-          by (metis (no_types, lifting) Suc_lessD add.commute length_drop 
-              less_diff_conv less_or_eq_imp_le nth_drop)
+          by (metis conjoin_def nth_drop p0 same_length_def)
         moreover
         from p1 p2 p3 a1 b0 have "\<forall>k. cs1 k!Suc j = cs k!Suc (n+j)"
-          by (smt add.commute add_Suc_right length_drop less_diff_conv less_or_eq_imp_le nth_drop)
+          by (metis add_Suc_right conjoin_def nth_drop p0 same_length_def)
         ultimately
         have "((\<exists>t k. (c1!j -pes-(t\<sharp>k)\<rightarrow> c1!Suc j)) \<and>
                     (\<forall>k t. (c1!j -pes-(t\<sharp>k)\<rightarrow> c1!Suc j) \<longrightarrow> (cs1 k!j -es-(t\<sharp>k)\<rightarrow> cs1 k! Suc j) \<and>

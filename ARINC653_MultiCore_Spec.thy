@@ -286,7 +286,7 @@ datatype EL = Core_InitE | ScheduleE0 |ScheduleE1 | Write_Sampling_MessageE0 |  
               | Get_Queuing_Port_StatusE
 
 datatype par = Nat nat | Str string | Q Que | Pt Port | Msg Message
-datatype parN = NAT | STR | QUE | PORT | MSG
+datatype parN = NAT | STRI | QUE | PORT | MSG
 
 primrec gNat :: "par \<Rightarrow> nat option"
   where "gNat (Nat n) = Some n" 
@@ -302,7 +302,7 @@ primrec gMsg :: "par \<Rightarrow> Message option"
 
 primrec MT:: "par \<Rightarrow> parN \<Rightarrow> bool" 
   where "MT (Nat _) ptn = (if ptn = NAT  then True else False)" |
-        "MT (Str _) ptn = (if ptn = STR  then True else False)" |
+        "MT (Str _) ptn = (if ptn = STRI  then True else False)" |
         "MT (Q _)   ptn = (if ptn = QUE  then True else False)" |
         "MT (Pt _)  ptn = (if ptn = PORT then True else False)" |
         "MT (Msg _) ptn = (if ptn = MSG  then True else False)" 
@@ -311,7 +311,7 @@ lemma MT_Nat:"MT u NAT \<Longrightarrow> \<exists>x. u = Nat x"
 by (metis MT.simps(2) MT.simps(3) MT.simps(4) MT.simps(5) 
     par.exhaust parN.distinct(2) parN.distinct(4) parN.distinct(6) parN.distinct(8))
 
-lemma MT_Str: "MT u STR \<Longrightarrow> \<exists>x. u = Str x"
+lemma MT_Str: "MT u STRI \<Longrightarrow> \<exists>x. u = Str x"
 by (metis MT.simps(1) MT.simps(3) MT.simps(4) MT.simps(5) par.exhaust 
             parN.distinct(1) parN.distinct(12) parN.distinct(14) parN.simps(10))
 

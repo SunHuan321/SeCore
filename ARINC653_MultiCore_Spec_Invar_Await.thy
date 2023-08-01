@@ -332,7 +332,7 @@ lemma evtrgfset_eq_allevts_ARINCSpec: "all_evts ARINCXKernel_Spec = evtrgfset"
            (\<Union>k. {(Schedule k, Schedule_RGCond k)}) \<union>
            (\<Union>k. (\<Union>(p, m). {(Write_Sampling_Message k p m, Write_Sampling_Message_RGCond k p m)})) \<union>
            (\<Union>k. (\<Union>p.{(Read_Sampling_Message k p, Read_Sampling_Message_RGCond k p)}))"
-      by blast
+      using UN_Un_distrib by auto
     moreover
     have "(\<Union>k. (\<Union>(p, m). {(Write_Sampling_Message k p m, Write_Sampling_Message_RGCond k p m)}))
           = (\<Union>(k, p, m). {(Write_Sampling_Message k p m, Write_Sampling_Message_RGCond k p m)})" by blast
@@ -686,7 +686,7 @@ lemma Read_Sampling_Message_SatRG: "\<forall>k p. Read_Sampling_Message k p \<tu
   apply(rule allI)+ 
   apply(simp add:Read_Sampling_Message_def)
   apply(rule BasicEvt)
-  apply(simp add:body_def guard_def Skip_def)
+    apply(simp add:body_def guard_def Skip_def)
   apply(rule Basic)
   apply(simp add:Read_Sampling_Message_RGCond_def Pre\<^sub>f_def Post\<^sub>f_def Guar\<^sub>f_def getrgformula_def)+
   apply auto[1] 

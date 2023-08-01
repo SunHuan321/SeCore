@@ -334,4 +334,4 @@ lemma assume_pes_drop_n:
     ultimately show ?thesis by (simp add:assume_pes_def)
   qed
 
-end --\<open>theory Validity\<close>
+end (*theory Validity*)
