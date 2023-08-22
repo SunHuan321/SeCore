@@ -15,9 +15,8 @@ definition assume_p :: "('s set \<times> ('s \<times> 's) set) \<Rightarrow> ('s
 
 definition commit_p :: "(('s \<times> 's) set \<times> 's set) \<Rightarrow> ('s pconfs) set" where
   "commit_p \<equiv> \<lambda>(guar, post). {c. (\<forall>i. Suc i<length c \<longrightarrow> 
-               c!i -c\<rightarrow> c!(Suc i) \<longrightarrow> (((gets_p (c!i), gets_p (c!Suc i)) \<in> guar)
-               \<and> ann_preserves_p (c!i))) \<and> 
-               (getspc_p (last c) = None \<longrightarrow> gets_p (last c) \<in> post)}"
+               c!i -c\<rightarrow> c!(Suc i) \<longrightarrow> (gets_p (c ! i), gets_p (c ! Suc i)) \<in> guar \<and> 
+               ann_preserves_p (c ! i)) \<and> (getspc_p (last c) = None \<longrightarrow> gets_p (last c) \<in> post)}"
 
 definition prog_validity :: "'s ann_prog \<Rightarrow> 's set \<Rightarrow> ('s \<times> 's) set \<Rightarrow> ('s \<times> 's) set \<Rightarrow> 's set \<Rightarrow> bool" 
                  ("\<Turnstile> _ sat\<^sub>p [_, _, _, _]" [60,0,0,0,0] 45) where
@@ -42,8 +41,8 @@ definition assume_e :: "('s set \<times> ('s \<times> 's) set) \<Rightarrow> (('
 
 definition commit_e :: "(('s \<times> 's) set \<times> 's set) \<Rightarrow> (('l,'k,'s) econfs) set" where
   "commit_e \<equiv> \<lambda>(guar, post). {c. (\<forall>i. Suc i<length c \<longrightarrow> 
-               (\<exists>t. c!i -et-t\<rightarrow> c!(Suc i)) \<longrightarrow> (ann_preserves_e (c!i) \<and>
-               (gets_e (c!i), gets_e (c!Suc i)) \<in> guar)) \<and> 
+               (\<exists>t. c!i -et-t\<rightarrow> c!(Suc i)) \<longrightarrow> ann_preserves_e (c!i) \<and>
+               (gets_e (c!i), gets_e (c!Suc i)) \<in> guar) \<and> 
                (getspc_e (last c) = AnonyEvent (None) \<longrightarrow> gets_e (last c) \<in> post)}"
 
 definition evt_validity :: "('l,'k,'s) event \<Rightarrow> 's set \<Rightarrow> ('s \<times> 's) set \<Rightarrow> ('s \<times> 's) set \<Rightarrow> 's set \<Rightarrow> bool" 
@@ -51,13 +50,19 @@ definition evt_validity :: "('l,'k,'s) event \<Rightarrow> 's set \<Rightarrow> 
   "\<Turnstile> Evt sat\<^sub>e [pre, rely, guar, post] \<equiv> 
    \<forall>s x. (cpts_of_ev Evt s x) \<inter> assume_e(pre, rely) \<subseteq> commit_e(guar, post)"
 
+definition ann_preserves_es :: "('l,'k,'s) esconf \<Rightarrow> bool" where
+  "ann_preserves_es conf \<equiv> (gets_es conf) \<in> (ann_pre_es (getspc_es conf))"
+
+lemma ann_preserves_evtset : "getspc_es conf = EvtSys es \<Longrightarrow> ann_preserves_es conf"
+  by (simp add: ann_preserves_es_def)
+
 definition assume_es :: "('s set \<times> ('s \<times> 's) set) \<Rightarrow> (('l,'k,'s) esconfs) set" where
   "assume_es \<equiv> \<lambda>(pre, rely). {c. gets_es (c!0) \<in> pre \<and> (\<forall>i. Suc i<length c \<longrightarrow> 
                c!i -ese\<rightarrow> c!(Suc i) \<longrightarrow> (gets_es (c!i), gets_es (c!Suc i)) \<in> rely)}"
 
 definition commit_es :: "(('s \<times> 's) set \<times> 's set) \<Rightarrow> (('l,'k,'s) esconfs) set" where
-  "commit_es \<equiv> \<lambda>(guar, post). {c. (\<forall>i. Suc i<length c \<longrightarrow> 
-               (\<exists>t. c!i -es-t\<rightarrow> c!(Suc i)) \<longrightarrow> (gets_es (c!i), gets_es (c!Suc i)) \<in> guar) }"
+  "commit_es \<equiv> \<lambda>(guar, post). {c. (\<forall>i. Suc i<length c \<longrightarrow> (\<exists>t. c!i -es-t\<rightarrow> c!(Suc i)) 
+                \<longrightarrow> ann_preserves_es (c!i) \<and> (gets_es (c!i), gets_es (c!Suc i)) \<in> guar) }"
 
 definition es_validity :: "('l,'k,'s) esys \<Rightarrow> 's set \<Rightarrow> ('s \<times> 's) set \<Rightarrow> ('s \<times> 's) set \<Rightarrow> 's set \<Rightarrow> bool" 
                  ("\<Turnstile> _ sat\<^sub>s [_, _, _, _]" [60,0,0,0,0] 45) where
@@ -193,14 +198,16 @@ lemma commit_es_take_n:
       and  p3: "esl\<in>commit_es(guar, post)"
     let ?esl1 = "take m esl" 
     have "\<forall>i. Suc i<length ?esl1 \<longrightarrow> 
-           (\<exists>t. ?esl1!i -es-t\<rightarrow> ?esl1!(Suc i)) \<longrightarrow> (gets_es (?esl1!i), gets_es (?esl1!Suc i)) \<in> guar"
+           (\<exists>t. ?esl1!i -es-t\<rightarrow> ?esl1!(Suc i)) \<longrightarrow> ann_preserves_es (?esl1!i) \<and> (gets_es (?esl1!i)
+           , gets_es (?esl1!Suc i)) \<in> guar"
       proof -
       {
         fix i
         assume a0: "Suc i<length ?esl1"
           and  a1: "(\<exists>t. ?esl1!i -es-t\<rightarrow> ?esl1!(Suc i))"
-        with p3 have "(gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar" by (simp add:commit_es_def)
-        with p1 p2 a0 have "(gets_es (?esl1!i), gets_es (?esl1!Suc i)) \<in> guar"
+        with p3 have "ann_preserves_es (esl!i) \<and> (gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
+          by (simp add:commit_es_def)
+        with p1 p2 a0 have "ann_preserves_es (?esl1!i) \<and> (gets_es (?esl1!i), gets_es (?esl1!Suc i)) \<in> guar"
           using Suc_lessD length_take min.absorb2 nth_take by auto
       }
       then show ?thesis by auto qed
@@ -215,14 +222,16 @@ lemma commit_es_drop_n:
       and  p3: "esl\<in>commit_es(guar, post)"
     let ?esl1 = "drop m esl"
     have "\<forall>i. Suc i<length ?esl1 \<longrightarrow> 
-           (\<exists>t. ?esl1!i -es-t\<rightarrow> ?esl1!(Suc i)) \<longrightarrow> (gets_es (?esl1!i), gets_es (?esl1!Suc i)) \<in> guar"
+           (\<exists>t. ?esl1!i -es-t\<rightarrow> ?esl1!(Suc i)) \<longrightarrow> ann_preserves_es (?esl1!i) \<and> 
+           (gets_es (?esl1!i), gets_es (?esl1!Suc i)) \<in> guar"
       proof -
       {
         fix i
         assume a0: "Suc i<length ?esl1"
           and  a1: "(\<exists>t. ?esl1!i -es-t\<rightarrow> ?esl1!(Suc i))"
-        with p3 have "(gets_es (esl!(m+i)), gets_es (esl!Suc (m+i))) \<in> guar" by (simp add:commit_es_def)
-        with p1 a0 have "(gets_es (?esl1!i), gets_es (?esl1!Suc i)) \<in> guar"
+        with p3 have "ann_preserves_es (esl!(m+i)) \<and> (gets_es (esl!(m+i)), gets_es (esl!Suc (m+i))) \<in> guar" 
+           by (simp add:commit_es_def)
+        with p1 a0 have "ann_preserves_es (?esl1!i) \<and> (gets_es (?esl1!i), gets_es (?esl1!Suc i)) \<in> guar"
           using Suc_lessD length_take min.absorb2 nth_take by auto
       }
       then show ?thesis by auto qed
@@ -253,12 +262,12 @@ lemma commit_es_imp: "\<lbrakk>guar1\<subseteq>guar; post1\<subseteq>post; c\<in
       and  p1: "post1\<subseteq>post"
       and  p3: "c\<in>commit_es(guar1,post1)"
     then have a0: "\<forall>i. Suc i<length c \<longrightarrow> 
-               (\<exists>t. c!i -es-t\<rightarrow> c!(Suc i)) \<longrightarrow> (gets_es (c!i), gets_es (c!Suc i)) \<in> guar1"
+               (\<exists>t. c!i -es-t\<rightarrow> c!(Suc i)) \<longrightarrow> ann_preserves_es (c!i) \<and> (gets_es (c!i), gets_es (c!Suc i)) \<in> guar1"
       by (simp add:commit_es_def)
     show ?thesis
       proof(simp add:commit_es_def)
         from p0 a0 show "\<forall>i. Suc i < length c \<longrightarrow> (\<exists>t. c ! i -es-t\<rightarrow> c ! Suc i) 
-                            \<longrightarrow> (gets_es (c ! i), gets_es (c ! Suc i)) \<in> guar"
+                            \<longrightarrow> ann_preserves_es (c!i) \<and> (gets_es (c ! i), gets_es (c ! Suc i)) \<in> guar"
           by auto
       qed
   qed
