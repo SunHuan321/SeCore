@@ -380,13 +380,15 @@ lemma commit_e_imp: "\<lbrakk>guar1\<subseteq>guar; post1\<subseteq>post; c\<in>
       and  p1: "post1\<subseteq>post"
       and  p3: "c\<in>commit_e(guar1,post1)"
     then have a0: "(\<forall>i. Suc i<length c \<longrightarrow> 
-               (\<exists>t. c!i -et-t\<rightarrow> c!(Suc i)) \<longrightarrow> (gets_e (c!i), gets_e (c!Suc i)) \<in> guar1) \<and> 
+               (\<exists>t. c!i -et-t\<rightarrow> c!(Suc i)) \<longrightarrow> (ann_preserves_e (c!i) \<and>
+               (gets_e (c!i), gets_e (c!Suc i)) \<in> guar1)) \<and> 
                (getspc_e (last c) = AnonyEvent (None) \<longrightarrow> gets_e (last c) \<in> post1)"
       by (simp add:commit_e_def)
     show ?thesis
-      proof(simp add:commit_e_def)
+    proof(simp add:commit_e_def)
         from p0 p1 a0 show "(\<forall>i. Suc i < length c \<longrightarrow> (\<exists>t. c ! i -et-t\<rightarrow> c ! Suc i) 
-                            \<longrightarrow> (gets_e (c ! i), gets_e (c ! Suc i)) \<in> guar) \<and> 
+                            \<longrightarrow> (ann_preserves_e (c!i) \<and>
+                                (gets_e (c ! i), gets_e (c ! Suc i)) \<in> guar)) \<and> 
                (getspc_e (last c) = AnonyEvent (None) \<longrightarrow> gets_e (last c) \<in> post)"
           by auto
       qed
@@ -2406,11 +2408,437 @@ theorem rgsound_p:
   apply(erule Conseq_sound,simp+)
   done
                                       
+subsection \<open>Soundness of Events\<close>
+
+lemma anony_cfgs0 : "\<lbrakk>\<exists>P. getspc_e (es ! 0) = AnonyEvent P; es \<in> cpts_ev\<rbrakk> 
+                      \<Longrightarrow> \<forall>i. (i < length es \<longrightarrow> (\<exists>Q. getspc_e (es!i) = AnonyEvent Q) )"
+  proof -
+    assume a0: "es \<in> cpts_ev" and a1: "\<exists>P. getspc_e (es ! 0) = AnonyEvent P"
+    from a0 a1 show "\<forall>i. (i < length es \<longrightarrow> (\<exists>Q. getspc_e (es!i) = AnonyEvent Q) )"
+      proof(induct es)
+        case (CptsEvOne e s x)
+        assume b0: "\<exists>P. getspc_e ([(e, s, x)] ! 0) = AnonyEvent P"
+        show ?case using b0 by auto 
+      next
+        case (CptsEvEnv e' t' x' xs' s' y')
+        assume b0: "(e', t', x') # xs' \<in> cpts_ev" and
+               b1: "\<exists>P. getspc_e (((e', t', x') # xs') ! 0) = AnonyEvent P \<Longrightarrow>
+                    \<forall>i<length ((e', t', x') # xs'). \<exists>Q. getspc_e (((e', t', x') # xs') ! i) = AnonyEvent Q" and
+               b2: "\<exists>P. getspc_e (((e', s', y') # (e', t', x') # xs') ! 0) = AnonyEvent P"
+        from b2 obtain P1 where b3: "getspc_e (((e', s', y') # (e', t', x') # xs') ! 0) = AnonyEvent P1" by auto
+        then have b4: "e' = AnonyEvent P1" by (simp add: getspc_e_def)
+        with b1 have "\<forall>i<length ((e', t', x') # xs'). \<exists>Q. getspc_e (((e', t', x') # xs') ! i) = AnonyEvent Q"  
+          by (simp add: getspc_e_def)
+        with b4 show ?case by (metis (no_types, hide_lams) Ex_list_of_length b3 gr0_conv_Suc 
+                        length_Cons length_tl list.sel(3) not_less_eq nth_non_equal_first_eq)
+      next
+        case (CptsEvComp e1 s1 x1 et e2 t1 y1 xs1)
+        assume b0: "(e1, s1, x1) -et-et\<rightarrow> (e2, t1, y1)" and
+               b1: "(e2, t1, y1) # xs1 \<in> cpts_ev" and
+               b2: "\<exists>P. getspc_e (((e2, t1, y1) # xs1) ! 0) = AnonyEvent P \<Longrightarrow>
+                    \<forall>i<length ((e2, t1, y1) # xs1). \<exists>Q. getspc_e (((e2, t1, y1) # xs1) ! i) = AnonyEvent Q" and
+               b3: "\<exists>P. getspc_e (((e1, s1, x1) # (e2, t1, y1) # xs1) ! 0) = AnonyEvent P"
+        from b3 obtain P1 where b4: "getspc_e (((e1, s1, x1) # (e2, t1, y1) # xs1) ! 0) = AnonyEvent P1" by auto
+        then have b5: "e1 = AnonyEvent P1" by (simp add: getspc_e_def)
+        with b0 have "\<exists>Q. e2 = AnonyEvent Q"
+              apply(clarify)
+              apply(rule etran.cases)
+              apply(simp_all)+
+              done
+        then have "\<exists>P. getspc_e (((e2, t1, y1) # xs1) ! 0) = AnonyEvent P" by (simp add:getspc_e_def)
+        with b2 have b6: "\<forall>i<length ((e2, t1, y1) # xs1). \<exists>Q. getspc_e (((e2, t1, y1) # xs1) ! i) = AnonyEvent Q" by auto
+        with b5 show ?case by (metis (no_types, hide_lams) Ex_list_of_length b3 gr0_conv_Suc 
+                        length_Cons length_tl list.sel(3) not_less_eq nth_non_equal_first_eq)
+      qed
+    qed
+
+lemma anony_cfgs : "es \<in> cpts_of_ev (AnonyEvent P) s x  \<Longrightarrow> \<forall>i. (i < length es \<longrightarrow> (\<exists>Q. getspc_e (es!i) = AnonyEvent Q) )"
+  proof -
+    assume a0: "es \<in> cpts_of_ev (AnonyEvent P) s x"
+    then have a1: "es!0=(AnonyEvent P,(s,x)) \<and> es \<in> cpts_ev" by (simp add:cpts_of_ev_def)
+    then have "\<exists>P. getspc_e (es ! 0) = AnonyEvent P" by (simp add:getspc_e_def)
+    with a1 show ?thesis using anony_cfgs0 by blast
+  qed
+
+lemma AnonyEvt_sound: "\<Turnstile> P sat\<^sub>p [pre, rely, guar, post] \<Longrightarrow> \<Turnstile> AnonyEvent (Some P) sat\<^sub>e [pre, rely, guar, post]"
+  proof -
+    assume a0: "\<Turnstile> P sat\<^sub>p [pre, rely, guar, post]"
+    then have a1: "\<forall>s. cpts_of_p (Some P) s \<inter> assume_p (pre, rely) \<subseteq> commit_p (guar, post)" 
+      unfolding prog_validity_def cpts_of_p_def by simp
+    then have "\<forall>s x. (cpts_of_ev (AnonyEvent (Some P)) s x) \<inter> assume_e (pre, rely) 
+                      \<subseteq> commit_e (guar, post)"
+      proof -
+      {
+        fix s x
+        have "\<forall>el. el\<in>(cpts_of_ev (AnonyEvent (Some P)) s x) \<inter> assume_e (pre, rely) \<longrightarrow> el\<in> commit_e (guar, post)"
+          proof -
+          {
+            fix el
+            assume b0: "el\<in>(cpts_of_ev (AnonyEvent (Some P)) s x) \<inter> assume_e (pre, rely)"
+            then obtain pl where b1: "pl = lower_evts el" by simp
+            with b0 have b2: "pl \<in> cpts_of_p (Some P) s" using equiv_lower_evts by auto 
+            from b0 have b3: "el!0=(AnonyEvent (Some P),(s,x))" and b4: "el \<in> cpts_ev" 
+              by (simp add:cpts_of_ev_def)+
+            from b0 have b5: "el \<in> assume_e (pre, rely)" by simp
+            have b6: "gets_p (pl!0) \<in> pre" 
+              proof -
+                from b5 have c0: "gets_e (el!0) \<in> pre" by (simp add:assume_e_def)
+                from b2 b3 have c1: "gets_p (pl!0) = gets_e (el!0)" by (simp add:cpts_of_p_def gets_p_def gets_e_def)
+                with c0 show ?thesis by simp
+              qed
+
+            have b7: "\<forall>i. Suc i<length pl \<longrightarrow> 
+               pl!i -pe\<rightarrow> pl!(Suc i) \<longrightarrow> (gets_p (pl!i), gets_p (pl!Suc i)) \<in> rely"
+              proof -
+              {
+                fix i
+                assume c0: "Suc i<length pl" and c1: "pl!i -pe\<rightarrow> pl!(Suc i)"
+                from b1 c0 have c2: "Suc i < length el" by (simp add:lower_evts_def)
+                from c1 have c3: "getspc_p (pl!i) = getspc_p (pl!(Suc i))" using getspc_p_def
+                  by (metis fst_conv petranE) 
+                from b1 have c4: "lower_anonyevt1 (el!i) = pl!i"
+                  by (simp add: Suc_lessD c2 lower_evts_def) 
+                from b1 have c5: "lower_anonyevt1 (el!Suc i) = pl!Suc i" 
+                  by (simp add: Suc_lessD c2 lower_evts_def) 
+                
+                from b0 c2 have c7: "\<exists>Q. getspc_e (el!i) = AnonyEvent Q"
+                  by (meson Int_iff Suc_lessD anony_cfgs) 
+                then obtain Q1 where c71: "getspc_e (el!i) = AnonyEvent Q1" by auto
+                from b0 c2 have c8: "\<exists>Q. getspc_e (el ! (Suc i)) = AnonyEvent Q"
+                  by (meson Int_iff anony_cfgs)
+                then obtain Q2 where c81: "getspc_e (el ! (Suc i)) = AnonyEvent Q2" by auto
+                from c4 c71 have c9: "getspc_p (pl ! i) = Q1" 
+                        using lower_anonyevt1_def AnonyEv getspc_p_def by (metis fst_conv) 
+                from c5 c81 have c10: "getspc_p (pl ! (Suc i)) = Q2" 
+                        using lower_anonyevt1_def AnonyEv getspc_p_def by (metis fst_conv) 
+                with c3 c9 have c11: "Q1 = Q2" by simp
+                
+                from c4 c71 have c61: "gets_p (pl!i) = gets_e (el!i)" 
+                  using lower_anonyevt1_def AnonyEv gets_p_def by (metis snd_conv)
+
+                from c5 c81 have c62: "gets_p (pl! (Suc i)) = gets_e (el! (Suc i))" 
+                  using lower_anonyevt1_def AnonyEv gets_p_def by (metis snd_conv)
+
+                from c71 c81 c11 have c12: "getspc_e (el!i) = getspc_e (el!(Suc i))" by simp
+                then have c13: "el!i -ee\<rightarrow> el!(Suc i)" using eetran.EnvE getspc_e_def
+                  by (metis prod.collapse) 
+                from b5 c2 have "(\<forall>i. Suc i < length el \<longrightarrow> el ! i -ee\<rightarrow> el ! Suc i 
+                      \<longrightarrow> (gets_e (el ! i), gets_e (el ! Suc i)) \<in> rely)" by (simp add:assume_e_def)
+                with c2 c13 have "(gets_e (el!i), gets_e (el!Suc i)) \<in> rely" by auto
+
+                with c61 c62 have "(gets_p (pl!i), gets_p (pl!Suc i)) \<in> rely" by simp
+              }
+              then show ?thesis by auto
+              qed
+
+            with b6 have b8: "pl \<in> assume_p (pre, rely)" by (simp add:assume_p_def)
+
+            with a1 b2 have b9: "pl \<in> commit_p (guar, post)" by auto
+            then have b10: "(\<forall>i. Suc i<length el \<longrightarrow> 
+               (\<exists>t. el!i -et-t\<rightarrow> el!(Suc i)) \<longrightarrow> (ann_preserves_e (el!i) \<and>
+              (gets_e (el!i), gets_e (el!Suc i)) \<in> guar))"
+               proof -
+               {
+                 fix i
+                 assume c0: "Suc i<length el"
+                 assume c1: "\<exists>t. el!i -et-t\<rightarrow> el!(Suc i)"
+                 from b1 c0 have c2: "Suc i < length pl" by (simp add:lower_evts_def)
+                 
+                 from b1 have c3: "lower_anonyevt1 (el!i) = pl!i"
+                  by (simp add: Suc_lessD c0 lower_evts_def) 
+                from b1 have c4: "lower_anonyevt1 (el!Suc i) = pl!Suc i" 
+                  by (simp add: Suc_lessD c0 lower_evts_def) 
+                from b0 c0 have c7: "\<exists>Q. getspc_e (el!i) = AnonyEvent Q"
+                  by (meson Int_iff Suc_lessD anony_cfgs) 
+                 then obtain Q1 where c71: "getspc_e (el!i) = AnonyEvent Q1" by auto
+                 from b0 c0 have c8: "\<exists>Q. getspc_e (el ! (Suc i)) = AnonyEvent Q"
+                  by (meson Int_iff anony_cfgs)
+                then obtain Q2 where c81: "getspc_e (el! (Suc i)) = AnonyEvent Q2" by auto
+                from c1 obtain t where d0: "el!i -et-t\<rightarrow> el!(Suc i)" by auto
+                obtain s1 and x1 where d1: "s1 = gets_e (el ! i) \<and> x1 = getx_e (el ! i)" by simp
+                obtain s2 and x2 where d2: "s2 = gets_e (el ! (Suc i)) \<and> x2 = getx_e (el ! (Suc i))" by simp
+                    with d1 c71 c81 have d21: "el ! i = (AnonyEvent Q1, s1, x1) 
+                                           \<and> el ! (Suc i) = (AnonyEvent Q2, s2, x2)" 
+                      using gets_e_def getx_e_def getspc_e_def by (metis prod.collapse)
+                    with d0 have d3: "(AnonyEvent Q1, s1, x1) -et-t\<rightarrow> (AnonyEvent Q2, s2, x2)" by simp
+                    then have "\<exists>k. t = ((Cmd CMP)\<sharp>k)"
+                      apply(rule etran.cases)
+                       apply simp_all
+                      by auto
+                    then obtain k where "t = ((Cmd CMP)\<sharp>k)" by auto
+                    with d3 have d4: "(Q1,s1) -c\<rightarrow> (Q2, s2)" 
+                      apply(clarify)
+                      apply(rule etran.cases)
+                        apply simp_all+
+                      done
+                    from c3 d21 have d5: "pl!i = (Q1,s1)" by (simp add:lower_anonyevt1_def getspc_e_def gets_e_def)
+                    from c4 d21 have d6: "pl! (Suc i) = (Q2,s2)" by (simp add:lower_anonyevt1_def getspc_e_def gets_e_def)
+                    with d4 d5 have c5: "pl!i -c\<rightarrow> pl!(Suc i)" by simp 
+                  with b9 c2 have c6: "(gets_p (pl!i), gets_p (pl!Suc i)) \<in> guar \<and>
+                                        ann_preserves_p (pl!i)" by (simp add:commit_p_def)       
+                  from c3 c71 have c9: "gets_e (el!i) = gets_p (pl!i)" using lower_anonyevt_s by fastforce
+                  from c4 c81 have c10: "gets_e (el!Suc i) = gets_p (pl!Suc i)" using lower_anonyevt_s by fastforce 
+                  from d5 d21 c6 c9 c10 have "ann_preserves_e (el!i) \<and> (gets_e (el!i), gets_e (el!Suc i)) \<in> guar"
+                    by (simp add: ann_preserves_p_def ann_preserves_e_def  gets_p_def gets_e_def getspc_p_def getspc_e_def)
+               }
+               then show ?thesis by auto
+               qed
+
+            have b11: "(getspc_e (last el) = AnonyEvent (None) \<longrightarrow> gets_e (last el) \<in> post)"
+              proof 
+                assume c0: "getspc_e (last el) = AnonyEvent (None)"
+                from b1 have c1: "last pl = lower_anonyevt1 (last el)"
+                  by (metis (no_types, lifting) CollectD b2 cptn_not_empty cpts_of_p_def 
+                      last_map length_greater_0_conv length_map lower_evts_def) 
+                from b9 have c2: "getspc_p (last pl) = None \<longrightarrow> gets_p (last pl) \<in> post" by (simp add:commit_p_def)
+                from c0 c1 have c3: "getspc_p (last pl) = None" 
+                  by (simp add: getspc_p_def lower_anonyevt1_def)
+                with c2 have c4: "gets_p (last pl) \<in> post" by auto
+                from c0 c1 have "gets_p (last pl) = gets_e (last el)" 
+                  by (simp add: getspc_p_def lower_anonyevt1_def gets_p_def)
+                with c4 show "gets_e (last el) \<in> post" by simp
+              qed
+            
+            with b10 have "el \<in> commit_e (guar, post)" by (simp add:commit_e_def)
+
+          }
+          then show ?thesis by auto
+          qed
+
+        then have "(cpts_of_ev (AnonyEvent (Some P)) s x) \<inter> assume_e (pre, rely) \<subseteq> commit_e (guar, post)" by auto
+      }
+      then show ?thesis by auto
+      qed
+    then show ?thesis by (simp add: evt_validity_def) 
+  qed
+
+lemma BasicEvt_sound: 
+    "\<lbrakk> \<Turnstile> (body ev) sat\<^sub>p [pre \<inter> (guard ev), rely, guar, post]; 
+        stable pre rely; \<forall>s. (s, s)\<in>guar\<rbrakk> 
+     \<Longrightarrow> \<Turnstile> ((BasicEvent ev)::('l,'k,'s) event) sat\<^sub>e [pre, rely, guar, post]"
+  proof -
+    assume p0: "\<Turnstile> (body ev) sat\<^sub>p [pre \<inter> (guard ev), rely, guar, post]"
+    assume p1: "\<forall>s. (s, s)\<in>guar"
+    assume p2: "stable pre rely"
+    have "\<forall>s x. (cpts_of_ev ((BasicEvent ev)::('l,'k,'s) event) s x) \<inter> assume_e (pre, rely) 
+                      \<subseteq> commit_e (guar, post)"
+      proof -
+      {
+        fix s x
+        have "\<forall>el. el\<in>(cpts_of_ev (BasicEvent ev) s x) \<inter> assume_e (pre, rely) \<longrightarrow> el\<in> commit_e (guar, post)"
+          proof -
+          {
+            fix el
+            assume b0: "el\<in>(cpts_of_ev (BasicEvent ev) s x) \<inter> assume_e (pre, rely)"
+            then have b0_1: "el\<in>(cpts_of_ev (BasicEvent ev) s x)" and
+                      b0_2: "el \<in> assume_e (pre, rely)" by auto
+            from b0_1 have b1: "el ! 0 = (BasicEvent ev, (s, x))" and
+                           b2: "el \<in> cpts_ev" by (simp add:cpts_of_ev_def)+
+            from b0_2 have b3: "gets_e (el!0) \<in> pre" and
+                           b4: "(\<forall>i. Suc i<length el \<longrightarrow> el!i -ee\<rightarrow> el!(Suc i) \<longrightarrow> 
+                                (gets_e (el!i), gets_e (el!Suc i)) \<in> rely)" by (simp add: assume_e_def)+
+            have "el\<in> commit_e (guar, post)"
+              proof(cases "\<exists>i k. Suc i < length el \<and> el ! i -et-(EvtEnt (BasicEvent ev))\<sharp>k\<rightarrow> el ! (Suc i)")
+                assume c0: "\<exists>i k. Suc i < length el \<and> el ! i -et-(EvtEnt (BasicEvent ev))\<sharp>k\<rightarrow> el ! (Suc i)"
+                then obtain m and k where c1: "Suc m < length el \<and> el ! m -et-(EvtEnt (BasicEvent ev))\<sharp>k\<rightarrow> el ! (Suc m)"
+                  by auto
+                with b1 b2 have c2: "\<forall>j. Suc j \<le> m \<longrightarrow> getspc_e (el ! j) = BasicEvent ev \<and> el ! j -ee\<rightarrow> el ! (Suc j)"
+                  by (meson evtent_in_cpts1) 
+                from b1 b2 c1 have c4: "gets_e (el ! m) \<in> guard ev" and
+                        c6: "drop (Suc m) el \<in> cpts_of_ev (AnonyEvent (Some (body ev))) (gets_e (el ! (Suc m))) ((getx_e (el ! m)) (k := BasicEvent ev))" 
+                        using evtent_in_cpts2[of el ev s x m k] by auto
+                
+                from p0[rule_format] c4 have c7: "\<Turnstile> ((AnonyEvent (Some (body ev)))::('l,'k,'s) event) 
+                                sat\<^sub>e [pre \<inter> (guard ev), rely, guar, post]"
+                  by (simp add: AnonyEvt_sound) 
+
+                from b4 c1 c2 have c8:"\<forall>j. Suc j \<le> m \<longrightarrow> (gets_e (el ! j), gets_e (el ! (Suc j))) \<in> rely" by auto
+                with p2 b3 have c9: "\<forall>j. j \<le> m \<longrightarrow> gets_e (el ! j) \<in> pre" 
+                  proof -
+                  {
+                    fix j
+                    assume d0: "j \<le> m"
+                    then have "gets_e (el ! j) \<in> pre"
+                      proof(induct j)
+                        case 0 show ?case by (simp add: b3)
+                      next
+                        case (Suc jj)
+                        assume e0: "Suc jj \<le> m"
+                        assume e1: "jj \<le> m \<Longrightarrow> gets_e (el ! jj) \<in> pre"
+                        from e0 c8 have "(gets_e (el ! jj), gets_e (el ! (Suc jj))) \<in> rely" by auto
+                        with p2 e0 e1 show ?case by (meson Suc_leD stable_def)
+                      qed
+                  }
+                  then show ?thesis by auto
+                  qed
+                from c1 have c10: "gets_e (el ! m) = gets_e (el ! (Suc m))" by (meson ent_spec2)
+                with c9 have c11: "gets_e (el ! (Suc m)) \<in> pre" by auto
+                from c7 have c12: "\<forall>s x. (cpts_of_ev ((AnonyEvent (Some (body ev)))::('l,'k,'s) event) s x) \<inter> 
+                    assume_e(pre \<inter> (guard ev), rely) \<subseteq> commit_e(guar, post)" by (simp add:evt_validity_def)
+                
+
+                have "drop (Suc m) el \<in> assume_e(pre \<inter> (guard ev), rely)"
+                  proof -
+                    from c11 have d1: "gets_e (drop (Suc m) el ! 0) \<in> pre" using c1 by auto 
+                    from c4 c10 have d2: "gets_e (drop (Suc m) el ! 0) \<in> guard ev"
+                      using c1 by auto 
+                    from b4 have d3: "\<forall>i. Suc i < length el - Suc m \<longrightarrow>
+                             el ! Suc (m + i) -ee\<rightarrow> el ! Suc (Suc (m + i)) \<longrightarrow> 
+                             (gets_e (el ! Suc (m + i)), gets_e (el ! Suc (Suc (m + i)))) \<in> rely"
+                        by simp
+                    with d1 d2 show ?thesis by (simp add:assume_e_def)
+                  qed
+
+                with c6 c12 have c13: "drop (Suc m) el \<in> commit_e(guar, post)" 
+                  by (meson AnonyEvt_sound IntI contra_subsetD evt_validity_def p0)
+               
+
+                have c14: "\<forall>i. Suc i < length el \<longrightarrow> (\<exists>t. el ! i -et-t\<rightarrow> el ! Suc i) 
+                    \<longrightarrow> ann_preserves_e (el!i) \<and> (gets_e (el ! i), gets_e (el ! Suc i)) \<in> guar"
+                  proof -
+                  {
+                    fix i 
+                    assume d0: "Suc i < length el" and
+                           d1: "(\<exists>t. el ! i -et-t\<rightarrow> el ! Suc i)"
+                    then have "ann_preserves_e (el!i) \<and> (gets_e (el ! i), gets_e (el ! Suc i)) \<in> guar"
+                      proof(cases "Suc i \<le> m")
+                        assume e0: "Suc i \<le> m"
+                        with c2 have "el ! i -ee\<rightarrow> el ! (Suc i)" by auto
+                        then have "\<not>(\<exists>t. el ! i -et-t\<rightarrow> el ! Suc i)"
+                          by (metis eetranE evt_not_eq_in_tran prod.collapse) 
+                        with d1 show ?thesis by simp
+                      next
+                        assume e0: "\<not> Suc i \<le> m"
+                        then have e1: "Suc i > m" by auto
+                        show ?thesis
+                          proof(cases "Suc i = m + 1")
+                            assume f0: "Suc i = m + 1"
+                            then have f1: "i = m" by auto
+                            with c1 have "el ! i -et-(EvtEnt (BasicEvent ev))\<sharp>k\<rightarrow> el ! (Suc i)" by simp
+                            then have "is_basicevt (getspc_e (el!i)) \<and> gets_e (el ! i) = gets_e (el ! (Suc i))" 
+                              by (simp add: c10 ent_spec f1)
+                            with p1 show ?thesis by (simp add: ann_preserves_basic)
+                          next
+                            assume f0: "\<not> Suc i = m + 1"
+                            with e1 have f1: "Suc i > Suc m" by auto
+                            from c13 have f2: "\<forall>i. Suc i < length (drop (Suc m) el) \<longrightarrow> 
+                                    (\<exists>t. (drop (Suc m) el) ! i -et-t\<rightarrow> (drop (Suc m) el) ! Suc i) \<longrightarrow> 
+                                    ann_preserves_e ((drop (Suc m) el) ! i) \<and>
+                                    (gets_e ((drop (Suc m) el) ! i), gets_e ((drop (Suc m) el) ! Suc i)) \<in> guar"
+                                    by (simp add:commit_e_def)
+                                  with d0 d1 f1 have "ann_preserves_e ((drop (Suc m) el) ! (i - Suc m)) \<and> 
+                                  (gets_e (drop (Suc m) el ! (i - Suc m)), gets_e (drop (Suc m) el ! Suc (i - Suc m))) \<in> guar"
+                              proof -
+                                from d0 f1 have g0: "Suc (i - Suc m) < length (drop (Suc m) el)" by auto
+                                from d1 f1 have "(\<exists>t. drop (Suc m) el ! (i - Suc m) -et-t\<rightarrow> drop (Suc m) el ! Suc (i - Suc m))"
+                                  using d0 by auto
+                                with g0 f2 show ?thesis by simp
+                              qed
+                              then show ?thesis using c1 f1 by auto
+                          qed
+                      qed
+                   }
+                  then show ?thesis by auto
+                  qed
 
 
+                from c13 have c15: " getspc_e (last el) = AnonyEvent None \<longrightarrow> gets_e (last el) \<in> post"
+                  proof -
+                    from c1 have "last (drop (Suc m) el) = last el" by simp
+                    with c13 show ?thesis by (simp add:commit_e_def)
+                  qed
+
+                from c14 c15 show ?thesis by (simp add:commit_e_def)
+              next
+                assume c0: "\<not> (\<exists>i k. Suc i < length el \<and> el ! i -et-(EvtEnt (BasicEvent ev))\<sharp>k\<rightarrow> el ! (Suc i) )"
+                with b1 b2 have c1: "\<forall>j. Suc j < length el \<longrightarrow> getspc_e (el ! j) = BasicEvent ev 
+                              \<and> el ! j -ee\<rightarrow> el ! (Suc j)
+                              \<and> getspc_e (el ! (Suc j)) = BasicEvent ev"
+                  using no_evtent_in_cpts by simp
+                then have c2: "(\<forall>i. Suc i<length el \<longrightarrow> (\<exists>t. el!i -et-t\<rightarrow> el!(Suc i)) 
+                          \<longrightarrow> (ann_preserves_e (el!i) \<and> (gets_e (el!i), gets_e (el!Suc i)) \<in> guar))"
+                  proof -
+                  {
+                    fix i
+                    assume "Suc i<length el"
+                      and  d0: "\<exists>t. el!i -et-t\<rightarrow> el!(Suc i)"
+                    with c1 have "el ! i -ee\<rightarrow> el ! Suc i" by auto
+                    then have "\<not> (\<exists>t. el!i -et-t\<rightarrow> el!(Suc i))"
+                      by (metis eetranE evt_not_eq_in_tran2 prod.collapse) 
+                    with d0 have False by simp
+                  }
+                  then show ?thesis by auto
+                  qed
+                from b1 b2 have "el \<noteq> []" using cpts_e_not_empty by auto
+                with b1 b2 obtain els where "el = (BasicEvent ev, s, x) # els"
+                  by (metis hd_Cons_tl hd_conv_nth) 
+                then have "getspc_e (last el) = BasicEvent ev"
+                  proof(induct els)
+                    case Nil
+                    assume "el = [(BasicEvent ev, s, x)]"
+                    then have "last el = (BasicEvent ev, s, x)" by simp
+                    then show ?case by (simp add:getspc_e_def)
+                  next
+                    case (Cons els1 elsr)
+                    assume d0: "el = (BasicEvent ev, s, x) # els1 # elsr"
+                    then have d1: "length el > 1" by simp
+                    with d0 obtain mm where d2: "Suc mm = length el" by simp
+                    with d1 obtain jj where d3: "Suc jj = mm" using d0 by auto 
+                    with d2 have d4: "last el = el ! mm" by (metis last.simps last_length nth_Cons_Suc) 
+                    with c1 have "getspc_e (el ! (Suc jj)) = BasicEvent ev" using d2 d3 by auto 
+                    with d3 d4 show ?case by simp
+                  qed
+
+                then have c3: "getspc_e (last el) = AnonyEvent (None) \<longrightarrow> gets_e (last el) \<in> post" by simp
+                  
+                with c2 show ?thesis by (simp add:commit_e_def)
+              qed
+          }
+          then show ?thesis by auto
+          qed
+      }
+      then show ?thesis by auto
+      qed
+    then show ?thesis by (simp add: evt_validity_def) 
+  qed
 
 
+lemma ev_seq_sound: 
+      "\<lbrakk>pre \<subseteq> pre'; rely \<subseteq> rely'; guar' \<subseteq> guar; post' \<subseteq> post;
+        \<Turnstile> ev sat\<^sub>e [pre', rely', guar', post']\<rbrakk> 
+    \<Longrightarrow> \<Turnstile> ev sat\<^sub>e [pre, rely, guar, post]"
+  proof -
+    assume p0: "pre \<subseteq> pre'"
+      and  p1: "rely \<subseteq> rely'"
+      and  p2: "guar' \<subseteq> guar"
+      and  p3: "post' \<subseteq> post"
+      and  p4: "\<Turnstile> ev sat\<^sub>e [pre', rely', guar', post']"
+    from p4 have p5: "\<forall>s x. (cpts_of_ev ev s x) \<inter> assume_e(pre', rely') \<subseteq> commit_e(guar', post')"
+      by (simp add: evt_validity_def)
+    have "\<forall>s x. (cpts_of_ev ev s x) \<inter> assume_e(pre, rely) \<subseteq> commit_e(guar, post)"
+      proof -
+      {
+        fix c s x
+        assume a0: "c\<in>(cpts_of_ev ev s x) \<inter> assume_e(pre, rely)"
+        then have "c\<in>(cpts_of_ev ev s x) \<and> c\<in>assume_e(pre, rely)" by simp
+        with p0 p1 have "c\<in>(cpts_of_ev ev s x) \<and> c\<in>assume_e(pre', rely')"
+          using assume_e_imp[of pre pre' rely rely' c] by simp
+        with p5 have "c\<in>commit_e(guar', post')" by auto
+        with p2 p3 have "c\<in>commit_e(guar, post)" 
+          using commit_e_imp[of guar' guar post' post c] by simp
+      }
+      then show ?thesis by auto
+      qed
+    then show ?thesis by (simp add:evt_validity_def)
+  qed
 
+theorem rgsound_e:
+  "\<turnstile> Evt sat\<^sub>e [pre, rely, guar, post] \<Longrightarrow> \<Turnstile> Evt sat\<^sub>e [pre, rely, guar, post]"
+apply(erule rghoare_e.induct)
+apply (simp add: AnonyEvt_sound rgsound_p)
+apply (meson BasicEvt_sound rgsound_p)
+apply (simp add: ev_seq_sound rgsound_p)
+done
 
 
 

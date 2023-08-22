@@ -24,13 +24,26 @@ definition prog_validity :: "'s ann_prog \<Rightarrow> 's set \<Rightarrow> ('s 
   "\<Turnstile> P sat\<^sub>p [pre, rely, guar, post] \<equiv> 
    \<forall>s. cpts_of_p (Some P) s \<inter> assume_p(pre, rely) \<subseteq> commit_p(guar, post)"
 
+definition ann_preserves_e :: "('l,'k,'s) econf \<Rightarrow> bool" where
+  "ann_preserves_e conf \<equiv> (gets_e conf) \<in> (ann_pre_e (getspc_e conf))"
+
+lemma ann_preserves_basic : "is_basicevt (getspc_e conf) \<Longrightarrow> ann_preserves_e conf"
+proof-
+  assume "is_basicevt (getspc_e conf)"
+  then have "\<exists>ev. getspc_e conf = BasicEvent ev" 
+    by (metis event.exhaust is_basicevt.simps(1))
+  then obtain ev where "getspc_e conf = BasicEvent ev" by auto
+  then show ?thesis by (simp add: ann_preserves_e_def)
+qed
+
 definition assume_e :: "('s set \<times> ('s \<times> 's) set) \<Rightarrow> (('l,'k,'s) econfs) set" where
   "assume_e \<equiv> \<lambda>(pre, rely). {c. gets_e (c!0) \<in> pre \<and> (\<forall>i. Suc i<length c \<longrightarrow> 
                c!i -ee\<rightarrow> c!(Suc i) \<longrightarrow> (gets_e (c!i), gets_e (c!Suc i)) \<in> rely)}"
 
 definition commit_e :: "(('s \<times> 's) set \<times> 's set) \<Rightarrow> (('l,'k,'s) econfs) set" where
   "commit_e \<equiv> \<lambda>(guar, post). {c. (\<forall>i. Suc i<length c \<longrightarrow> 
-               (\<exists>t. c!i -et-t\<rightarrow> c!(Suc i)) \<longrightarrow> (gets_e (c!i), gets_e (c!Suc i)) \<in> guar) \<and> 
+               (\<exists>t. c!i -et-t\<rightarrow> c!(Suc i)) \<longrightarrow> (ann_preserves_e (c!i) \<and>
+               (gets_e (c!i), gets_e (c!Suc i)) \<in> guar)) \<and> 
                (getspc_e (last c) = AnonyEvent (None) \<longrightarrow> gets_e (last c) \<in> post)}"
 
 definition evt_validity :: "('l,'k,'s) event \<Rightarrow> 's set \<Rightarrow> ('s \<times> 's) set \<Rightarrow> ('s \<times> 's) set \<Rightarrow> 's set \<Rightarrow> bool" 
