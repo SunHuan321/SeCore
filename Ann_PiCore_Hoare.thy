@@ -6505,5 +6505,664 @@ theorem rgsound_es: "\<turnstile> esf sat\<^sub>s [pre, rely, guar, post] \<Long
   }
  qed
 
+subsection \<open>Soundness of Parallel Event Systems\<close>
+
+lemma conjoin_comm_imp_rely_n[rule_format]:
+  "\<lbrakk>\<forall>k. pre \<subseteq> Pre k; \<forall>k. rely \<subseteq> Rely k; 
+    \<forall>k j. j\<noteq>k \<longrightarrow> Guar j \<subseteq> Rely k;
+    \<forall>k. cs k \<in> commit_es(Guar k, Post k);
+    c \<in> cpts_of_pes pes s x; c\<in>assume_pes(pre, rely); c \<propto> cs\<rbrakk> \<Longrightarrow>
+    \<forall>n k. n \<le> length (cs k) \<and> n > 0 \<longrightarrow> take n (cs k) \<in> assume_es(Pre k, Rely k)"
+  proof -
+    assume p1: "\<forall>k. pre \<subseteq> Pre k"
+      and  p2: "\<forall>k. rely \<subseteq> Rely k"
+      and  p3: "\<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k"
+      and  p4: "c \<in> cpts_of_pes pes s x"
+      and  p5: "c \<in> assume_pes(pre, rely)" 
+      and  p6: "c \<propto> cs"
+      and  p0: "\<forall>k. cs k \<in> commit_es(Guar k, Post k)"
+    from p6 have p8: "\<forall>k. length (cs k) = length c" by (simp add:conjoin_def same_length_def)
+    from p4 p6 have p7: "\<forall>k. cs k \<in> cpts_of_es (pes k) s x" using conjoin_imp_cptses_k by auto
+    then have p9: "\<forall>k. cs k \<in> cpts_es \<and> cs k !0 = (pes k,s,x)" by (simp add:cpts_of_es_def)
+    from p6 have p10: "\<forall>k j. j < length c \<longrightarrow> gets (c!j) = gets_es ((cs k)!j)" by (simp add:conjoin_def same_state_def)
+    {
+      fix n
+      have "\<forall>k. n \<le> length (cs k) \<and> n > 0 \<longrightarrow> take n (cs k) \<in> assume_es(Pre k, Rely k)"
+        proof(induct n)
+          case 0 then show ?case by simp
+        next
+          case (Suc m)
+          assume b0: "\<forall>k. m \<le> length (cs k) \<and> 0 < m \<longrightarrow> take m (cs k) \<in> assume_es (Pre k, Rely k)"
+          {
+            fix k
+            assume c0: "Suc m \<le> length (cs k) \<and> 0 < Suc m"
+            from p7 have c2: "length (cs k) > 0"
+              by (metis (no_types, lifting) cpts_es_not_empty cpts_of_es_def gr0I length_0_conv mem_Collect_eq) 
+            from p6 have c3: "length (cs k) = length c" by (simp add:conjoin_def same_length_def)
+
+            let ?esl = "take (Suc m) (cs k)"
+
+            have "take (Suc m) (cs k) \<in> assume_es (Pre k, Rely k)"
+              proof(cases "m = 0")
+                assume d0: "m = 0"
+                have "gets_es (take (Suc m) (cs k)!0) \<in> Pre k" 
+                  proof - 
+                    from p6 c2 c3 have "gets (c!0) = gets_es ((cs k)!0)" 
+                      by (simp add:conjoin_def same_state_def)
+                    moreover
+                    from p5 have "gets (c!0) \<in> pre" by (simp add:assume_pes_def)
+                    ultimately show ?thesis using p1 p8  by auto 
+                  qed
+                moreover
+                from d0 have d1: "length (take (Suc m) (cs k)) = 1"
+                  using One_nat_def c2 gr0_implies_Suc length_take min_0R min_Suc_Suc by fastforce
+                moreover
+                from d1 have "\<forall>i. Suc i < length (take (Suc m) (cs k)) 
+                      \<longrightarrow> (take (Suc m) (cs k)) ! i -ese\<rightarrow> (take (Suc m) (cs k)) ! Suc i 
+                      \<longrightarrow> (gets_es ((take (Suc m) (cs k)) ! i), gets_es ((take (Suc m) (cs k)) ! Suc i)) \<in> rely"
+                  by auto
+                moreover
+                have "assume_es (Pre k, Rely k) = {c. gets_es (c ! 0) \<in> Pre k \<and>
+                      (\<forall>i. Suc i < length c \<longrightarrow> c ! i -ese\<rightarrow> c ! Suc i 
+                            \<longrightarrow> (gets_es (c ! i), gets_es (c ! Suc i)) \<in> Rely k)}" by (simp add:assume_es_def)
+                ultimately show ?thesis using Suc_neq_Zero less_one mem_Collect_eq by auto
+              next
+                assume "m \<noteq> 0"
+                then have dd0: "m > 0" by simp
+                with b0 c0 have dd1: "take m (cs k) \<in> assume_es (Pre k, Rely k)" by simp
+                
+                have "gets_es (?esl ! 0) \<in> Pre k"
+                  proof - 
+                    from p6 c2 c3 have "gets (c!0) = gets_es ((cs k)!0)" 
+                      by (simp add:conjoin_def same_state_def)
+                    moreover
+                    from p5 have "gets (c!0) \<in> pre" by (simp add:assume_pes_def)
+                    ultimately show ?thesis using p1 p8 by auto 
+                  qed
+                moreover
+                have "\<forall>i. Suc i<length ?esl \<longrightarrow> 
+                     ?esl!i -ese\<rightarrow> ?esl!(Suc i) \<longrightarrow> 
+                     (gets_es (?esl!i), gets_es (?esl!Suc i)) \<in> Rely k"
+                  proof -
+                  {
+                    fix i
+                    assume d0: "Suc i<length ?esl"
+                      and  d1: "?esl!i -ese\<rightarrow> ?esl!Suc i"
+                    then have d2: "?esl!i = (cs k)!i \<and> ?esl!Suc i = (cs k)! Suc i"
+                      by auto
+                    from p6 c3 d0 have d4: "(\<exists>t k. (c!i -pes-(t\<sharp>k)\<rightarrow> c!Suc i) \<and>
+                              (\<forall>k t. (c!i -pes-(t\<sharp>k)\<rightarrow> c!Suc i) \<longrightarrow> (cs k!i -es-(t\<sharp>k)\<rightarrow> cs k! Suc i) \<and>
+                                      (\<forall>k'. k' \<noteq> k \<longrightarrow> (cs k'!i -ese\<rightarrow> cs k'! Suc i))))
+                              \<or>
+                              (((c!i) -pese\<rightarrow> (c!Suc i)) \<and> (\<forall>k. (((cs k)!i) -ese\<rightarrow> ((cs k)! Suc i))))"
+                      by (simp add:conjoin_def compat_tran_def)
+                    from d1 have d5: "((cs k)!i) -ese\<rightarrow> ((cs k)! Suc i)"
+                          by (simp add: d2) 
+                    from d4 have "(gets_es (?esl!i), gets_es (?esl!Suc i)) \<in> Rely k"
+                      proof
+                        assume e0: "\<exists>t k. (c!i -pes-(t\<sharp>k)\<rightarrow> c!Suc i) \<and>
+                              (\<forall>k t. (c!i -pes-(t\<sharp>k)\<rightarrow> c!Suc i) \<longrightarrow> (cs k!i -es-(t\<sharp>k)\<rightarrow> cs k! Suc i) \<and>
+                                      (\<forall>k'. k' \<noteq> k \<longrightarrow> (cs k'!i -ese\<rightarrow> cs k'! Suc i)))"
+                        then obtain ct and k' where e1: "((c!i) -pes-(ct\<sharp>k')\<rightarrow> (c!Suc i)) \<and>
+                                    (((cs k')!i) -es-(ct\<sharp>k')\<rightarrow> ((cs k')! Suc i))" by auto
+                        with p6 p8 d0 d5 have e2: "k \<noteq> k'" 
+                          using conjoin_def[of c cs] same_spec_def[of c cs]
+                             es_tran_not_etran1 by blast 
+  
+                        with e0 e1 have e3: "((cs k)!i) -ese\<rightarrow> ((cs k)! Suc i)" by auto
+                        with d0 have "(?esl!i) -ese\<rightarrow> (?esl! Suc i)" by auto
+                        then show ?thesis
+                          proof(cases "i < m - 1")
+                            assume f0: "i < m - 1"
+                            with d2 have f1:"take (Suc m) (cs k) ! i = take m (cs k) ! i"
+                              by (simp add: diff_less_Suc less_trans_Suc) 
+                            
+                            from f0 have f2: "take (Suc m) (cs k) ! Suc i = take m (cs k) ! Suc i"
+                              by (simp add: d2 gr_implies_not0 nat_le_linear)
+                            from dd1 have "\<forall>i. Suc i<length (take m (cs k)) \<longrightarrow> 
+                                (take m (cs k))!i -ese\<rightarrow> (take m (cs k))!(Suc i) \<longrightarrow> 
+                                (gets_es ((take m (cs k))!i), gets_es ((take m (cs k))!Suc i)) \<in> Rely k"
+                              by (simp add:assume_es_def)
+                            with dd0 f0 have "(gets_es (take m (cs k) ! i), gets_es (take m (cs k) ! Suc i)) \<in> Rely k"
+                              by (metis (no_types, lifting) One_nat_def Suc_mono Suc_pred d0 d1 f1 f2 length_take min_less_iff_conj)
+                            with f1 f2 show ?thesis by simp
+                          next
+                            assume  "\<not>(i < m - 1)"
+                            with d0 have f0: "i = m - 1"
+                              by (simp add: c0 dd0 less_antisym min.absorb2) 
+                            let ?esl2 = "take (Suc m) (cs k')"
+                            
+                            from b0 c0 dd0 have "take m (cs k') \<in> assume_es (Pre k', Rely k')"
+                              by (metis Suc_leD p8) 
+                            moreover
+                            from e1 f0 have "\<not>(cs k' ! (m-1) -ese\<rightarrow> cs k' !m)"
+                              using Suc_pred' dd0 es_tran_not_etran1 by fastforce 
+                            ultimately have f1: "take (Suc m) (cs k') \<in> assume_es (Pre k', Rely k')" 
+                              using assume_es_one_more[of "cs k'" m "Pre k'" "Rely k'"] p8 p9 c0 dd0
+                              by (simp add: Suc_le_eq)
+                            from p7 have "cs k' \<in> cpts_of_es (pes k') s x" by simp
+                            with p8 c0 dd0 have f2: "?esl2\<in>cpts_of_es (pes k') s x" 
+                              using cpts_es_take[of "cs k'" m] cpts_of_es_def[of "pes k'" s x]
+                                by (simp add: Suc_le_lessD) 
+                            from p0 p8 c0 have "?esl2\<in>commit_es(Guar k', Post k')" 
+                              using commit_es_take_n[of "Suc m" "cs k'" "Guar k'" "Post k'"] by auto
+                            then have "\<forall>i. Suc i<length ?esl2 \<longrightarrow> 
+                                          (\<exists>t. ?esl2!i -es-t\<rightarrow> ?esl2!(Suc i)) \<longrightarrow> 
+                                          (gets_es (?esl2!i), gets_es (?esl2!Suc i)) \<in> Guar k'"
+                              by (simp add:commit_es_def)
+                            
+                            with p8 e1 f0 c0 dd0 have "(gets_es (?esl2 ! (m-1)), gets_es (?esl2 ! m))\<in>Guar k'"
+                              by (metis (no_types, lifting) One_nat_def Suc_pred diff_less_Suc length_take lessI min.absorb2 nth_take)
+                            with p3 p10 c0 f0 e2 show ?thesis
+                              by (smt Suc_diff_1 Suc_leD c3 dd0 le_less_linear not_less_eq_eq nth_take subsetCE)
+                          qed
+                      next
+                        assume e0: "(((c!i) -pese\<rightarrow> (c!Suc i)) \<and> (\<forall>k. (((cs k)!i) -ese\<rightarrow> ((cs k)! Suc i))))"
+                        from p5 have "\<forall>i. Suc i<length c \<longrightarrow> 
+                                          c!i -pese\<rightarrow> c!(Suc i) \<longrightarrow> 
+                                          (gets (c!i), gets (c!Suc i)) \<in> rely"
+                           by (simp add:assume_pes_def) 
+                        moreover
+                        from p8 c0 d0 have e1:"Suc i < length c" by simp
+                        ultimately have "(gets (c!i), gets (c!Suc i)) \<in> rely" using e0 by simp
+                        with p2 have "(gets (c!i), gets (c!Suc i)) \<in> Rely k" by auto
+                        with p8 p10 c0 d0 show ?thesis
+                          using Suc_lessD e1 d2 by auto 
+                      qed
+                  }
+                  then show ?thesis by auto 
+                  qed
+                ultimately show ?thesis by (simp add:assume_es_def)
+            qed
+          }
+          then show ?case by auto
+        qed
+    }
+    then show ?thesis by auto
+  qed
+
+lemma conjoin_comm_imp_rely:
+  "\<lbrakk>\<forall>k. pre \<subseteq> Pre k; \<forall>k. rely \<subseteq> Rely k; 
+    \<forall>k j. j\<noteq>k \<longrightarrow> Guar j \<subseteq> Rely k;
+    \<forall>k. cs k \<in> commit_es(Guar k, Post k);
+    c \<in> cpts_of_pes pes s x; c\<in>assume_pes(pre, rely); c \<propto> cs\<rbrakk> \<Longrightarrow>
+    \<forall>k. (cs k) \<in> assume_es(Pre k, Rely k)"
+proof -
+  assume a1: "\<forall>k. pre \<subseteq> Pre k"
+  assume a2: "\<forall>k. rely \<subseteq> Rely k"
+  assume a3: "\<forall>k j. j \<noteq> k \<longrightarrow> Guar j \<subseteq> Rely k"
+  assume a4: "\<forall>k. cs k \<in> commit_es (Guar k, Post k)"
+  assume a5: "c \<in> cpts_of_pes pes s x"
+  assume a6: "c \<in> assume_pes (pre, rely)"
+  assume a7: "c \<propto> cs"
+  have f8: "c \<noteq> []"
+    using a5 cpts_of_pes_def by force
+  from a7 have p8: "\<forall>k. length (cs k) = length c" by (simp add:conjoin_def same_length_def)
+  {
+    fix k
+    have "(cs k) \<in> assume_es(Pre k, Rely k)" 
+      using a1 a2 a3 a4 a5 a6 a7 p8 f8 
+      conjoin_comm_imp_rely_n[of pre Pre rely Rely Guar cs Post c pes s x "length (cs k)" k] by force
+  }  
+  then show ?thesis by simp    
+qed 
+
+lemma cpts_es_sat_rely[rule_format]:
+  "\<lbrakk>\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]; 
+        \<forall>k. pre \<subseteq> Pre k; 
+        \<forall>k. rely \<subseteq> Rely k; 
+        \<forall>k j. j\<noteq>k \<longrightarrow> Guar j \<subseteq> Rely k;
+        c \<in> cpts_of_pes pes s x; c\<in>assume_pes(pre, rely);
+        c \<propto> cs; \<forall>k. cs k \<in> cpts_of_es (pes k) s x\<rbrakk> \<Longrightarrow>
+        \<forall>n k. n \<le> length (cs k) \<and> n > 0 \<longrightarrow> take n (cs k)\<in>assume_es(Pre k, Rely k)"
+  proof -
+    assume p0: "\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]"
+      and  p1: "\<forall>k. pre \<subseteq> Pre k"
+      and  p2: "\<forall>k. rely \<subseteq> Rely k"
+      and  p3: "\<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k"
+      and  p4: "c \<in> cpts_of_pes pes s x"
+      and  p5: "c \<in> assume_pes(pre, rely)" 
+      and  p6: "c \<propto> cs"
+      and  p7: "\<forall>k. cs k \<in> cpts_of_es (pes k) s x"
+    from p6 have p8: "\<forall>k. length (cs k) = length c" by (simp add:conjoin_def same_length_def)
+    from p7 have p9: "\<forall>k. cs k \<in> cpts_es" using cpts_of_es_def mem_Collect_eq by fastforce 
+    from p6 have p10: "\<forall>k j. j < length c \<longrightarrow> gets (c!j) = gets_es ((cs k)!j)" by (simp add:conjoin_def same_state_def)
+    {
+      fix n
+      have "\<forall>k. n \<le> length (cs k) \<and> n > 0 \<longrightarrow> take n (cs k)\<in>assume_es(Pre k, Rely k)"
+        proof(induct n)
+          case 0 then show ?case by simp
+        next
+          case (Suc m)
+          assume b0: "\<forall>k. m \<le> length (cs k) \<and> 0 < m \<longrightarrow> take m (cs k) \<in> assume_es (Pre k, Rely k)"
+           
+          {
+            fix k
+            assume c0: "Suc m \<le> length (cs k) \<and> 0 < Suc m"
+            from p7 have c2: "length (cs k) > 0"
+              by (metis (no_types, lifting) cpts_es_not_empty cpts_of_es_def gr0I length_0_conv mem_Collect_eq) 
+            from p6 have c3: "length (cs k) = length c" by (simp add:conjoin_def same_length_def)
+
+            let ?esl = "take (Suc m) (cs k)"
+            have "?esl \<in> assume_es (Pre k, Rely k)"
+            proof(cases "m = 0")
+              assume d0: "m = 0"
+              have "gets_es (take (Suc m) (cs k)!0) \<in> Pre k" 
+                proof - 
+                  from p6 c2 c3 have "gets (c!0) = gets_es ((cs k)!0)" 
+                    by (simp add:conjoin_def same_state_def)
+                  moreover
+                  from p5 have "gets (c!0) \<in> pre" by (simp add:assume_pes_def)
+                  ultimately show ?thesis using p1 p8  by auto 
+                qed
+              moreover
+              from d0 have d1: "length (take (Suc m) (cs k)) = 1"
+                using One_nat_def c2 gr0_implies_Suc length_take min_0R min_Suc_Suc by fastforce
+              moreover
+              from d1 have "\<forall>i. Suc i < length (take (Suc m) (cs k)) 
+                    \<longrightarrow> (take (Suc m) (cs k)) ! i -ese\<rightarrow> (take (Suc m) (cs k)) ! Suc i 
+                    \<longrightarrow> (gets_es ((take (Suc m) (cs k)) ! i), gets_es ((take (Suc m) (cs k)) ! Suc i)) \<in> rely"
+                by auto
+              moreover
+              have "assume_es (Pre k, Rely k) = {c. gets_es (c ! 0) \<in> Pre k \<and>
+                    (\<forall>i. Suc i < length c \<longrightarrow> c ! i -ese\<rightarrow> c ! Suc i 
+                          \<longrightarrow> (gets_es (c ! i), gets_es (c ! Suc i)) \<in> Rely k)}" by (simp add:assume_es_def)
+              ultimately show ?thesis using Suc_neq_Zero less_one mem_Collect_eq by auto
+            next
+              assume "m \<noteq> 0"
+              then have dd0: "m > 0" by simp
+              with b0 c0 have dd1: "take m (cs k) \<in> assume_es (Pre k, Rely k)" by simp
+              
+              have "gets_es (?esl ! 0) \<in> Pre k"
+                proof - 
+                  from p6 c2 c3 have "gets (c!0) = gets_es ((cs k)!0)" 
+                    by (simp add:conjoin_def same_state_def)
+                  moreover
+                  from p5 have "gets (c!0) \<in> pre" by (simp add:assume_pes_def)
+                  ultimately show ?thesis using p1 p8 by auto 
+                qed
+              moreover
+              have "\<forall>i. Suc i<length ?esl \<longrightarrow> 
+                   ?esl!i -ese\<rightarrow> ?esl!(Suc i) \<longrightarrow> 
+                   (gets_es (?esl!i), gets_es (?esl!Suc i)) \<in> Rely k"
+                proof -
+                {
+                  fix i
+                  assume d0: "Suc i<length ?esl"
+                    and  d1: "?esl!i -ese\<rightarrow> ?esl!Suc i"
+                  then have d2: "?esl!i = (cs k)!i \<and> ?esl!Suc i = (cs k)! Suc i"
+                    by auto
+                  from p6 c3 d0 have d4: "(\<exists>t k. (c!i -pes-(t\<sharp>k)\<rightarrow> c!Suc i) \<and>
+                            (\<forall>k t. (c!i -pes-(t\<sharp>k)\<rightarrow> c!Suc i) \<longrightarrow> (cs k!i -es-(t\<sharp>k)\<rightarrow> cs k! Suc i) \<and>
+                                    (\<forall>k'. k' \<noteq> k \<longrightarrow> (cs k'!i -ese\<rightarrow> cs k'! Suc i))))
+                            \<or>
+                            (((c!i) -pese\<rightarrow> (c!Suc i)) \<and> (\<forall>k. (((cs k)!i) -ese\<rightarrow> ((cs k)! Suc i))))"
+                    by (simp add:conjoin_def compat_tran_def)
+                  from d1 have d5: "((cs k)!i) -ese\<rightarrow> ((cs k)! Suc i)"
+                        by (simp add: d2) 
+                  from d4 have "(gets_es (?esl!i), gets_es (?esl!Suc i)) \<in> Rely k"
+                    proof
+                      assume e0: "\<exists>t k. (c!i -pes-(t\<sharp>k)\<rightarrow> c!Suc i) \<and>
+                            (\<forall>k t. (c!i -pes-(t\<sharp>k)\<rightarrow> c!Suc i) \<longrightarrow> (cs k!i -es-(t\<sharp>k)\<rightarrow> cs k! Suc i) \<and>
+                                    (\<forall>k'. k' \<noteq> k \<longrightarrow> (cs k'!i -ese\<rightarrow> cs k'! Suc i)))"
+                      then obtain ct and k' where e1: "((c!i) -pes-(ct\<sharp>k')\<rightarrow> (c!Suc i)) \<and>
+                                  (((cs k')!i) -es-(ct\<sharp>k')\<rightarrow> ((cs k')! Suc i))" by auto
+                      with p6 p8 d0 d5 have e2: "k \<noteq> k'" 
+                        using conjoin_def[of c cs] same_spec_def[of c cs]
+                           es_tran_not_etran1 by blast 
+
+                      with e0 e1 have e3: "((cs k)!i) -ese\<rightarrow> ((cs k)! Suc i)" by auto
+                      with d0 have "(?esl!i) -ese\<rightarrow> (?esl! Suc i)" by auto
+                      then show ?thesis
+                        proof(cases "i < m - 1")
+                          assume f0: "i < m - 1"
+                          with d2 have f1:"take (Suc m) (cs k) ! i = take m (cs k) ! i"
+                            by (simp add: diff_less_Suc less_trans_Suc) 
+                          
+                          from f0 have f2: "take (Suc m) (cs k) ! Suc i = take m (cs k) ! Suc i"
+                            by (simp add: d2 gr_implies_not0 nat_le_linear)
+                          from dd1 have "\<forall>i. Suc i<length (take m (cs k)) \<longrightarrow> 
+                              (take m (cs k))!i -ese\<rightarrow> (take m (cs k))!(Suc i) \<longrightarrow> 
+                              (gets_es ((take m (cs k))!i), gets_es ((take m (cs k))!Suc i)) \<in> Rely k"
+                            by (simp add:assume_es_def)
+                          with dd0 f0 have "(gets_es (take m (cs k) ! i), gets_es (take m (cs k) ! Suc i)) \<in> Rely k"
+                            by (metis (no_types, lifting) One_nat_def Suc_mono Suc_pred d0 d1 f1 f2 length_take min_less_iff_conj)
+                          with f1 f2 show ?thesis by simp
+                        next
+                          assume  "\<not>(i < m - 1)"
+                          with d0 have f0: "i = m - 1"
+                            by (simp add: c0 dd0 less_antisym min.absorb2) 
+                          let ?esl2 = "take (Suc m) (cs k')"
+                          
+                          from b0 c0 dd0 have "take m (cs k') \<in> assume_es (Pre k', Rely k')"
+                            by (metis Suc_leD p8) 
+                          moreover
+                          from e1 f0 have "\<not>(cs k' ! (m-1) -ese\<rightarrow> cs k' !m)"
+                            using Suc_pred' dd0 es_tran_not_etran1 by fastforce 
+                          ultimately have f1: "take (Suc m) (cs k') \<in> assume_es (Pre k', Rely k')" 
+                            using assume_es_one_more[of "cs k'" m "Pre k'" "Rely k'"] p8 p9 c0 dd0
+                            by (simp add: Suc_le_eq)
+                          from p7 have "cs k' \<in> cpts_of_es (pes k') s x" by simp
+                          with p8 c0 dd0 have f2: "?esl2\<in>cpts_of_es (pes k') s x" 
+                            using cpts_es_take[of "cs k'" m] cpts_of_es_def[of "pes k'" s x]
+                              by (simp add: Suc_le_lessD) 
+                          from p0 have f3: "\<Turnstile> pes k' sat\<^sub>s [Pre k', Rely k', Guar k', Post k'] " by simp
+                          with f1 f2 have "?esl2\<in>commit_es(Guar k', Post k')" 
+                            using es_validity_def[of "pes k'" "Pre k'" "Rely k'" "Guar k'" "Post k'"]
+                              by auto
+                          then have "\<forall>i. Suc i<length ?esl2 \<longrightarrow> 
+                                        (\<exists>t. ?esl2!i -es-t\<rightarrow> ?esl2!(Suc i)) \<longrightarrow> 
+                                        (gets_es (?esl2!i), gets_es (?esl2!Suc i)) \<in> Guar k'"
+                            by (simp add:commit_es_def)
+                          
+                          with p8 e1 f0 c0 dd0 have "(gets_es (?esl2 ! (m-1)), gets_es (?esl2 ! m))\<in>Guar k'"
+                            by (metis (no_types, lifting) One_nat_def Suc_pred diff_less_Suc length_take lessI min.absorb2 nth_take)
+                          with p3 p10 c0 f0 e2 show ?thesis
+                            by (smt Suc_diff_1 Suc_leD c3 dd0 le_less_linear not_less_eq_eq nth_take subsetCE)
+                        qed
+                    next
+                      assume e0: "(((c!i) -pese\<rightarrow> (c!Suc i)) \<and> (\<forall>k. (((cs k)!i) -ese\<rightarrow> ((cs k)! Suc i))))"
+                      from p5 have "\<forall>i. Suc i<length c \<longrightarrow> 
+                                        c!i -pese\<rightarrow> c!(Suc i) \<longrightarrow> 
+                                        (gets (c!i), gets (c!Suc i)) \<in> rely"
+                         by (simp add:assume_pes_def) 
+                      moreover
+                      from p8 c0 d0 have e1:"Suc i < length c" by simp
+                      ultimately have "(gets (c!i), gets (c!Suc i)) \<in> rely" using e0 by simp
+                      with p2 have "(gets (c!i), gets (c!Suc i)) \<in> Rely k" by auto
+                      with p8 p10 c0 d0 show ?thesis
+                        using Suc_lessD e1 d2 by auto 
+                    qed
+                }
+                then show ?thesis by auto 
+                qed
+
+              ultimately show ?thesis by (simp add:assume_es_def)
+            qed
+                
+          }
+          then show ?case by auto
+        qed
+    }
+    then show ?thesis by auto
+  qed
+
+lemma es_tran_sat_guar_aux: 
+  "\<lbrakk>\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]; 
+        \<forall>k. pre \<subseteq> Pre k; 
+        \<forall>k. rely \<subseteq> Rely k; 
+        \<forall>k j. j\<noteq>k \<longrightarrow> Guar j \<subseteq> Rely k;
+        c \<in> cpts_of_pes pes s x; c\<in>assume_pes(pre, rely);
+        c \<propto> cs; \<forall>k. cs k \<in> cpts_of_es (pes k) s x \<rbrakk> 
+        \<Longrightarrow>\<forall>k i m. m \<le> length c \<longrightarrow> Suc i < length (take m (cs k)) \<longrightarrow> (\<exists>t.((take m (cs k))!i-es-t\<rightarrow>((take m (cs k))!Suc i))) 
+        \<longrightarrow> ann_preserves_es ((take m (cs k))!i) \<and> (gets_es ((take m (cs k))!i), gets_es ((take m (cs k))!Suc i)) \<in> Guar k"
+  proof -
+    assume p0: "\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]"
+      and  p1: "\<forall>k. pre \<subseteq> Pre k"
+      and  p2: "\<forall>k. rely \<subseteq> Rely k"
+      and  p3: "\<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k"
+      and  p4: "c \<in> cpts_of_pes pes s x"
+      and  p5: "c \<in> assume_pes(pre, rely)" 
+      and  p6: "c \<propto> cs"
+      and  p7: "\<forall>k. cs k \<in> cpts_of_es (pes k) s x"
+    from p6 have p8: "\<forall>k. length (cs k) = length c" by (simp add:conjoin_def same_length_def)
+    {
+      fix k i m
+      assume a0: "m \<le> length c"
+        and  a1: "Suc i < length (take m (cs k))"
+        and  a2: "\<exists>t.((take m (cs k))!i-es-t\<rightarrow>((take m (cs k))!Suc i))"
+      have "ann_preserves_es ((take m (cs k))!i) \<and> (gets_es ((take m (cs k))!i),
+                              gets_es ((take m (cs k))!Suc i)) \<in> Guar k"
+        proof(cases "m = 0")
+          assume "m = 0" with a1 show ?thesis by auto
+        next
+          assume "m \<noteq> 0"
+          then have b0: "m > 0" by simp
+          let ?esl = "take m (cs k)"
+          from p7 have "cs k \<in> cpts_of_es (pes k) s x" by simp
+          then have "cs k!0=(pes k,s,x) \<and> cs k \<in> cpts_es" by (simp add:cpts_of_es_def)
+          with b0 have "?esl!0=(pes k,s,x) \<and> ?esl \<in> cpts_es"
+            by (metis Suc_pred a0 cpts_es_take leD not_less_eq nth_take p8) 
+          then have r1: "?esl \<in> cpts_of_es (pes k) s x" by (simp add:cpts_of_es_def)
+          from p0 p1 p2 p3 p4 p5 p6 p7
+            have "\<forall>n. n \<le> length (cs k) \<and> n > 0 \<longrightarrow> take n (cs k)\<in>assume_es(Pre k, Rely k)"
+              using cpts_es_sat_rely[of pes Pre Rely Guar Post pre rely c s x cs] by auto
+          with p8 a0 b0 have r2: "?esl\<in>assume_es(Pre k, Rely k)" by auto
+          
+          from p0 have "(cpts_of_es (pes k) s x) \<inter> assume_es(Pre k, Rely k) \<subseteq> commit_es(Guar k, Post k)"
+            by (simp add:es_validity_def)
+          with r1 r2 have "?esl \<in> commit_es(Guar k, Post k)"
+            using IntI subsetCE by auto 
+          then have "\<forall>i. Suc i<length ?esl \<longrightarrow> (\<exists>t. ?esl!i -es-t\<rightarrow> ?esl!(Suc i)) \<longrightarrow> 
+                    ann_preserves_es (?esl!i) \<and> (gets_es (?esl!i), gets_es (?esl!Suc i)) \<in> Guar k"
+            by (simp add:commit_es_def)
+          with a1 a2 show ?thesis by auto
+        qed
+    }
+    then show ?thesis by auto
+  qed
+
+
+lemma es_tran_sat_guar: 
+      "\<lbrakk>\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]; 
+        \<forall>k. pre \<subseteq> Pre k; 
+        \<forall>k. rely \<subseteq> Rely k; 
+        \<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k;
+        c \<in> cpts_of_pes pes s x; c\<in>assume_pes(pre, rely);
+        c \<propto> cs; \<forall>k. cs k \<in> cpts_of_es (pes k) s x \<rbrakk> 
+        \<Longrightarrow>\<forall>k i. Suc i < length (cs k) \<longrightarrow> (\<exists>t.((cs k)!i-es-t\<rightarrow>(cs k)!Suc i))\<longrightarrow> 
+           ann_preserves_es ((cs k)!i) \<and> (gets_es ((cs k)!i),gets_es ((cs k)!Suc i)) \<in> Guar k"
+  proof -
+    assume p0: "\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]"
+      and  p1: "\<forall>k. pre \<subseteq> Pre k"
+      and  p2: "\<forall>k. rely \<subseteq> Rely k"
+      and  p3: "\<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k"
+      and  p4: "c \<in> cpts_of_pes pes s x"
+      and  p5: "c \<in> assume_pes(pre, rely)" 
+      and  p6: "c \<propto> cs"
+      and  p7: "\<forall>k. cs k \<in> cpts_of_es (pes k) s x"
+    then have "\<forall>k i m. m \<le> length c \<longrightarrow> Suc i < length (take m (cs k)) \<longrightarrow> (\<exists>t.((take m (cs k))!i-es-t\<rightarrow>((take m (cs k))!Suc i))) 
+      \<longrightarrow> ann_preserves_es ((take m (cs k))!i) \<and>(gets_es ((take m (cs k))!i),gets_es ((take m (cs k))!Suc i)) \<in> Guar k"
+      using es_tran_sat_guar_aux [of pes Pre Rely Guar Post pre rely c s x cs] by simp
+    moreover
+    from p6 have "\<forall>k. length c = length (cs k)" by (simp add:conjoin_def same_length_def)
+    ultimately show ?thesis by auto
+  qed
+
+
+lemma conjoin_es_sat_assume: 
+      "\<lbrakk>\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]; 
+        \<forall>k. pre \<subseteq> Pre k; 
+        \<forall>k. rely \<subseteq> Rely k; 
+        \<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k;
+        c \<in> cpts_of_pes pes s x; c\<in>assume_pes(pre, rely);
+        c \<propto> cs; \<forall>k. cs k \<in> cpts_of_es (pes k) s x \<rbrakk> 
+        \<Longrightarrow> \<forall>k. cs k \<in> assume_es(Pre k, Rely k)" 
+  proof -
+    assume p0: "\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]"
+      and  p1: "\<forall>k. pre \<subseteq> Pre k"
+      and  p2: "\<forall>k. rely \<subseteq> Rely k"
+      and  p3[rule_format]: "\<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k"
+      and  p4: "c \<in> cpts_of_pes pes s x"
+      and  p5: "c \<in> assume_pes(pre, rely)" 
+      and  p6: "c \<propto> cs"
+      and  p7: "\<forall>k. cs k \<in> cpts_of_es (pes k) s x"
+    from p6 have p11[rule_format]: "\<forall>k. length (cs k) = length c" by (simp add:conjoin_def same_length_def)
+    from p7 have p12: "\<forall>k. cs k \<in> cpts_es" using cpts_of_es_def mem_Collect_eq by fastforce 
+    with p11 have "c \<noteq> Nil" using cpts_es_not_empty length_0_conv by auto 
+    then have p13: "length c > 0" by auto
+    {
+      fix k
+      have "cs k \<in> assume_es(Pre k, Rely k)"
+        using p0 p1 p2 p3 p4 p5 p6 p7 p13 p11 
+          cpts_es_sat_rely[of pes Pre Rely Guar Post pre rely c s x cs "length (cs k)" k] by force
+    }
+    then show ?thesis by auto
+  qed
+
+
+lemma pes_tran_sat_guar: 
+      "\<lbrakk>\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]; 
+        \<forall>k. pre \<subseteq> Pre k; 
+        \<forall>k. rely \<subseteq> Rely k; 
+        \<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k;
+        \<forall>k. Guar k \<subseteq> guar;
+        c \<in> cpts_of_pes pes s x; c\<in>assume_pes(pre, rely)\<rbrakk> 
+        \<Longrightarrow>\<forall>i. Suc i < length c \<longrightarrow> (\<exists>t. c!i -pes-t\<rightarrow> c!(Suc i)) \<longrightarrow> 
+        ann_preserves_pes (c!i) \<and> (gets (c!i),gets (c!Suc i)) \<in> guar"
+  proof -
+    assume p0: "\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]"
+      and  p1: "\<forall>k. pre \<subseteq> Pre k"
+      and  p2: "\<forall>k. rely \<subseteq> Rely k"
+      and  p3: "\<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k"
+      and  p4: "\<forall>k. Guar k \<subseteq> guar"
+      and  p5: "c \<in> cpts_of_pes pes s x"
+      and  p6: "c\<in>assume_pes(pre, rely)"
+      {
+        fix i
+        assume a0: "Suc i < length c"
+          and  a1: "\<exists>t. c!i -pes-t\<rightarrow> c!(Suc i)"
+        from p5 have "\<exists>cs. (\<forall>k. (cs k) \<in> cpts_of_es (pes k) s x) \<and> c \<propto> cs" 
+          by (meson cpt_imp_exist_conjoin_cs) 
+        then obtain cs where a2: "(\<forall>k. (cs k) \<in> cpts_of_es (pes k) s x) \<and> c \<propto> cs" by auto
+        then have "compat_tran c cs" by (simp add:conjoin_def)
+        with a0 have a3: "(\<exists>t k. (c!i -pes-(t\<sharp>k)\<rightarrow> c!Suc i) \<and>
+                          (\<forall>k t. (c!i -pes-(t\<sharp>k)\<rightarrow> c!Suc i) \<longrightarrow> (cs k!i -es-(t\<sharp>k)\<rightarrow> cs k! Suc i) \<and>
+                                  (\<forall>k'. k' \<noteq> k \<longrightarrow> (cs k'!i -ese\<rightarrow> cs k'! Suc i))))
+                          \<or>
+                          (((c!i) -pese\<rightarrow> (c!Suc i)) \<and> (\<forall>k. (((cs k)!i) -ese\<rightarrow> ((cs k)! Suc i))))"
+          by (simp add:compat_tran_def)
+        from a1 have "\<not>((c!i) -pese\<rightarrow> (c!Suc i))"
+          using pes_tran_not_etran1 by blast 
+        with a3 have "\<exists>t k. (c!i -pes-(t\<sharp>k)\<rightarrow> c!Suc i) \<and>
+                          (\<forall>k t. (c!i -pes-(t\<sharp>k)\<rightarrow> c!Suc i) \<longrightarrow> (cs k!i -es-(t\<sharp>k)\<rightarrow> cs k! Suc i) \<and>
+                                  (\<forall>k'. k' \<noteq> k \<longrightarrow> (cs k'!i -ese\<rightarrow> cs k'! Suc i)))"
+          by simp
+        then obtain t and k where a4: "(c!i -pes-(t\<sharp>k)\<rightarrow> c!Suc i) \<and>
+                          (\<forall>k t. (c!i -pes-(t\<sharp>k)\<rightarrow> c!Suc i) \<longrightarrow> (cs k!i -es-(t\<sharp>k)\<rightarrow> cs k! Suc i) \<and>
+                                  (\<forall>k'. k' \<noteq> k \<longrightarrow> (cs k'!i -ese\<rightarrow> cs k'! Suc i)))"
+          by auto
+        from p0 p1 p2 p3 p4 p5 p6 a2 have
+          "\<forall>k i. Suc i < length (cs k) \<longrightarrow> (\<exists>t.((cs k)!i-es-t\<rightarrow>(cs k)!Suc i))  \<longrightarrow> 
+                 ann_preserves_es ((cs k)!i) \<and> (gets_es ((cs k)!i),gets_es ((cs k)!Suc i)) \<in> Guar k" 
+          using es_tran_sat_guar [of pes Pre Rely Guar Post pre rely c s x cs] by simp
+        then have a5: "Suc i < length (cs k) \<longrightarrow> (\<exists>t.((cs k)!i-es-t\<rightarrow>(cs k)!Suc i)) \<longrightarrow> 
+                      ann_preserves_es ((cs k)!i) \<and> (gets_es ((cs k)!i),gets_es ((cs k)!Suc i)) \<in> Guar k" 
+          by simp
+        from a2 have a6: "length c = length (cs k)" by (simp add:conjoin_def same_length_def)
+        with a0 a4 a5 have a7: "ann_preserves_es ((cs k)!i) \<and> (gets_es ((cs k)!i),gets_es ((cs k)!Suc i)) \<in> Guar k" by auto
+        from a0 a2 have a8: "gets_es ((cs k)!i) = gets (c!i)" by (simp add:conjoin_def same_state_def)
+        from a0 a2 have a9: "gets_es ((cs k)!Suc i) = gets (c!Suc i)" by (simp add:conjoin_def same_state_def)
+        with a7 a8 have "(gets (c!i),gets (c!Suc i)) \<in> Guar k" by auto
+        with p4 have "(gets (c!i),gets (c!Suc i)) \<in> guar" by auto
+      }
+      thus ?thesis by auto
+    qed
+
+
+lemma parallel_sound: 
+      "\<lbrakk>\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]; 
+        \<forall>k. pre \<subseteq> Pre k; 
+        \<forall>k. rely \<subseteq> Rely k; 
+        \<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k;
+        \<forall>k. Guar k \<subseteq> guar;
+        \<forall>k. Post k \<subseteq> post\<rbrakk> 
+    \<Longrightarrow> \<Turnstile> pes SAT [pre, rely, guar, post]"
+  proof -
+    assume p0: "\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]"
+      and  p1: "\<forall>k. pre \<subseteq> Pre k"
+      and  p2: "\<forall>k. rely \<subseteq> Rely k"
+      and  p3: "\<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k"
+      and  p4: "\<forall>k. Guar k \<subseteq> guar"
+      and  p5: "\<forall>k. Post k \<subseteq> post"
+    have "\<forall>s x. (cpts_of_pes pes s x) \<inter> assume_pes(pre, rely) \<subseteq> commit_pes(guar, post)"
+      proof -
+      {
+        fix c s x
+        assume a0: "c\<in>(cpts_of_pes pes s x) \<inter> assume_pes(pre, rely)"
+        then have a1: "c\<in>(cpts_of_pes pes s x) \<and> c\<in>assume_pes(pre, rely)" by simp
+        with p0 p1 p2 p3 p4 have "\<forall>i. Suc i < length c \<longrightarrow> (\<exists>t. c!i -pes-t\<rightarrow> c!(Suc i)) \<longrightarrow> 
+             ann_preserves_pes (c!i) \<and> (gets (c!i),gets (c!Suc i)) \<in> guar" 
+          using pes_tran_sat_guar [of pes Pre Rely Guar Post pre rely guar c s x] by simp
+        then have "c\<in>commit_pes(guar, post)" 
+          by (simp add: commit_pes_def)
+      }
+      then show ?thesis by auto
+      qed
+
+    then show ?thesis by (simp add:pes_validity_def)
+  qed
+
+
+lemma parallel_seq_sound: 
+      "\<lbrakk>pre \<subseteq> pre'; rely \<subseteq> rely'; guar' \<subseteq> guar; post' \<subseteq> post;
+        \<Turnstile> pes SAT [pre', rely', guar', post']\<rbrakk> 
+    \<Longrightarrow> \<Turnstile> pes SAT [pre, rely, guar, post]"
+  proof -
+    assume p0: "pre \<subseteq> pre'"
+      and  p1: "rely \<subseteq> rely'"
+      and  p2: "guar' \<subseteq> guar"
+      and  p3: "post' \<subseteq> post"
+      and  p4: "\<Turnstile> pes SAT [pre', rely', guar', post']"
+    from p4 have p5: "\<forall>s x. (cpts_of_pes pes s x) \<inter> assume_pes(pre', rely') \<subseteq> commit_pes(guar', post')"
+      by (simp add: pes_validity_def)
+    have "\<forall>s x. (cpts_of_pes pes s x) \<inter> assume_pes(pre, rely) \<subseteq> commit_pes(guar, post)"
+      proof -
+      {
+        fix c s x
+        assume a0: "c\<in>(cpts_of_pes pes s x) \<inter> assume_pes(pre, rely)"
+        then have "c\<in>(cpts_of_pes pes s x) \<and> c\<in>assume_pes(pre, rely)" by simp
+        with p0 p1 have "c\<in>(cpts_of_pes pes s x) \<and> c\<in>assume_pes(pre', rely')"
+          using assume_pes_imp[of pre pre' rely rely' c] by simp
+        with p5 have "c\<in>commit_pes(guar', post')" by auto
+        with p2 p3 have "c\<in>commit_pes(guar, post)" 
+          using commit_pes_imp[of guar' guar post' post c] by simp
+      }
+      then show ?thesis by auto
+      qed
+    then show ?thesis by (simp add:pes_validity_def)
+  qed
+
+theorem rgsound_pes: "\<turnstile> rgf_par SAT [pre, rely, guar, post] \<Longrightarrow> \<Turnstile> paresys_spec rgf_par SAT [pre, rely, guar, post]"
+  apply(erule rghoare_pes.induct)
+  proof -
+  {
+    fix pes pre rely guar post
+    assume p0: "\<forall>k. \<turnstile> fst ((pes::'k \<Rightarrow> ('l,'k,'s) rgformula_es) k) sat\<^sub>s [Pre\<^sub>e\<^sub>s (pes k), Rely\<^sub>e\<^sub>s (pes k), Guar\<^sub>e\<^sub>s (pes k), Post\<^sub>e\<^sub>s (pes k)]"
+      and  p1: "\<forall>k. pre \<subseteq> Pre\<^sub>e\<^sub>s (pes k)"
+      and  p2: "\<forall>k. rely \<subseteq> Rely\<^sub>e\<^sub>s (pes k)"
+      and  p3: "\<forall>k j. j \<noteq> k \<longrightarrow> Guar\<^sub>e\<^sub>s (pes j) \<subseteq> Rely\<^sub>e\<^sub>s (pes k)"
+      and  p4: "\<forall>k. Guar\<^sub>e\<^sub>s (pes k) \<subseteq> guar"
+      and  p5: "\<forall>k. Post\<^sub>e\<^sub>s (pes k) \<subseteq> post"
+    from p0 have "\<forall>k. \<Turnstile> evtsys_spec (fst (pes k)) sat\<^sub>s [Pre\<^sub>e\<^sub>s (pes k), Rely\<^sub>e\<^sub>s (pes k), Guar\<^sub>e\<^sub>s (pes k), Post\<^sub>e\<^sub>s (pes k)]"
+      proof -
+      {
+        fix k
+        from p0 have "\<turnstile> fst (pes k) sat\<^sub>s [Pre\<^sub>e\<^sub>s (pes k), Rely\<^sub>e\<^sub>s (pes k), Guar\<^sub>e\<^sub>s (pes k), Post\<^sub>e\<^sub>s (pes k)]"
+          by simp
+        then have "\<Turnstile> evtsys_spec (fst (pes k)) sat\<^sub>s [Pre\<^sub>e\<^sub>s (pes k), Rely\<^sub>e\<^sub>s (pes k), Guar\<^sub>e\<^sub>s (pes k), Post\<^sub>e\<^sub>s (pes k)]"
+          using rgsound_es [of "fst (pes k)" "Pre\<^sub>e\<^sub>s (pes k)" "Rely\<^sub>e\<^sub>s (pes k)" "Guar\<^sub>e\<^sub>s (pes k)" "Post\<^sub>e\<^sub>s (pes k)"]
+            by simp
+      }
+      then show ?thesis by auto
+      qed
+    with p1 p2 p3 p4 p5 show "\<Turnstile> paresys_spec pes SAT [pre, rely, guar, post]" 
+      using parallel_sound [of "paresys_spec pes" "Pre\<^sub>e\<^sub>s\<circ>pes" "Rely\<^sub>e\<^sub>s\<circ>pes" "Guar\<^sub>e\<^sub>s\<circ>pes" "Post\<^sub>e\<^sub>s\<circ>pes"
+            pre rely guar post] by (simp add:paresys_spec_def)
+  }
+  next
+  {
+    fix pre pre' rely rely' guar' guar post' post pesf
+    assume "pre \<subseteq> pre'"
+      and  "rely \<subseteq> rely'"
+      and  "guar' \<subseteq> guar"
+      and  "post' \<subseteq> post"
+      and  "\<turnstile> pesf SAT [pre', rely', guar', post']"
+      and  "\<Turnstile> paresys_spec pesf SAT [pre', rely', guar', post']"
+    then show "\<Turnstile> paresys_spec pesf SAT [pre, rely, guar, post] "
+      using parallel_seq_sound[of pre pre' rely rely' guar' guar post' post "paresys_spec pesf"] by simp
+  }
+qed
+
 
 end

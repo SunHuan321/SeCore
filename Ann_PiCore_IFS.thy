@@ -1,13 +1,5 @@
-(*
-Created by Yongwang Zhao (ywzhao@ntu.edu.sg, zhaoyw@buaa.edu.cn)
-School of Computer Engineering, Nanyang Technological University, Singapore
-and School of Computer Science & Engineering, Beihang University, China
-*)
-
-section \<open>Information Flow Security Definition and Proof\<close>
-
-theory PiCore_IFS
-imports PiCore_Semantics
+theory Ann_PiCore_IFS
+  imports Ann_PiCore_Semantics
 begin
 
 subsection \<open>Information Flow Security Definition\<close>
@@ -339,7 +331,7 @@ proof -
           with c0 show ?thesis using a2 runnable_def by fastforce 
         qed
     }
-    then show ?thesis using exec_equiv_def gets_def using a0 a1 a2 runnable_def by smt 
+    then show ?thesis using exec_equiv_def gets_def using a0 a1 a2 runnable_def by metis 
     qed
   then show ?thesis by auto
 qed

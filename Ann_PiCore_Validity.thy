@@ -69,13 +69,17 @@ definition es_validity :: "('l,'k,'s) esys \<Rightarrow> 's set \<Rightarrow> ('
   "\<Turnstile> es sat\<^sub>s [pre, rely, guar, post] \<equiv> 
    \<forall>s x. (cpts_of_es es s x) \<inter> assume_es(pre, rely) \<subseteq> commit_es(guar, post)"
 
+definition ann_preserves_pes :: "('l,'k,'s) pesconf \<Rightarrow> bool" where
+  "ann_preserves_pes conf \<equiv> \<forall>k. gets conf \<in> ann_pre_es ((getspc conf) k)"
+
 definition assume_pes :: "('s set \<times> ('s \<times> 's) set) \<Rightarrow> (('l,'k,'s) pesconfs) set" where
   "assume_pes \<equiv> \<lambda>(pre, rely). {c. gets (c!0) \<in> pre \<and> (\<forall>i. Suc i<length c \<longrightarrow> 
                c!i -pese\<rightarrow> c!(Suc i) \<longrightarrow> (gets (c!i), gets (c!Suc i)) \<in> rely)}"
 
+
 definition commit_pes :: "(('s \<times> 's) set \<times> 's set) \<Rightarrow> (('l,'k,'s) pesconfs) set" where
-  "commit_pes \<equiv> \<lambda>(guar, post). {c. (\<forall>i. Suc i<length c \<longrightarrow> 
-               (\<exists>t. c!i -pes-t\<rightarrow> c!(Suc i)) \<longrightarrow> (gets (c!i), gets (c!Suc i)) \<in> guar)}"
+  "commit_pes \<equiv> \<lambda>(guar, post). {c. (\<forall>i. Suc i<length c \<longrightarrow> (\<exists>t. c!i -pes-t\<rightarrow> c!(Suc i)) \<longrightarrow> 
+                ann_preserves_pes (c!i)\<and> (gets (c!i), gets (c!Suc i)) \<in> guar)}"
 
 definition pes_validity :: "('l,'k,'s) paresys \<Rightarrow> 's set \<Rightarrow> ('s \<times> 's) set \<Rightarrow> ('s \<times> 's) set \<Rightarrow> 's set \<Rightarrow> bool" 
                  ("\<Turnstile> _ SAT [_, _, _, _]" [60,0,0,0,0] 45) where
@@ -295,13 +299,13 @@ lemma commit_pes_imp: "\<lbrakk>guar1\<subseteq>guar; post1\<subseteq>post; c\<i
     assume p0: "guar1\<subseteq>guar"
       and  p1: "post1\<subseteq>post"
       and  p3: "c\<in>commit_pes(guar1,post1)"
-    then have a0: "\<forall>i. Suc i<length c \<longrightarrow> 
-               (\<exists>t. c!i -pes-t\<rightarrow> c!(Suc i)) \<longrightarrow> (gets (c!i), gets (c!Suc i)) \<in> guar1"
+    then have a0: "\<forall>i. Suc i<length c \<longrightarrow> (\<exists>t. c!i -pes-t\<rightarrow> c!(Suc i)) 
+                  \<longrightarrow> ann_preserves_pes (c!i) \<and> (gets (c!i), gets (c!Suc i)) \<in> guar1"
       by (simp add:commit_pes_def)
     show ?thesis
       proof(simp add:commit_pes_def)
-        from p0 a0 show "\<forall>i. Suc i < length c \<longrightarrow> (\<exists>t. c ! i -pes-t\<rightarrow> c ! Suc i) 
-                            \<longrightarrow> (gets (c ! i), gets (c ! Suc i)) \<in> guar"
+        from p0 a0 show "\<forall>i. Suc i < length c \<longrightarrow> (\<exists>t. c ! i -pes-t\<rightarrow> c ! Suc i) \<longrightarrow> 
+          ann_preserves_pes (c!i) \<and> (gets (c ! i), gets (c ! Suc i)) \<in> guar"
           by auto
       qed
   qed
