@@ -996,6 +996,7 @@ lemma evtsys_all_es_in_cpts_anony:
       qed
   qed
 
+
 lemma not_anonyevt_none_in_evtseq:
     "\<lbrakk>esl\<in>cpts_es; esl = (EvtSeq e es,s1,x1)#(es,s2,x2)#xs \<rbrakk> \<Longrightarrow> e \<noteq> AnonyEvent None"
   apply(rule cpts_es.cases)
@@ -1005,13 +1006,11 @@ lemma not_anonyevt_none_in_evtseq:
   apply(simp)+
   apply (metis Suc_eq_plus1 add.commute add.right_neutral esys.size(3) le_add1 lessI not_le)
   apply(rule etran.cases)
-    apply(simp)+
-(*
+  apply(simp)+
   prefer 2
   apply(simp)
   apply(rule ptran.cases)
   apply(simp)+
-*)
   done
 
 lemma not_anonyevt_none_in_evtseq1:
