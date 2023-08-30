@@ -7,7 +7,8 @@ begin
 subsection \<open>Datatypes for Semantics\<close>
 
 datatype cmd = CMP
-datatype ('l,'k,'s) act = Cmd cmd      
+datatype ('l,'k,'s) act = 
+      Cmd "'s ann_prog"      
     | EvtEnt "('l,'k,'s) event" 
 
 record ('l,'k,'s) actk =  Act  :: "('l,'k,'s) act" 
@@ -101,7 +102,7 @@ inductive_set
   and etran' :: "('l,'k,'s) econf \<Rightarrow> ('l,'k,'s) actk \<Rightarrow> ('l,'k,'s) econf \<Rightarrow> bool"   ("_ -et-_\<rightarrow> _" [81,81,81] 80)
 where
   "P -et-t\<rightarrow> Q \<equiv> (P,t,Q) \<in> etran"
-| AnonyEvent: "(P, s) -c\<rightarrow> (Q, t) \<Longrightarrow> (AnonyEvent P, s, x) -et-(Cmd CMP)\<sharp>k\<rightarrow> (AnonyEvent Q, t, x)"
+| AnonyEvent: "(Some P, s) -c\<rightarrow> (Q, t) \<Longrightarrow> (AnonyEvent (Some P), s, x) -et-(Cmd P)\<sharp>k\<rightarrow> (AnonyEvent Q, t, x)"
 | EventEntry: "\<lbrakk>P = body e; s \<in> guard e; x' = x(k:= BasicEvent e)\<rbrakk> 
                 \<Longrightarrow> (BasicEvent e, s, x) -et-(EvtEnt (BasicEvent e))\<sharp>k\<rightarrow> ((AnonyEvent (Some P)), s, x')"
 

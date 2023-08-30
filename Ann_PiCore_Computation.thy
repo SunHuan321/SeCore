@@ -137,6 +137,102 @@ lemma tl_zero[rule_format]:
   "P (ys!Suc j) \<longrightarrow> Suc j<length ys \<longrightarrow> ys\<noteq>[] \<longrightarrow> P (tl(ys)!j)"
   by (induct ys) simp_all
 
+(*
+lemma cpts_p_not_empty [simp]:"[] \<notin> cpts_p"
+  apply(force elim:cpts_p.cases)
+  done
+
+lemma petran_eqconf: "(p1, s1) -pe\<rightarrow> (p2, s2) \<Longrightarrow> p1 = p2"
+  apply(rule petran.cases)
+  apply(simp)+
+  done
+
+lemma cpts_p_drop0: "\<lbrakk>l \<in> cpts_p; Suc 0 < length l\<rbrakk> \<Longrightarrow> drop (Suc 0) l \<in> cpts_p"
+  apply(rule cpts_p.cases)
+  apply(simp)+
+  done  
+
+lemma cpts_p_dropi: "\<lbrakk>l \<in> cpts_p; Suc i < length l\<rbrakk> \<Longrightarrow> drop (Suc i) l \<in> cpts_p"
+  proof -
+    assume p0:" l \<in> cpts_p" and p1:"Suc i < length l"
+    have "\<forall>l i. l \<in> cpts_p \<and> Suc i < length l \<longrightarrow> drop (Suc i) l \<in> cpts_p"
+      proof -
+      {
+        fix l i
+        have "l \<in> cpts_p \<and> Suc i < length l \<longrightarrow> drop (Suc i) l \<in> cpts_p"
+          proof(induct i)
+            case 0 show ?case by (simp add: cpts_p_drop0) 
+          next
+            case (Suc j)
+            assume b0: "l \<in> cpts_p \<and> Suc j < length l \<longrightarrow> drop (Suc j) l \<in> cpts_p"
+            show ?case
+              proof
+                assume c0: "l \<in> cpts_p \<and> Suc (Suc j) < length l"
+                with b0 have c1: "drop (Suc j) l \<in> cpts_p"
+                  by (simp add: c0 Suc_lessD)                 
+                then show "drop (Suc (Suc j)) l \<in> cpts_p"
+                  using c0 cpts_p_drop0 by fastforce 
+              qed
+          qed
+      }
+      then show ?thesis by auto
+      qed
+    with p0 p1 show ?thesis by auto
+  qed
+
+lemma cpts_p_dropi2: "\<lbrakk>l \<in> cpts_p; i < length l\<rbrakk> \<Longrightarrow> drop i l \<in> cpts_p"
+  using cpts_p_dropi by (metis (no_types, hide_lams) drop_0 lessI less_Suc_eq_0_disj) 
+
+lemma notran_p_confeq0: "\<lbrakk>l \<in> cpts_p; Suc 0 < length l; \<not> (l ! 0 -c\<rightarrow> l ! 1)\<rbrakk>
+                      \<Longrightarrow> getspc_p (l ! 0) = getspc_p (l ! 1)"
+  apply(simp)
+  apply(rule cpts_p.cases)
+  apply(simp)+
+  apply(simp add:getspc_p_def)+
+  done
+
+lemma notran_p_confeqi: "\<lbrakk>l \<in> cpts_p; Suc i < length l; \<not> (l ! i -c\<rightarrow> l ! Suc i)\<rbrakk>
+                      \<Longrightarrow> getspc_p (l ! i) = getspc_p (l ! (Suc i))"
+  proof -
+    assume p0: "l \<in> cpts_p" and
+           p1: "Suc i < length l" and
+           p2: "\<not> (l ! i -c\<rightarrow> l ! Suc i)"
+    have "\<forall>l i. l \<in> cpts_p \<and>  Suc i < length l \<and> \<not> (l ! i -c\<rightarrow> l ! Suc i)
+                \<longrightarrow> getspc_p (l ! i) = getspc_p (l ! (Suc i))"
+      proof -
+      {
+        fix l i
+        assume a0: "l \<in> cpts_p \<and> Suc i < length l \<and> \<not> (l ! i -c\<rightarrow> l ! Suc i)"
+        then have "getspc_p (l ! i) = getspc_p (l ! (Suc i))"
+          proof(induct i)
+            case 0 show ?case by (simp add: "0.prems" notran_p_confeq0) 
+          next
+            case (Suc j)
+            let ?subel = "drop (Suc j) l"
+            assume b0: "l \<in> cpts_p \<and> Suc (Suc j) < length l \<and> \<not> (l ! Suc j -c\<rightarrow> l ! Suc (Suc j))"            
+            then have b1: "?subel \<in> cpts_p" by (simp add: Suc_lessD b0 cpts_p_dropi) 
+            from b0 have b2: "Suc 0 < length ?subel" by auto 
+            from b0 have b3: "\<not> (?subel ! 0 -c\<rightarrow> ?subel ! 1)" by auto
+            with b1 b2 have b3: "getspc_p (?subel ! 0) = getspc_p (?subel ! 1)"
+              using notran_p_confeq0 by blast
+            then show ?case
+              by (metis Cons_nth_drop_Suc One_nat_def Suc_lessD b0 nth_Cons_0 nth_Cons_Suc) 
+          qed
+      }
+      then show ?thesis by auto
+    qed
+    with p0 p1 p2 show ?thesis by auto
+  qed
+
+lemma notran_p_confeqi2: "\<lbrakk>l \<in> cpts_p; \<forall>i. Suc i < length l \<longrightarrow> \<not> (l ! i -c\<rightarrow> l ! Suc i); j < length l\<rbrakk>
+                      \<Longrightarrow> getspc_p (l ! 0) = getspc_p (l ! j)"
+  apply (induct j, simp)
+  apply clarsimp
+  apply (erule_tac x = j in allE)
+  using notran_p_confeqi by blast
+*)
+
+
 subsubsection \<open>Events\<close>
 
 lemma cpts_e_not_empty [simp]:"[] \<notin> cpts_ev"
@@ -909,11 +1005,13 @@ lemma not_anonyevt_none_in_evtseq:
   apply(simp)+
   apply (metis Suc_eq_plus1 add.commute add.right_neutral esys.size(3) le_add1 lessI not_le)
   apply(rule etran.cases)
-  apply(simp)+
+    apply(simp)+
+(*
   prefer 2
   apply(simp)
   apply(rule ptran.cases)
   apply(simp)+
+*)
   done
 
 lemma not_anonyevt_none_in_evtseq1:

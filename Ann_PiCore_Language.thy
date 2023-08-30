@@ -21,10 +21,6 @@ primrec ann_pre ::"'s ann_prog \<Rightarrow> 's assn"  where
 | "ann_pre (AnnWhile r b c) = r"
 | "ann_pre (AnnAwait r b c) = r"
 | "ann_pre (AnnNondt r f) = r"
-                                           
-primrec ann_pre_p :: "('s ann_prog) option \<Rightarrow> 's assn" where
-  "ann_pre_p (Some P) = ann_pre P"
-| "ann_pre_p None = UNIV"
 
 type_synonym ('l,'s) event' = "'l \<times> ('s guard \<times> 's ann_prog)"
 
@@ -38,17 +34,10 @@ datatype ('l,'k,'s) event =
       AnonyEvent "('s ann_prog) option" 
     | BasicEvent "('l,'s) event'" 
 
-primrec ann_pre_e :: "('l,'k,'s) event \<Rightarrow> 's assn" where
-  "ann_pre_e (AnonyEvent P) = ann_pre_p P"
-| "ann_pre_e (BasicEvent e) = UNIV"
-
 datatype ('l,'k,'s) esys = 
       EvtSeq "('l,'k,'s) event" "('l,'k,'s) esys"
     | EvtSys "('l,'k,'s) event set" 
 
-primrec ann_pre_es :: "('l,'k,'s) esys \<Rightarrow> 's assn" where
-  "ann_pre_es (EvtSeq e esys) = ann_pre_e e"
-| "ann_pre_es (EvtSys es) = UNIV"
 
 type_synonym ('l,'k,'s) paresys = "'k \<Rightarrow> ('l,'k,'s) esys"
 
