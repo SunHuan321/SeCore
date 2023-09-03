@@ -7903,7 +7903,7 @@ lemma es_tran_sat_guar_aux:
         c \<in> cpts_of_pes pes s x; c\<in>assume_pes(pre, rely);
         c \<propto> cs; \<forall>k. cs k \<in> cpts_of_es (pes k) s x \<rbrakk> 
         \<Longrightarrow>\<forall>k i m. m \<le> length c \<longrightarrow> Suc i < length (take m (cs k)) \<longrightarrow> (\<exists>t.((take m (cs k))!i-es-t\<rightarrow>((take m (cs k))!Suc i))) 
-        \<longrightarrow> ann_preserves_es ((take m (cs k))!i) \<and> (gets_es ((take m (cs k))!i), gets_es ((take m (cs k))!Suc i)) \<in> Guar k"
+                \<longrightarrow> (gets_es ((take m (cs k))!i),gets_es ((take m (cs k))!Suc i)) \<in> Guar k"
   proof -
     assume p0: "\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]"
       and  p1: "\<forall>k. pre \<subseteq> Pre k"
@@ -7919,8 +7919,7 @@ lemma es_tran_sat_guar_aux:
       assume a0: "m \<le> length c"
         and  a1: "Suc i < length (take m (cs k))"
         and  a2: "\<exists>t.((take m (cs k))!i-es-t\<rightarrow>((take m (cs k))!Suc i))"
-      have "ann_preserves_es ((take m (cs k))!i) \<and> (gets_es ((take m (cs k))!i),
-                              gets_es ((take m (cs k))!Suc i)) \<in> Guar k"
+      have "(gets_es ((take m (cs k))!i),gets_es ((take m (cs k))!Suc i)) \<in> Guar k"
         proof(cases "m = 0")
           assume "m = 0" with a1 show ?thesis by auto
         next
@@ -7941,8 +7940,8 @@ lemma es_tran_sat_guar_aux:
             by (simp add:es_validity_def)
           with r1 r2 have "?esl \<in> commit_es(Guar k, Post k)"
             using IntI subsetCE by auto 
-          then have "\<forall>i. Suc i<length ?esl \<longrightarrow> (\<exists>t. ?esl!i -es-t\<rightarrow> ?esl!(Suc i)) \<longrightarrow> 
-                    ann_preserves_es (?esl!i) \<and> (gets_es (?esl!i), gets_es (?esl!Suc i)) \<in> Guar k"
+          then have "\<forall>i. Suc i<length ?esl \<longrightarrow> 
+               (\<exists>t. ?esl!i -es-t\<rightarrow> ?esl!(Suc i)) \<longrightarrow> (gets_es (?esl!i), gets_es (?esl!Suc i)) \<in> Guar k"
             by (simp add:commit_es_def)
           with a1 a2 show ?thesis by auto
         qed
@@ -7958,8 +7957,8 @@ lemma es_tran_sat_guar:
         \<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k;
         c \<in> cpts_of_pes pes s x; c\<in>assume_pes(pre, rely);
         c \<propto> cs; \<forall>k. cs k \<in> cpts_of_es (pes k) s x \<rbrakk> 
-        \<Longrightarrow>\<forall>k i. Suc i < length (cs k) \<longrightarrow> (\<exists>t.((cs k)!i-es-t\<rightarrow>(cs k)!Suc i))\<longrightarrow> 
-           ann_preserves_es ((cs k)!i) \<and> (gets_es ((cs k)!i),gets_es ((cs k)!Suc i)) \<in> Guar k"
+        \<Longrightarrow>\<forall>k i. Suc i < length (cs k) \<longrightarrow> (\<exists>t.((cs k)!i-es-t\<rightarrow>(cs k)!Suc i)) 
+                \<longrightarrow> (gets_es ((cs k)!i),gets_es ((cs k)!Suc i)) \<in> Guar k"
   proof -
     assume p0: "\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]"
       and  p1: "\<forall>k. pre \<subseteq> Pre k"
@@ -7970,7 +7969,7 @@ lemma es_tran_sat_guar:
       and  p6: "c \<propto> cs"
       and  p7: "\<forall>k. cs k \<in> cpts_of_es (pes k) s x"
     then have "\<forall>k i m. m \<le> length c \<longrightarrow> Suc i < length (take m (cs k)) \<longrightarrow> (\<exists>t.((take m (cs k))!i-es-t\<rightarrow>((take m (cs k))!Suc i))) 
-      \<longrightarrow> ann_preserves_es ((take m (cs k))!i) \<and>(gets_es ((take m (cs k))!i),gets_es ((take m (cs k))!Suc i)) \<in> Guar k"
+                \<longrightarrow> (gets_es ((take m (cs k))!i),gets_es ((take m (cs k))!Suc i)) \<in> Guar k"
       using es_tran_sat_guar_aux [of pes Pre Rely Guar Post pre rely c s x cs] by simp
     moreover
     from p6 have "\<forall>k. length c = length (cs k)" by (simp add:conjoin_def same_length_def)
@@ -8008,7 +8007,6 @@ lemma conjoin_es_sat_assume:
     then show ?thesis by auto
   qed
 
-
 lemma pes_tran_sat_guar: 
       "\<lbrakk>\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]; 
         \<forall>k. pre \<subseteq> Pre k; 
@@ -8016,8 +8014,8 @@ lemma pes_tran_sat_guar:
         \<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k;
         \<forall>k. Guar k \<subseteq> guar;
         c \<in> cpts_of_pes pes s x; c\<in>assume_pes(pre, rely)\<rbrakk> 
-        \<Longrightarrow>\<forall>i. Suc i < length c \<longrightarrow> (\<exists>t. c!i -pes-t\<rightarrow> c!(Suc i)) \<longrightarrow> 
-        ann_preserves_pes (c!i) \<and> (gets (c!i),gets (c!Suc i)) \<in> guar"
+        \<Longrightarrow>\<forall>i. Suc i < length c \<longrightarrow> (\<exists>t. c!i -pes-t\<rightarrow> c!(Suc i))
+                \<longrightarrow> (gets (c!i),gets (c!Suc i)) \<in> guar"
   proof -
     assume p0: "\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]"
       and  p1: "\<forall>k. pre \<subseteq> Pre k"
@@ -8051,21 +8049,39 @@ lemma pes_tran_sat_guar:
                                   (\<forall>k'. k' \<noteq> k \<longrightarrow> (cs k'!i -ese\<rightarrow> cs k'! Suc i)))"
           by auto
         from p0 p1 p2 p3 p4 p5 p6 a2 have
-          "\<forall>k i. Suc i < length (cs k) \<longrightarrow> (\<exists>t.((cs k)!i-es-t\<rightarrow>(cs k)!Suc i))  \<longrightarrow> 
-                 ann_preserves_es ((cs k)!i) \<and> (gets_es ((cs k)!i),gets_es ((cs k)!Suc i)) \<in> Guar k" 
+          "\<forall>k i. Suc i < length (cs k) \<longrightarrow> (\<exists>t.((cs k)!i-es-t\<rightarrow>(cs k)!Suc i)) 
+                \<longrightarrow> (gets_es ((cs k)!i),gets_es ((cs k)!Suc i)) \<in> Guar k" 
           using es_tran_sat_guar [of pes Pre Rely Guar Post pre rely c s x cs] by simp
-        then have a5: "Suc i < length (cs k) \<longrightarrow> (\<exists>t.((cs k)!i-es-t\<rightarrow>(cs k)!Suc i)) \<longrightarrow> 
-                      ann_preserves_es ((cs k)!i) \<and> (gets_es ((cs k)!i),gets_es ((cs k)!Suc i)) \<in> Guar k" 
-          by simp
+        then have a5: "Suc i < length (cs k) \<longrightarrow> (\<exists>t.((cs k)!i-es-t\<rightarrow>(cs k)!Suc i)) 
+                \<longrightarrow> (gets_es ((cs k)!i),gets_es ((cs k)!Suc i)) \<in> Guar k" by simp
         from a2 have a6: "length c = length (cs k)" by (simp add:conjoin_def same_length_def)
-        with a0 a4 a5 have a7: "ann_preserves_es ((cs k)!i) \<and> (gets_es ((cs k)!i),gets_es ((cs k)!Suc i)) \<in> Guar k" by auto
+        with a0 a4 a5 have a7: "(gets_es ((cs k)!i),gets_es ((cs k)!Suc i)) \<in> Guar k" by auto
         from a0 a2 have a8: "gets_es ((cs k)!i) = gets (c!i)" by (simp add:conjoin_def same_state_def)
         from a0 a2 have a9: "gets_es ((cs k)!Suc i) = gets (c!Suc i)" by (simp add:conjoin_def same_state_def)
         with a7 a8 have "(gets (c!i),gets (c!Suc i)) \<in> Guar k" by auto
         with p4 have "(gets (c!i),gets (c!Suc i)) \<in> guar" by auto
       }
       thus ?thesis by auto
-    qed
+  qed
+
+lemma conjoin_preserves : "c \<propto> cs \<Longrightarrow> \<forall>k. cs k \<in> preserves_es \<Longrightarrow> c \<in> preserves_pes"
+  apply (simp add: preserves_pes_def preserves_es_def ann_preserves_pes_def, clarify)
+  apply (drule_tac x = k and y = i in spec2)
+  apply (erule impE, simp add: conjoin_def same_length_def)
+  by (simp add: conjoin_def same_spec_def same_state_def)
+
+lemma pes_tran_sat_preserve: 
+      "\<lbrakk>\<forall>k. \<Turnstile> (pes k) sat\<^sub>s [Pre k, Rely k, Guar k, Post k]; 
+        \<forall>k. pre \<subseteq> Pre k; 
+        \<forall>k. rely \<subseteq> Rely k; 
+        \<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k;
+        \<forall>k. Guar k \<subseteq> guar;
+        c \<in> cpts_of_pes pes s x; c\<in>assume_pes(pre, rely)\<rbrakk> 
+        \<Longrightarrow> c \<in> preserves_pes"
+  apply (frule cpt_imp_exist_conjoin_cs, clarify)
+  apply (rule conjoin_preserves, simp)
+  apply (frule conjoin_es_sat_assume, simp_all)
+  by (meson Int_iff contra_subsetD es_validity_def)
 
 
 lemma parallel_sound: 
@@ -8083,24 +8099,27 @@ lemma parallel_sound:
       and  p3: "\<forall>k j. j\<noteq>k \<longrightarrow>  Guar j \<subseteq> Rely k"
       and  p4: "\<forall>k. Guar k \<subseteq> guar"
       and  p5: "\<forall>k. Post k \<subseteq> post"
-    have "\<forall>s x. (cpts_of_pes pes s x) \<inter> assume_pes(pre, rely) \<subseteq> commit_pes(guar, post)"
+    have "\<forall>s x. (cpts_of_pes pes s x) \<inter> assume_pes(pre, rely) \<subseteq> commit_pes(guar, post) \<inter> preserves_pes"
       proof -
       {
         fix c s x
         assume a0: "c\<in>(cpts_of_pes pes s x) \<inter> assume_pes(pre, rely)"
         then have a1: "c\<in>(cpts_of_pes pes s x) \<and> c\<in>assume_pes(pre, rely)" by simp
-        with p0 p1 p2 p3 p4 have "\<forall>i. Suc i < length c \<longrightarrow> (\<exists>t. c!i -pes-t\<rightarrow> c!(Suc i)) \<longrightarrow> 
-             ann_preserves_pes (c!i) \<and> (gets (c!i),gets (c!Suc i)) \<in> guar" 
+        with p0 p1 p2 p3 p4 have "\<forall>i. Suc i < length c \<longrightarrow> (\<exists>t. c!i -pes-t\<rightarrow> c!(Suc i))
+            \<longrightarrow> (gets (c!i),gets (c!Suc i)) \<in> guar" 
           using pes_tran_sat_guar [of pes Pre Rely Guar Post pre rely guar c s x] by simp
-        then have "c\<in>commit_pes(guar, post)" 
+        then have l1: "c\<in>commit_pes(guar, post)" 
           by (simp add: commit_pes_def)
+
+        with a1 p0 p1 p2 p3 p4 have "c \<in> preserves_pes"
+          using pes_tran_sat_preserve [of pes Pre Rely Guar Post pre rely guar c s x] by simp
+        with l1 have "c \<in> commit_pes (guar, post) \<inter> preserves_pes" by auto
       }
       then show ?thesis by auto
-      qed
+    qed
 
     then show ?thesis by (simp add:pes_validity_def)
   qed
-
 
 lemma parallel_seq_sound: 
       "\<lbrakk>pre \<subseteq> pre'; rely \<subseteq> rely'; guar' \<subseteq> guar; post' \<subseteq> post;
@@ -8170,7 +8189,7 @@ theorem rgsound_pes: "\<turnstile> rgf_par SAT [pre, rely, guar, post] \<Longrig
     then show "\<Turnstile> paresys_spec pesf SAT [pre, rely, guar, post] "
       using parallel_seq_sound[of pre pre' rely rely' guar' guar post' post "paresys_spec pesf"] by simp
   }
-qed
+  qed
 
 
 end
