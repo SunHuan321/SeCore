@@ -607,7 +607,78 @@ lemma concat_i_lm[rule_format]: "\<forall>ls l. concat ls = l \<and> (\<forall>i
     qed
   }
   then show ?thesis by blast
-  qed
+qed
+
+lemma concat_i_lm1[rule_format]: "\<forall>ls l. concat ls = l \<and> (\<forall>i<length ls. ls!i \<noteq> [])\<longrightarrow> (\<forall>i. i < length ls \<longrightarrow> 
+         (\<exists>m n. m \<le> length l \<and> n \<le> length l \<and> m \<le> n \<and> ls!i = take (n - m) (drop m l)))"
+proof -
+  {
+    fix ls
+    have "\<forall>l. concat ls = l \<and> (\<forall>i<length ls. ls!i \<noteq> [])\<longrightarrow> (\<forall>i. i < length ls \<longrightarrow> 
+        (\<exists>m n. m \<le> length l \<and> n \<le> length l \<and> m \<le> n \<and> ls!i = take (n - m) (drop m l)))"
+    proof(induct ls)
+      case Nil show ?case by simp
+    next
+      case (Cons x xs)
+      assume a0: "\<forall>l. concat xs = l \<and> (\<forall>i<length xs. xs ! i \<noteq> []) \<longrightarrow> (\<forall>i. i < length xs \<longrightarrow> 
+      (\<exists>m n. m \<le> length l \<and> n \<le> length l \<and>  m \<le> n  \<and> xs ! i  = take (n - m) (drop m l)))"
+      show ?case 
+        proof -
+        {
+          fix l
+          assume b0: "concat (x # xs) = l"
+            and  b1: "\<forall>i<length (x # xs). (x # xs) ! i \<noteq> []"
+          let ?l' = "concat xs"
+          from b0 have b2: "l = x@?l'" by simp
+          have "(\<forall>i<length (x # xs). \<exists>m n. m \<le> length l \<and> n \<le> length l \<and> m \<le> n \<and> (x # xs) ! i = take (n - m) (drop m l))" 
+            proof -
+            {
+              fix i
+              assume c0: "i < length (x # xs)"
+              have "\<exists>m n. m \<le> length l \<and> n \<le> length l \<and> m \<le> n \<and> (x # xs) ! i  = take (n - m) (drop m l)"
+                proof(cases "i = 0")
+                  assume d0: "i = 0"
+                  then have d1 : "x \<noteq> []" using b1 by auto
+                  with b0 have d2 : "x = take (length x) (drop 0 l)" by auto
+                  then show ?thesis 
+                    by (metis d0 drop0 drop_take le0 leI less_or_eq_imp_le nth_Cons_0 take_all)
+                next
+                  assume d0: "i \<noteq> 0"
+                  moreover
+                  from b1 have d1: "\<forall>i<length xs. xs ! i \<noteq> []" by auto
+                  moreover
+                  from c0 have " i - 1 < length xs" using d0 by auto 
+                  ultimately have "\<exists>m n. m \<le> length ?l' \<and> n \<le> length ?l' \<and> 
+                                m \<le> n \<and> xs ! (i - 1)  = take (n - m) (drop m ?l')" 
+                    using a0 d1 by blast
+                  then obtain m and n where d2: "m \<le> length ?l' \<and> n \<le> length ?l' \<and> 
+                                m \<le> n \<and> xs ! (i - 1) = take (n - m) (drop m ?l')"
+                     by auto
+                  let ?m' = "m + length x"
+                  let ?n' = "n + length x"
+                  from b0 d2 have "?m' \<le> length l" by auto
+                  moreover
+                  from b0 d2 have "?n' \<le> length l" by auto
+                  moreover 
+                  from d2 have "?m' \<le> ?n'" by auto
+                  moreover
+                  have "(x # xs) ! i  = take (?n' - ?m') (drop ?m' l)"
+                    using b2 d0 d2 by auto
+                  ultimately have "?m' \<le> length l \<and> ?n' \<le> length l \<and> ?m' \<le> ?n' \<and> 
+                          (x # xs) ! i  = take (?n' - ?m') (drop ?m' l)" by simp
+                  then show ?thesis by blast
+                qed
+            }
+            then show ?thesis by auto
+            qed
+        }
+        then show ?thesis by auto
+        qed
+    qed
+  }
+  then show ?thesis by blast
+qed
+
 
 lemma concat_last_lm: "\<forall>ls l. concat ls = l \<and> length ls > 0 \<longrightarrow> 
                       (\<exists>m . m \<le> length l \<and> last ls = drop m l)"
@@ -3153,11 +3224,11 @@ lemma ev_seq_sound:
 
 theorem rgsound_e:
   "\<turnstile> Evt sat\<^sub>e [pre, rely, guar, post] \<Longrightarrow> \<Turnstile> Evt sat\<^sub>e [pre, rely, guar, post]"
-apply(erule rghoare_e.induct)
-apply (simp add: AnonyEvt_sound rgsound_p)
-apply (meson BasicEvt_sound rgsound_p)
-apply (simp add: ev_seq_sound rgsound_p)
-done
+  apply(erule rghoare_e.induct)
+    apply (simp add: AnonyEvt_sound rgsound_p)
+   apply (meson BasicEvt_sound rgsound_p)
+  apply (simp add: ev_seq_sound rgsound_p)
+  done
 
 
 
@@ -3406,11 +3477,11 @@ lemma EventSeq_sound :
       and  p4: "guar1 \<subseteq> guar"
       and  p5: "guar2 \<subseteq> guar"
       and  p6: "post1 \<subseteq> pre2"
-    then have "\<forall>s x. (cpts_of_es (EvtSeq e es) s x) \<inter> assume_es(pre, rely) \<subseteq> commit_es(guar, post)"
+    then have "\<forall>s x. (cpts_of_es (EvtSeq e es) s x) \<inter> assume_es(pre, rely) \<subseteq> commit_es(guar, post) \<inter> preserves_es"
       proof -
       {
         fix s x
-        have "\<forall>esl. esl\<in>(cpts_of_es (EvtSeq e es) s x) \<inter> assume_es (pre, rely) \<longrightarrow> esl\<in> commit_es (guar, post)"
+        have "\<forall>esl. esl\<in>(cpts_of_es (EvtSeq e es) s x) \<inter> assume_es (pre, rely) \<longrightarrow> esl\<in> commit_es (guar, post) \<inter> preserves_es"
           proof -
           {
             fix esl
@@ -3421,7 +3492,7 @@ lemma EventSeq_sound :
             from a01 have a01_1: "esl ! 0 = (EvtSeq e es, s, x)" by (simp add: cpts_of_es_def) 
             from a01 have a01_2: "esl \<in> cpts_es" by (simp add: cpts_of_es_def) 
 
-            have "esl\<in> commit_es (guar, post)"
+            have "esl\<in> commit_es (guar, post) \<inter> preserves_es"
               proof(cases "\<forall>i. Suc i \<le> length esl \<longrightarrow> getspc_es (esl ! i) \<noteq> es")
                 assume b0: "\<forall>i. Suc i \<le> length esl \<longrightarrow> getspc_es (esl ! i) \<noteq> es"
                 with a01 have "\<exists>el. (el \<in> cpts_of_ev e s x \<and> length esl = length el \<and> e_eqv_einevtseq esl el es)"
@@ -3466,17 +3537,17 @@ lemma EventSeq_sound :
                       then show ?thesis by auto
                       qed
                   qed
-                with p0 b1 have "el \<in> commit_e(guar1, post1)"
+                with p0 b1 have b2 : "el \<in> commit_e(guar1, post1) \<inter> preserves_e"
                   by (meson IntI contra_subsetD evt_validity_def)
-                then have "\<forall>i. Suc i<length el \<longrightarrow> (\<exists>t. el!i -et-t\<rightarrow> el!(Suc i)) \<longrightarrow> 
-                ann_preserves_e (el!i) \<and> (gets_e (el!i), gets_e (el!Suc i)) \<in> guar1" 
-                  by (simp add:commit_e_def)
-                with p4 have b2: "\<forall>i. Suc i<length el \<longrightarrow> (\<exists>t. el!i -et-t\<rightarrow> el!(Suc i)) \<longrightarrow> 
-                ann_preserves_e (el!i) \<and> (gets_e (el!i), gets_e (el!Suc i)) \<in> guar" by auto
-                show ?thesis
+                then have "\<forall>i. Suc i<length el \<longrightarrow> (\<exists>t. el!i -et-t\<rightarrow> el!(Suc i)) 
+                        \<longrightarrow> (gets_e (el!i), gets_e (el!Suc i)) \<in> guar1" by (simp add:commit_e_def)
+                with p4 have b3: "\<forall>i. Suc i<length el \<longrightarrow> (\<exists>t. el!i -et-t\<rightarrow> el!(Suc i)) 
+                        \<longrightarrow> (gets_e (el!i), gets_e (el!Suc i)) \<in> guar" by auto
+
+                then have b4 : "esl \<in> commit_es (guar, post)"
                   proof(simp add:commit_es_def)
-                    show "\<forall>i. Suc i < length esl \<longrightarrow> (\<exists>t. esl ! i -es-t\<rightarrow> esl ! Suc i) \<longrightarrow> 
-                    ann_preserves_es (esl!i) \<and> (gets_es (esl ! i), gets_es (esl ! Suc i)) \<in> guar"
+                    show "\<forall>i. Suc i < length esl \<longrightarrow> (\<exists>t. esl ! i -es-t\<rightarrow> esl ! Suc i) 
+                              \<longrightarrow> (gets_es (esl ! i), gets_es (esl ! Suc i)) \<in> guar"
                       proof -
                       {
                         fix i
@@ -3492,65 +3563,91 @@ lemma EventSeq_sound :
                         with c2 c3 have "getspc_e (el ! i) \<noteq> getspc_e (el ! Suc i)" by simp
                         then have "\<exists>t. (el ! i) -et-t\<rightarrow> (el ! Suc i)"
                           using b1 c0 cpts_of_ev_def notran_confeqi by fastforce 
-                        with b2 have "ann_preserves_e (el!i) \<and> (gets_e (el!i), gets_e (el!Suc i)) \<in> guar"
+                        with b3 have "(gets_e (el!i), gets_e (el!Suc i)) \<in> guar"
                           using b1 c0 by auto 
                         moreover have "gets_e (el!i) = gets_es (esl ! i)"
                           using b1 c0 e_eqv_einevtseq_def less_imp_le by fastforce 
                         moreover have "gets_e (el!Suc i) = gets_es (esl ! Suc i)"
                           using Suc_leI b1 c0 e_eqv_einevtseq_def by fastforce 
-                        ultimately have "ann_preserves_es (esl!i) \<and> (gets_es (esl ! i), gets_es (esl ! Suc i)) \<in> guar" 
-                          using c2 by (simp add: ann_preserves_e_def ann_preserves_es_def getspc_es_def)
+                        ultimately have "(gets_es (esl ! i), gets_es (esl ! Suc i)) \<in> guar" by simp
                       }
                       then show ?thesis by auto
                       qed
-                  qed
-              next
-                assume b0: "\<not> (\<forall>i. Suc i \<le> length esl \<longrightarrow> getspc_es (esl ! i) \<noteq> es)"
-                from a01_1 have b00: "getspc_es (esl ! 0) = EvtSeq e es" by (simp add:getspc_es_def)
-                from b0 have "\<exists>m. Suc m \<le> length esl \<and> getspc_es (esl ! m) = es" by auto
-                then obtain m where b1: "Suc m \<le> length esl \<and> getspc_es (esl ! m) = es" by auto
-                then have "\<exists>i. i \<le> m \<and> getspc_es (esl ! i) = es" by auto
-                with a01_1 a01_2 b00 b1 have b2: "\<exists>i. (i \<le> m \<and> getspc_es (esl ! i) = es) \<and> (\<forall>j. j < i \<longrightarrow> getspc_es (esl ! j) \<noteq> es)"
-                  using evtseq_fst_finish by blast
-                then obtain n where b3: "(n \<le> m \<and> getspc_es (esl ! n) = es) \<and> (\<forall>j. j < n \<longrightarrow> getspc_es (esl ! j) \<noteq> es)"
-                  by auto
-                with b00 have b41: "n \<noteq> 0" by (metis (no_types, hide_lams) add.commute add.right_neutral 
-                                                add_Suc dual_order.irrefl esys.size(3) le_add1 le_imp_less_Suc) 
-                then have b4: "n > 0" by auto
-                then obtain esl0 where b5: "esl0 = take n esl" by simp
-                then have b5_1: "length esl0 = n" using b1 b3 less_le_trans by auto 
-                obtain esl1 where b6: "esl1 = drop n esl" by simp
-                with b5 have b7: "esl0 @ esl1 = esl" by simp
-                from a01_2 b1 b3 b4 b5 have b8: "esl0 \<in> cpts_es"
-                  by (metis (no_types, lifting) Suc_diff_1 Suc_le_lessD cpts_es_take less_trans) 
-                from a01_2 b1 b3 b4 b5 b6 have b9: "esl1 \<in> cpts_es"
-                  by (metis (no_types, lifting) Suc_diff_1 Suc_le_lessD cpts_es_dropi le_neq_implies_less less_trans)
-                have b10: "esl0 ! 0 = (EvtSeq e es, s, x)" by (simp add: a01_1 b4 b5) 
-                have b11: "getspc_es (esl1 ! 0) = es" using b1 b3 b6 by auto 
+                    qed
 
-                from b3 b5 have b11_1: "\<forall>i. i < length esl0 \<longrightarrow> getspc_es (esl0 ! i) \<noteq> es" by auto
-                moreover from b8 b10 have "esl0 \<in> cpts_of_es (EvtSeq e es) s x" by (simp add:cpts_of_es_def)
-                ultimately have b12: "\<exists>el. (el \<in> cpts_of_ev e s x \<and> length esl0 = length el \<and> e_eqv_einevtseq esl0 el es)"
-                  by (simp add: evtseq_nfin_samelower)
-                then obtain el where b12_1: "el \<in> cpts_of_ev e s x \<and> length esl0 = length el \<and> e_eqv_einevtseq esl0 el es"
-                  by auto
-                then have b12_2: "el \<in> cpts_ev" by (simp add:cpts_of_ev_def)
+                    from b2 have "el \<in> preserves_e" by auto
+                    then have b5: "\<forall>i. i < length el \<longrightarrow> ann_preserves_e (getspc_e (el!i)) (gets_e (el!i))"
+                      by (simp add: preserves_e_def)
 
-                from a02 have b13: "gets_es (esl!0) \<in> pre \<and> (\<forall>i. Suc i<length esl \<longrightarrow> 
+                    then have b6: "esl \<in> preserves_es"
+                    proof(simp add: preserves_es_def)
+                      show "\<forall>i<length esl. ann_preserves_es (getspc_es (esl ! i)) (gets_es (esl ! i))"
+                      proof-
+                        {
+                          fix i
+                          assume c0 : "i < length esl"
+                          with b1 have c1: "getspc_es (esl ! i) = EvtSeq (getspc_e (el ! i)) es" 
+                            by (simp add: e_eqv_einevtseq_def)
+                          with c0 b1 have c2: "gets_es (esl ! i) = gets_e (el ! i)"
+                            by (simp add: e_eqv_einevtseq_def)
+                          from b1 b5 c0 have c3: "ann_preserves_e (getspc_e (el!i)) (gets_e (el!i))"
+                            by auto
+                          with c1 c2 have "ann_preserves_es (getspc_es (esl ! i)) (gets_es (esl ! i))"
+                            by simp
+                        }
+                        then show ?thesis by auto
+                      qed
+                    qed
+
+                    with b4 show ?thesis by (simp add: preserves_es_def commit_es_def)
+                  next
+                    assume b0: "\<not> (\<forall>i. Suc i \<le> length esl \<longrightarrow> getspc_es (esl ! i) \<noteq> es)"
+                    from a01_1 have b00: "getspc_es (esl ! 0) = EvtSeq e es" by (simp add:getspc_es_def)
+                    from b0 have "\<exists>m. Suc m \<le> length esl \<and> getspc_es (esl ! m) = es" by auto
+                    then obtain m where b1: "Suc m \<le> length esl \<and> getspc_es (esl ! m) = es" by auto
+                    then have "\<exists>i. i \<le> m \<and> getspc_es (esl ! i) = es" by auto
+                    with a01_1 a01_2 b00 b1 have b2: "\<exists>i. (i \<le> m \<and> getspc_es (esl ! i) = es) \<and> (\<forall>j. j < i \<longrightarrow> getspc_es (esl ! j) \<noteq> es)"
+                      using evtseq_fst_finish by blast
+                    then obtain n where b3: "(n \<le> m \<and> getspc_es (esl ! n) = es) \<and> (\<forall>j. j < n \<longrightarrow> getspc_es (esl ! j) \<noteq> es)"
+                      by auto
+                    with b00 have b41: "n \<noteq> 0" by (metis (no_types, hide_lams) add.commute add.right_neutral 
+                                   add_Suc dual_order.irrefl esys.size(3) le_add1 le_imp_less_Suc)
+
+                    then have b4: "n > 0" by auto
+                    then obtain esl0 where b5: "esl0 = take n esl" by simp
+                    then have b5_1: "length esl0 = n" using b1 b3 less_le_trans by auto 
+                    obtain esl1 where b6: "esl1 = drop n esl" by simp
+                    with b5 have b7: "esl0 @ esl1 = esl" by simp
+                    from a01_2 b1 b3 b4 b5 have b8: "esl0 \<in> cpts_es"
+                      by (metis (no_types, lifting) Suc_diff_1 Suc_le_lessD cpts_es_take less_trans)
+                    from a01_2 b1 b3 b4 b5 b6 have b9: "esl1 \<in> cpts_es"
+                      by (metis (no_types, lifting) Suc_diff_1 Suc_le_lessD cpts_es_dropi le_neq_implies_less less_trans)
+                    have b10: "esl0 ! 0 = (EvtSeq e es, s, x)" by (simp add: a01_1 b4 b5) 
+                    have b11: "getspc_es (esl1 ! 0) = es" using b1 b3 b6 by auto 
+
+                    from b3 b5 have b11_1: "\<forall>i. i < length esl0 \<longrightarrow> getspc_es (esl0 ! i) \<noteq> es" by auto
+                    moreover from b8 b10 have "esl0 \<in> cpts_of_es (EvtSeq e es) s x" by (simp add:cpts_of_es_def)
+                    ultimately have b12: "\<exists>el. (el \<in> cpts_of_ev e s x \<and> length esl0 = length el \<and> e_eqv_einevtseq esl0 el es)"
+                      by (simp add: evtseq_nfin_samelower)
+                    then obtain el where b12_1: "el \<in> cpts_of_ev e s x \<and> length esl0 = length el \<and> e_eqv_einevtseq esl0 el es"
+                      by auto
+                    then have b12_2: "el \<in> cpts_ev" by (simp add:cpts_of_ev_def)
+
+                    from a02 have b13: "gets_es (esl!0) \<in> pre \<and> (\<forall>i. Suc i<length esl \<longrightarrow> 
                                     esl!i -ese\<rightarrow> esl!(Suc i) \<longrightarrow> (gets_es (esl!i), gets_es (esl!Suc i)) \<in> rely)"
-                       by (simp add:assume_es_def)
-                have b14: "esl0 \<in> assume_es (pre, rely)"
-                  proof(simp add:assume_es_def, rule conjI)
-                    show "gets_es (esl0 ! 0) \<in> pre" using a01_1 b10 b13 by auto 
+                      by (simp add:assume_es_def)
+                    have b14: "esl0 \<in> assume_es (pre, rely)"
+                    proof(simp add:assume_es_def, rule conjI)
+                      show "gets_es (esl0 ! 0) \<in> pre" using a01_1 b10 b13 by auto 
                   next
                     from b5 b13 show "\<forall>i. Suc i < length esl0 \<longrightarrow> esl0 ! i -ese\<rightarrow> esl0 ! Suc i 
                             \<longrightarrow> (gets_es (esl0 ! i), gets_es (esl0 ! Suc i)) \<in> rely" by auto
                   qed
-                with p2 have b15: "esl0 \<in> assume_es (pre, rely1)"
-                  by (simp add: assume_es_def subset_iff)
+                  with p2 have b15: "esl0 \<in> assume_es (pre, rely1)"
+                    by (simp add: assume_es_def subset_iff)
                 
                 
-                have b16: "el \<in> assume_e (pre, rely1)"
+                  have b16: "el \<in> assume_e (pre, rely1)"
                   proof(simp add:assume_e_def, rule conjI)
                     from a02 have c0: "gets_es (esl ! 0) \<in> pre" by (simp add:assume_es_def)
                     moreover
@@ -3561,7 +3658,7 @@ lemma EventSeq_sound :
                   next
                     show "\<forall>i. Suc i < length el \<longrightarrow> el ! i -ee\<rightarrow> el ! Suc i \<longrightarrow> 
                             (gets_e (el ! i), gets_e (el ! Suc i)) \<in> rely1 "
-                      proof -
+                    proof -
                       {
                         fix i
                         assume c0:"Suc i < length el"
@@ -3576,73 +3673,43 @@ lemma EventSeq_sound :
 
                         then have c4: "esl0 ! i -ese\<rightarrow> esl0 ! Suc i" by (simp add: eqconf_esetran) 
                         with b14 b12_1 c0 have "(gets_es (esl0!i), gets_es (esl0!Suc i)) \<in> rely" 
-                          proof -
-                            from b14 have "\<forall>i. Suc i<length esl0 \<longrightarrow> esl0!i -ese\<rightarrow> esl0!(Suc i) 
+                        proof -
+                          from b14 have "\<forall>i. Suc i<length esl0 \<longrightarrow> esl0!i -ese\<rightarrow> esl0!(Suc i) 
                                       \<longrightarrow> (gets_es (esl0!i), gets_es (esl0!Suc i)) \<in> rely" 
-                               by (simp add:assume_es_def)
-                            with b12_1 c0 c4 show ?thesis by simp
+                            by (simp add:assume_es_def)
+                          with b12_1 c0 c4 show ?thesis by simp
                           qed
 
-                        moreover have "gets_es (esl0!i) = gets_e (el ! i)"
-                          by (metis b12_1 c0 e_eqv_einevtseq_def less_imp_le_nat)
-                        moreover have "gets_es (esl0!Suc i) = gets_e (el ! Suc i)"
-                          using b12_1 c0 by (simp add: b12_1 c0 e_eqv_einevtseq_def Suc_leI) 
-                        ultimately have "(gets_e (el ! i), gets_e (el ! Suc i)) \<in> rely" by simp
+                          moreover have "gets_es (esl0!i) = gets_e (el ! i)"
+                            by (metis b12_1 c0 e_eqv_einevtseq_def less_imp_le_nat)
+                          moreover have "gets_es (esl0!Suc i) = gets_e (el ! Suc i)"
+                            using b12_1 c0 by (simp add: b12_1 c0 e_eqv_einevtseq_def Suc_leI)
+                          ultimately have "(gets_e (el ! i), gets_e (el ! Suc i)) \<in> rely" by simp
 
-                        with p2 have "(gets_e (el ! i), gets_e (el ! Suc i)) \<in> rely1" by auto
-                      }
-                      then show ?thesis by auto
+                          with p2 have "(gets_e (el ! i), gets_e (el ! Suc i)) \<in> rely1" by auto
+                        }
+                        then show ?thesis by auto
                       qed
-                  qed
-                have b17: "el \<in> commit_e(guar1, post1)"
-                  using b12_1 b16 evt_validity_def p0 by fastforce
-                then have b18: "\<forall>i. Suc i<length el \<longrightarrow> (\<exists>t. el!i -et-t\<rightarrow> el!(Suc i)) \<longrightarrow> 
-                                ann_preserves_e (el!i) \<and> (gets_e (el!i), gets_e (el!Suc i)) \<in> guar1" 
-                                by (simp add:commit_e_def)
-                              with p4 have b19: "\<forall>i. Suc i<length el \<longrightarrow> (\<exists>t. el!i -et-t\<rightarrow> el!(Suc i)) \<longrightarrow> 
-                              ann_preserves_e (el!i) \<and> (gets_e (el!i), gets_e (el!Suc i)) \<in> guar" by auto
+                    qed
 
-                from b11 have "\<exists>sn xn. esl1 ! 0 = (es, sn, xn)" using getspc_es_def
-                  by (metis fst_conv surj_pair)
-                then obtain sn and xn where b13: "esl1 ! 0 = (es, sn, xn)" by auto
-                with b9 have "esl1 \<in> cpts_of_es es sn xn" by (simp add:cpts_of_es_def)
+                    have b17: "el \<in> commit_e(guar1, post1) \<inter> preserves_e"
+                      using b12_1 b16 evt_validity_def p0 by fastforce
+                    then have b18: "\<forall>i. Suc i<length el \<longrightarrow> (\<exists>t. el!i -et-t\<rightarrow> el!(Suc i)) 
+                        \<longrightarrow> (gets_e (el!i), gets_e (el!Suc i)) \<in> guar1" by (simp add:commit_e_def)
+                    with p4 have b19: "\<forall>i. Suc i<length el \<longrightarrow> (\<exists>t. el!i -et-t\<rightarrow> el!(Suc i)) 
+                        \<longrightarrow> (gets_e (el!i), gets_e (el!Suc i)) \<in> guar" by auto
 
-                have "\<forall>i. Suc i<length esl \<longrightarrow> (\<exists>t. esl!i -es-t\<rightarrow> esl!(Suc i))\<longrightarrow> 
-                      ann_preserves_es (esl!i) \<and> (gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
-                  proof -
-                  {
-                    fix i
-                    assume c0: "Suc i<length esl"
-                      and  c1: "\<exists>t. esl!i -es-t\<rightarrow> esl!(Suc i)"
-                    have " ann_preserves_es (esl!i) \<and> (gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
-                      proof(cases "Suc i < n")
-                        assume d0: "Suc i < n"
-                        
-                        with b5 b5_1 b12_1 c0 c1 have d1: "getspc_es (esl0 ! i) = EvtSeq (getspc_e (el ! i)) es" 
-                          using e_eqv_einevtseq_def by (metis less_imp_le_nat) 
-                        
-                        with b5 b5_1 b12_1 c0 c1 have d2: "getspc_es (esl0 ! Suc i) = EvtSeq (getspc_e (el ! Suc i)) es" 
-                          using e_eqv_einevtseq_def by (metis Suc_le_eq d0) 
-                        
-                        from c1 have d3: "getspc_es (esl ! i) \<noteq> getspc_es (esl ! Suc i)" 
-                          using evtsys_not_eq_in_tran_aux getspc_es_def by (metis surjective_pairing) 
+                    from b17 have b20: "\<forall>i. i < length el \<longrightarrow> ann_preserves_e (getspc_e (el!i)) (gets_e (el!i))"
+                      by (simp add: preserves_e_def)
 
-                        with d1 d2 have "getspc_e (el ! i) \<noteq> getspc_e (el ! Suc i)"
-                          by (simp add: Suc_lessD b5 d0) 
-                        then have "\<exists>t. (el ! i) -et-t\<rightarrow> (el ! Suc i)"
-                          using b12_1 b5_1 cpts_of_ev_def d0 notran_confeqi by fastforce 
- 
-                        with b19 have " ann_preserves_e (el!i) \<and> (gets_e (el!i), gets_e (el!Suc i)) \<in> guar"
-                          using b12_1 b5_1 d0 by auto
-                        moreover have "gets_e (el!i) = gets_es (esl0 ! i)"
-                          using b12_1 b5_1 d0 e_eqv_einevtseq_def less_imp_le_nat by fastforce 
-                        moreover have "gets_e (el!Suc i) = gets_es (esl0 ! Suc i)"
-                          using Suc_leI b12_1 b5_1 d0 e_eqv_einevtseq_def less_imp_le_nat by fastforce 
-                        ultimately have "ann_preserves_es (esl0!i) \<and> (gets_es (esl0 ! i), gets_es (esl0 ! Suc i)) \<in> guar" 
-                          using d1 by (simp add: ann_preserves_e_def ann_preserves_es_def getspc_es_def)
-                        then show ?thesis by (simp add: Suc_lessD b5 d0) 
-                      next
-                        assume d0: "\<not> (Suc i < n)"
+                    from b11 have "\<exists>sn xn. esl1 ! 0 = (es, sn, xn)" using getspc_es_def
+                      by (metis fst_conv surj_pair)
+                    then obtain sn and xn where b13: "esl1 ! 0 = (es, sn, xn)" by auto
+                    with b9 have "esl1 \<in> cpts_of_es es sn xn" by (simp add:cpts_of_es_def)
+
+                    have b21 : "esl1 \<in> cpts_of_es es sn xn \<inter> assume_es (pre2, rely2)"
+                    proof-
+                      {
                         from b5_1 b12_1 have d1: "getspc_es (esl0 ! (n-1)) = EvtSeq (getspc_e (el ! (n-1))) es"
                           by (simp add: b12_1 e_eqv_einevtseq_def b4) 
                         with b5 have d1_1: "getspc_es (esl ! (n-1)) = EvtSeq (getspc_e (el ! (n-1))) es"
@@ -3652,42 +3719,197 @@ lemma EventSeq_sound :
                         then obtain sn1 and xn1 where d2: "esl ! (n-1) = (EvtSeq (getspc_e (el ! (n-1))) es, sn1, xn1)"
                           by auto
 
-                        from b4 b5 b5_1 b12_1 have "gets_e (el ! (n -1) ) = gets_es (esl0 ! (n -1)) \<and>
-                                       getx_e (el ! (n -1)) = getx_es (esl0 ! (n -1))" by (simp add:e_eqv_einevtseq_def)
-                        with b5 d2 have d3: "el ! (n -1) = (getspc_e (el ! (n-1)), sn1, xn1)" 
-                          using gets_e_def gets_es_def getx_e_def getx_es_def getspc_e_def 
-                          by (metis Suc_diff_1 b4 lessI nth_take prod.collapse snd_conv)
+                      from b4 b5 b5_1 b12_1 have "gets_e (el ! (n -1) ) = gets_es (esl0 ! (n -1)) \<and>
+                          getx_e (el ! (n -1)) = getx_es (esl0 ! (n -1))" by (simp add:e_eqv_einevtseq_def)
+                      with b5 d2 have d3: "el ! (n -1) = (getspc_e (el ! (n-1)), sn1, xn1)"
+                        using gets_e_def gets_es_def getx_e_def getx_es_def getspc_e_def 
+                        by (metis Suc_diff_1 b4 lessI nth_take prod.collapse snd_conv)
 
-                        from b13 have d4: "esl ! n = (es, sn, xn)" using b6 c0 d0 by auto 
+                      from b13 have d4: "esl ! n = (es, sn, xn)" using b6 
+                        by (metis b3 b5_1 b7 cancel_comm_monoid_add_class.diff_cancel nth_append)
 
-                        from a01_2 b1 b3 have d5: "drop (n-1) esl \<in> cpts_es" using cpts_es_dropi
-                          by (metis (no_types, hide_lams) Suc_diff_1 Suc_le_lessD b5 b5_1 
+                      from a01_2 b1 b3 have d5: "drop (n-1) esl \<in> cpts_es" using cpts_es_dropi
+                        by (metis (no_types, hide_lams) Suc_diff_1 Suc_le_lessD b5 b5_1 
                               drop_0 less_or_eq_imp_le neq0_conv not_le take_all zero_less_diff) 
-                        with d2 d4 have d6: "\<exists>est. esl ! (n-1) -es-est\<rightarrow> esl ! n" 
-                          by (metis (no_types, lifting) One_nat_def Suc_le_lessD Suc_pred a01_2 
+                      with d2 d4 have d6: "\<exists>est. esl ! (n-1) -es-est\<rightarrow> esl ! n" 
+                        by (metis (no_types, lifting) One_nat_def Suc_le_lessD Suc_pred a01_2 
+                            b3 b4 b6 b9 cpts_es_not_empty d1_1 diff_less esetran.cases
+                            incpts_es_impl_evnorcomptran le_numeral_extra(4) length_drop 
+                            length_greater_0_conv zero_less_diff)
+                      with d2 have d7: "\<exists>t. (getspc_e (el ! (n-1)), sn1, xn1) -et-t\<rightarrow>(AnonyEvent (None),sn, xn)"
+                        using evtseq_tran_0_exist_etran using d4 by fastforce 
+                      with b4 b5_1 b12_1 b12_2 d3 have d8:"el @ [(AnonyEvent (None),sn, xn)] \<in> cpts_ev" 
+                        using cpts_ev_onemore by fastforce
+                      let ?el1 = "el @ [(AnonyEvent (None),sn, xn)]"
+
+                      from d8 have d9: "?el1 \<in> cpts_of_ev e s x"
+                        by (metis (no_types, lifting) append_Cons b12_1 b3 b4 b5_1 
+                              cpts_of_ev_def list.size(3) mem_Collect_eq neq_Nil_conv nth_Cons_0)
+
+                      from d8 have d9: "?el1 \<in> cpts_of_ev e s x"
+                        by (metis (no_types, lifting) append_Cons b12_1 b3 b4 b5_1 
+                          cpts_of_ev_def list.size(3) mem_Collect_eq neq_Nil_conv nth_Cons_0)
+                      moreover from b16 d7 have "?el1 \<in> assume_e (pre, rely1)"
+                      proof -
+                        have "gets_e (?el1!0) \<in> pre"
+                        proof -
+                          from b16 have "gets_e (el!0) \<in> pre" by (simp add:assume_e_def)
+                          then show ?thesis by (metis b12_1 b4 b5_1 nth_append)
+                        qed
+                        moreover
+                            have "\<forall>i. Suc i<length ?el1 \<longrightarrow>  ?el1!i -ee\<rightarrow> ?el1!(Suc i) \<longrightarrow> 
+                                  (gets_e (?el1!i), gets_e (?el1!Suc i)) \<in> rely1"
+                            proof -
+                              {
+                                fix i
+                                assume e0: "Suc i<length ?el1"
+                                  and  e1: "?el1!i -ee\<rightarrow> ?el1!(Suc i)"
+                                from b16 have e2: "\<forall>i. Suc i<length el \<longrightarrow>  el!i -ee\<rightarrow> el!(Suc i) \<longrightarrow> 
+                                  (gets_e (el!i), gets_e (el!Suc i)) \<in> rely1" by (simp add:assume_e_def)
+                                have "(gets_e (?el1!i), gets_e (?el1!Suc i)) \<in> rely1"
+                                  proof(cases "Suc i < length ?el1 - 1")
+                                    assume f0: "Suc i < length ?el1 - 1"
+                                    with e0 e2 show ?thesis by (metis (no_types, lifting) Suc_diff_1 
+                                        Suc_less_eq Suc_mono e1 length_append_singleton nth_append zero_less_Suc) 
+                                  next
+                                    assume "\<not> (Suc i < length ?el1 - 1)"
+                                    then have f0: "Suc i \<ge> length ?el1 - 1" by simp
+                                    with e0 have f1: "Suc i = length ?el1 - 1" by simp
+                                    then have f2: "?el1!(Suc i) = (AnonyEvent None, sn, xn)" by simp
+                                    from f1 have f3: "?el1!i = (getspc_e (el ! (n-1)), sn1, xn1)"
+                                      by (metis b12_1 b5_1 d3 diff_Suc_1 length_append_singleton lessI nth_append) 
+                                    
+                                    with d7 f2 have "getspc_e (?el1!i) \<noteq> getspc_e (?el1!(Suc i))"
+                                      using evt_not_eq_in_tran_aux by (metis e1 eetran.cases)
+                                    moreover from e1 have "getspc_e (?el1!i) = getspc_e (?el1!(Suc i))" 
+                                      using eetran_eqconf1 by blast
+                                    ultimately show ?thesis by simp
+                                  qed
+                                }
+                                then show ?thesis by auto
+                              qed
+                              ultimately show ?thesis by (simp add:assume_e_def)
+                            qed
+                            ultimately have d10: "?el1 \<in> commit_e(guar1, post1)"
+                              using evt_validity_def p0 by fastforce
+                          
+                            have d11: "getspc_e (last ?el1) = AnonyEvent (None)" by (simp add:getspc_e_def)
+                            with d10 have d12: "gets_e (last ?el1) \<in> post1" by (simp add: commit_e_def)
+                            from d12 have "sn \<in> post1" by (simp add:gets_e_def)
+
+                            from d4 have g2: "esl1 ! 0 = (es, sn, xn)" by (simp add: b13)
+                            with b9 have d13: "esl1 \<in> cpts_of_es es sn xn" by (simp add:cpts_of_es_def)
+
+                            with g2 p6 have d14: "gets_es (esl1 ! 0) \<in> pre2" 
+                              using gets_es_def 
+                              by (metis \<open>sn \<in> post1\<close> contra_subsetD fst_conv snd_conv) 
+                                have "\<forall>i. Suc i < length esl1 \<longrightarrow> esl1 ! i -ese\<rightarrow> esl1 ! Suc i 
+                                  \<longrightarrow> (gets_es (esl1 ! i), gets_es (esl1 ! Suc i)) \<in> rely2"
+                                  proof -
+                                  {
+                                    fix i
+                                    assume h0: "Suc i < length esl1"
+                                      and  h1: "esl1 ! i -ese\<rightarrow> esl1 ! Suc i"
+                                    have h2: "esl1 ! i = esl ! (n + i)" using b5_1 b7 by auto
+                                    have h3: "esl1 ! Suc i = esl ! (n + Suc i)"
+                                      by (metis b5_1 b7 nth_append_length_plus) 
+                                    with h1 h2 have h4: "esl ! (n + i) -ese\<rightarrow> esl ! (n + Suc i)" by simp
+                                    have "Suc (n + i) < length esl" using b5_1 b7 h0 by auto 
+                                    with a02 h4 have "(gets_es (esl ! (n + i)), gets_es (esl ! (n + Suc i))) \<in> rely"
+                                      by (simp add:assume_es_def)
+                                    with h2 h3 have "(gets_es (esl1 ! i), gets_es (esl1 ! Suc i)) \<in> rely" by simp
+                                      
+                                    then have "(gets_es (esl1 ! i), gets_es (esl1 ! Suc i)) \<in> rely2"
+                                      using p3 by auto 
+                                  }
+                                  then show ?thesis by auto
+                                qed
+                                with d13 d14 show ?thesis by (simp add: assume_es_def)
+                              }
+                            qed
+
+
+                            have b22 : "\<forall>i. Suc i<length esl \<longrightarrow> (\<exists>t. esl!i -es-t\<rightarrow> esl!(Suc i)) 
+                                      \<longrightarrow> (gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
+                            proof -
+                              {
+                                fix i
+                                assume c0: "Suc i<length esl"
+                                  and  c1: "\<exists>t. esl!i -es-t\<rightarrow> esl!(Suc i)"
+                                have "(gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
+                                proof(cases "Suc i < n")
+                                  assume d0: "Suc i < n"
+                        
+                                  with b5 b5_1 b12_1 c0 c1 have d1: "getspc_es (esl0 ! i) = EvtSeq (getspc_e (el ! i)) es" 
+                                    using e_eqv_einevtseq_def by (metis less_imp_le_nat) 
+                        
+                                  with b5 b5_1 b12_1 c0 c1 have d2: "getspc_es (esl0 ! Suc i) = EvtSeq (getspc_e (el ! Suc i)) es" 
+                                    using e_eqv_einevtseq_def by (metis Suc_le_eq d0) 
+                        
+                                  from c1 have d3: "getspc_es (esl ! i) \<noteq> getspc_es (esl ! Suc i)" 
+                                    using evtsys_not_eq_in_tran_aux getspc_es_def by (metis surjective_pairing) 
+
+                                  with d1 d2 have "getspc_e (el ! i) \<noteq> getspc_e (el ! Suc i)"
+                                    by (simp add: Suc_lessD b5 d0) 
+                                  then have "\<exists>t. (el ! i) -et-t\<rightarrow> (el ! Suc i)"
+                                    using b12_1 b5_1 cpts_of_ev_def d0 notran_confeqi by fastforce 
+ 
+                                  with b19 have "(gets_e (el!i), gets_e (el!Suc i)) \<in> guar"
+                                    using b12_1 b5_1 d0 by auto
+                                  moreover have "gets_e (el!i) = gets_es (esl0 ! i)"
+                                    using b12_1 b5_1 d0 e_eqv_einevtseq_def less_imp_le_nat by fastforce 
+                                  moreover have "gets_e (el!Suc i) = gets_es (esl0 ! Suc i)"
+                                    using Suc_leI b12_1 b5_1 d0 e_eqv_einevtseq_def less_imp_le_nat by fastforce 
+                                  ultimately have "(gets_es (esl0 ! i), gets_es (esl0 ! Suc i)) \<in> guar" by simp
+
+                                  then show ?thesis by (simp add: Suc_lessD b5 d0)
+                                next
+                                  assume d0: "\<not> (Suc i < n)"
+                          from b5_1 b12_1 have d1: "getspc_es (esl0 ! (n-1)) = EvtSeq (getspc_e (el ! (n-1))) es"
+                            by (simp add: b12_1 e_eqv_einevtseq_def b4) 
+                          with b5 have d1_1: "getspc_es (esl ! (n-1)) = EvtSeq (getspc_e (el ! (n-1))) es"
+                            by (simp add: b4) 
+                          then have "\<exists>sn1 xn1. esl ! (n-1) = (EvtSeq (getspc_e (el ! (n-1))) es, sn1, xn1)" 
+                            using getspc_es_def by (metis fst_conv surj_pair) 
+                          then obtain sn1 and xn1 where d2: "esl ! (n-1) = (EvtSeq (getspc_e (el ! (n-1))) es, sn1, xn1)"
+                            by auto
+
+                          from b4 b5 b5_1 b12_1 have "gets_e (el ! (n -1) ) = gets_es (esl0 ! (n -1)) \<and>
+                                       getx_e (el ! (n -1)) = getx_es (esl0 ! (n -1))" by (simp add:e_eqv_einevtseq_def)
+                          with b5 d2 have d3: "el ! (n -1) = (getspc_e (el ! (n-1)), sn1, xn1)" 
+                            using gets_e_def gets_es_def getx_e_def getx_es_def getspc_e_def 
+                            by (metis Suc_diff_1 b4 lessI nth_take prod.collapse snd_conv)
+
+                          from b13 have d4: "esl ! n = (es, sn, xn)" using b6 c0 d0 by auto 
+
+                          from a01_2 b1 b3 have d5: "drop (n-1) esl \<in> cpts_es" using cpts_es_dropi
+                            by (metis (no_types, hide_lams) Suc_diff_1 Suc_le_lessD b5 b5_1 
+                              drop_0 less_or_eq_imp_le neq0_conv not_le take_all zero_less_diff)
+                          with d2 d4 have d6: "\<exists>est. esl ! (n-1) -es-est\<rightarrow> esl ! n" 
+                            by (metis (no_types, lifting) One_nat_def Suc_le_lessD Suc_pred a01_2 
                             b3 b4 b6 b9 cpts_es_not_empty d1_1 diff_less esetran.cases 
                             incpts_es_impl_evnorcomptran le_numeral_extra(4) length_drop 
                             length_greater_0_conv zero_less_diff)
-                        with d2 have d7: "\<exists>t. (getspc_e (el ! (n-1)), sn1, xn1) -et-t\<rightarrow>(AnonyEvent (None),sn, xn)"
-                          using evtseq_tran_0_exist_etran using d4 by fastforce 
-                        with b4 b5_1 b12_1 b12_2 d3 have d8:"el @ [(AnonyEvent (None),sn, xn)] \<in> cpts_ev" 
-                          using cpts_ev_onemore by fastforce
-                        let ?el1 = "el @ [(AnonyEvent (None),sn, xn)]"
+                          with d2 have d7: "\<exists>t. (getspc_e (el ! (n-1)), sn1, xn1) -et-t\<rightarrow>(AnonyEvent (None),sn, xn)"
+                            using evtseq_tran_0_exist_etran using d4 by fastforce 
+                          with b4 b5_1 b12_1 b12_2 d3 have d8:"el @ [(AnonyEvent (None),sn, xn)] \<in> cpts_ev" 
+                            using cpts_ev_onemore by fastforce
+                          let ?el1 = "el @ [(AnonyEvent (None),sn, xn)]"
                         
-                        from d8 have d9: "?el1 \<in> cpts_of_ev e s x"
-                          by (metis (no_types, lifting) append_Cons b12_1 b3 b4 b5_1 
+                          from d8 have d9: "?el1 \<in> cpts_of_ev e s x"
+                            by (metis (no_types, lifting) append_Cons b12_1 b3 b4 b5_1 
                               cpts_of_ev_def list.size(3) mem_Collect_eq neq_Nil_conv nth_Cons_0)
-                        moreover from b16 d7 have "?el1 \<in> assume_e (pre, rely1)"
+                          moreover from b16 d7 have "?el1 \<in> assume_e (pre, rely1)"
                           proof -
                             have "gets_e (?el1!0) \<in> pre"
-                              proof -
-                                from b16 have "gets_e (el!0) \<in> pre" by (simp add:assume_e_def)
-                                then show ?thesis by (metis b12_1 b4 b5_1 nth_append) 
-                              qed
+                            proof -
+                              from b16 have "gets_e (el!0) \<in> pre" by (simp add:assume_e_def)
+                              then show ?thesis by (metis b12_1 b4 b5_1 nth_append) 
+                            qed
                             moreover
                             have "\<forall>i. Suc i<length ?el1 \<longrightarrow>  ?el1!i -ee\<rightarrow> ?el1!(Suc i) \<longrightarrow> 
                                   (gets_e (?el1!i), gets_e (?el1!Suc i)) \<in> rely1"
-                              proof -
+                            proof -
                               {
                                 fix i
                                 assume e0: "Suc i<length ?el1"
@@ -3717,106 +3939,99 @@ lemma EventSeq_sound :
                               then show ?thesis by auto
                               qed
                               
-                            ultimately show ?thesis by (simp add:assume_e_def)
-                          qed
-                        ultimately have d10: "?el1 \<in> commit_e(guar1, post1)" 
-                          using evt_validity_def p0 by fastforce
+                              ultimately show ?thesis by (simp add:assume_e_def)
+                            qed
+                            ultimately have d10: "?el1 \<in> commit_e(guar1, post1)"
+                              using evt_validity_def p0 by fastforce
                           
-                        have d11: "getspc_e (last ?el1) = AnonyEvent (None)" by (simp add:getspc_e_def)
-                        with d10 have d12: "gets_e (last ?el1) \<in> post1" by (simp add: commit_e_def)
+                            have d11: "getspc_e (last ?el1) = AnonyEvent (None)" by (simp add:getspc_e_def)
+                            with d10 have d12: "gets_e (last ?el1) \<in> post1" by (simp add: commit_e_def)
                         
-                        show ?thesis
-                          proof(cases "Suc i = n")
-                            assume g0: "Suc i = n"
-                            from d10 have "(\<forall>i. Suc i<length ?el1 \<longrightarrow> (\<exists>t. ?el1!i -et-t\<rightarrow> ?el1!(Suc i)) 
-                                \<longrightarrow> ann_preserves_e (?el1!i) \<and> (gets_e (?el1!i), gets_e (?el1!Suc i)) \<in> guar1)" 
-                              by (simp add: commit_e_def)
-                            with d7 have g1: "ann_preserves_e (?el1!i) \<and> (gets_e (?el1!i), gets_e (?el1!Suc i)) \<in> guar1"
-                              by (metis (no_types, lifting) b12_1 b5_1 d3 diff_Suc_1 
-                                g0 length_append_singleton lessI nth_append nth_append_length)                  
-                            moreover have "?el1!(Suc i) = (AnonyEvent None, sn, xn)"
-                              using b12_1 b5_1 g0 by auto 
-                            moreover from g0 b5_1 b12_1 have "?el1!i = (getspc_e (el ! (n-1)), sn1, xn1)"
-                              by (metis b12_1 b5_1 d3 diff_Suc_1 lessI nth_append) 
-                            ultimately have "ann_preserves_e (el ! (n - 1)) \<and> (sn1,sn) \<in> guar1" 
-                              by (metis d3 fst_conv gets_e_def snd_conv)
-                            with p4 have "ann_preserves_e (el ! (n - 1)) \<and> (sn1,sn) \<in> guar" by auto
-                            with d4 d2 have "ann_preserves_es (esl ! (n - 1)) \<and> (gets_es (esl ! 
-                            (n - 1)), gets_es (esl ! Suc (n - 1))) \<in> guar" 
-                              apply (simp add: gets_es_def b4 ann_preserves_e_def ann_preserves_es_def getspc_es_def)
-                              by (metis One_nat_def d3 fst_conv gets_e_def snd_conv)
-                            then show ?thesis using g0 by auto
-                          next
-                            assume "Suc i \<noteq> n"
-                            then have g1: "Suc i > n"
-                              using d0 linorder_neqE_nat by blast 
-                            from d4 have g2: "esl1 ! 0 = (es, sn, xn)" by (simp add: b13)
-                            with b9 have g3: "esl1 \<in> cpts_of_es es sn xn" by (simp add:cpts_of_es_def)
-
-                            have "esl1 \<in> assume_es (pre2, rely2)"
-                              proof(simp add:assume_es_def, rule conjI)
-                                from d12 have "sn \<in> post1" by (simp add:gets_e_def)
-                                with g2 p6 show "gets_es (esl1 ! 0) \<in> pre2" 
-                                  using gets_es_def by (metis fst_conv rev_subsetD snd_conv) 
-                                show "\<forall>i. Suc i < length esl1 \<longrightarrow> esl1 ! i -ese\<rightarrow> esl1 ! Suc i 
-                                  \<longrightarrow> (gets_es (esl1 ! i), gets_es (esl1 ! Suc i)) \<in> rely2"
-                                  proof -
-                                  {
-                                    fix i
-                                    assume h0: "Suc i < length esl1"
-                                      and  h1: "esl1 ! i -ese\<rightarrow> esl1 ! Suc i"
-                                    have h2: "esl1 ! i = esl ! (n + i)" using b5_1 b7 by auto
-                                    have h3: "esl1 ! Suc i = esl ! (n + Suc i)"
-                                      by (metis b5_1 b7 nth_append_length_plus) 
-                                    with h1 h2 have h4: "esl ! (n + i) -ese\<rightarrow> esl ! (n + Suc i)" by simp
-                                    have "Suc (n + i) < length esl" using b5_1 b7 h0 by auto 
-                                    with a02 h4 have "(gets_es (esl ! (n + i)), gets_es (esl ! (n + Suc i))) \<in> rely"
-                                      by (simp add:assume_es_def)
-                                    with h2 h3 have "(gets_es (esl1 ! i), gets_es (esl1 ! Suc i)) \<in> rely" by simp
-                                      
-                                    then have "(gets_es (esl1 ! i), gets_es (esl1 ! Suc i)) \<in> rely2"
-                                      using p3 by auto 
-                                  }
-                                  then show ?thesis by auto
-                                  qed
-
-                              qed
-                            with p1 g3 have g4: "esl1 \<in> commit_es (guar2,post)"
-                              by (meson Int_iff es_validity_def subsetCE) 
+                            show ?thesis
+                            proof(cases "Suc i = n")
+                              assume g0: "Suc i = n"
+                              from d10 have "(\<forall>i. Suc i<length ?el1 \<longrightarrow> (\<exists>t. ?el1!i -et-t\<rightarrow> ?el1!(Suc i)) 
+                                \<longrightarrow> (gets_e (?el1!i), gets_e (?el1!Suc i)) \<in> guar1)" by (simp add: commit_e_def)
+                              with d7 have g1: "(gets_e (?el1!i), gets_e (?el1!Suc i)) \<in> guar1"
+                                by (metis (no_types, lifting) b12_1 b5_1 d3 diff_Suc_1 
+                                g0 length_append_singleton lessI nth_append nth_append_length) 
+                              moreover have "?el1!(Suc i) = (AnonyEvent None, sn, xn)"
+                                using b12_1 b5_1 g0 by auto 
+                              moreover from g0 b5_1 b12_1 have "?el1!i = (getspc_e (el ! (n-1)), sn1, xn1)"
+                                by (metis b12_1 b5_1 d3 diff_Suc_1 lessI nth_append) 
+                              ultimately have "(sn1,sn) \<in> guar1" by (simp add:gets_e_def)
+                              with p4 have "(sn1,sn) \<in> guar" by auto
+                              with d4 d2 have "(gets_es (esl ! (n - 1)), gets_es (esl ! Suc (n - 1))) \<in> guar" 
+                                by (simp add: gets_es_def b4) 
+                              then show ?thesis using g0 by auto 
+                            next
+                              assume "Suc i \<noteq> n"
+                              then have g1: "Suc i > n"
+                                using d0 linorder_neqE_nat by blast 
+                                from b21 have g2: "esl1 \<in> commit_es (guar2,post)"
+                                  by (meson contra_subsetD es_validity_def le_inf_iff p1)
                             
-                            have g5: "esl ! i = esl1 ! (i - n)"
-                              by (metis b5_1 b7 g1 not_less_eq nth_append) 
-                            have g6: "esl ! Suc i = esl1 ! (Suc i - n)"
-                              by (metis b5_1 b7 d0 nth_append)
+                                have g3: "esl ! i = esl1 ! (i - n)"
+                                  by (metis b5_1 b7 g1 not_less_eq nth_append) 
+                                have g4: "esl ! Suc i = esl1 ! (Suc i - n)"
+                                  by (metis b5_1 b7 d0 nth_append)
 
-                            have g7: "Suc (i - n) < length esl1" using b6 c0 g1 by auto 
-                            from g4 have "\<forall>i. Suc i<length esl1 \<longrightarrow> (\<exists>t. esl1!i -es-t\<rightarrow> esl1!(Suc i)) 
-                                \<longrightarrow> ann_preserves_es (esl1!i) \<and> (gets_es (esl1!i), gets_es (esl1!Suc i)) \<in> guar2" 
-                              by (simp add:commit_es_def)
-                            with g7 have "ann_preserves_es (esl1!(i - n)) \<and> (gets_es (esl1!(i - n)), 
-                                          gets_es (esl1!(Suc i - n))) \<in> guar2"
-                              using Suc_diff_le c1 g1 g5 g6 by auto
-                            with g5 g6 have "ann_preserves_es (esl ! i) \<and> (gets_es (esl ! i), 
-                            gets_es (esl ! Suc i)) \<in> guar2" by simp
-                            then show ?thesis using p5 by auto 
-                          qed
+                                have g5: "Suc (i - n) < length esl1" using b6 c0 g1 by auto
+                                from g2 have "\<forall>i. Suc i<length esl1 \<longrightarrow> (\<exists>t. esl1!i -es-t\<rightarrow> esl1!(Suc i)) 
+                                \<longrightarrow> (gets_es (esl1!i), gets_es (esl1!Suc i)) \<in> guar2" by (simp add:commit_es_def)
+                                with g5 have "(gets_es (esl1!(i - n)), gets_es (esl1!(Suc i - n))) \<in> guar2"
+                                  using Suc_diff_Suc c1 g1 g3 g4 by fastforce
+                                with g3 g4 have "(gets_es (esl ! i), gets_es (esl ! Suc i)) \<in> guar2" by simp
+
+                                then show ?thesis using p5 by auto 
+                              qed
+                            qed
+                          }
+                          then show ?thesis by auto
+                        qed
+
+                        have b23 : "\<forall>i. i < length esl \<longrightarrow> ann_preserves_es (getspc_es (esl!i)) (gets_es (esl!i))"
+                        proof-
+                          {
+                            fix i
+                            assume c0: "i < length esl"
+                            have "ann_preserves_es (getspc_es (esl!i)) (gets_es (esl!i))"
+                            proof(cases "i < n")
+                              assume d0: "i < n"
+                              with b5 b5_1 b12_1 c0 have d1: "getspc_es (esl0 ! i) = EvtSeq (getspc_e (el ! i)) es"
+                                by (metis Suc_leI e_eqv_einevtseq_def)
+                              moreover have d2: " gets_es (esl0 ! i) = gets_e (el!i)"
+                                by (metis Suc_leI b12_1 b5_1 d0 e_eqv_einevtseq_def)
+                              from b20 c0 have "ann_preserves_e (getspc_e (el!i)) (gets_e (el!i))"
+                                using b12_1 b5_1 d0 by auto
+                              with d1 d2 d0 show ?thesis by (simp add: b5)
+                            next
+                              assume d0: "\<not> i < n"
+                              then have d1: "esl ! i = esl1 ! (i - n)"
+                                by (metis b5_1 b7 nth_append)
+                              from c0 have d2: "i - n < length esl1"
+                                by (simp add: add.commute add_diff_inverse_nat b6 d0 less_diff_conv)
+                              from b21 have "esl1 \<in> preserves_es"
+                                by (meson contra_subsetD es_validity_def le_inf_iff p1)
+                              with d2 have "ann_preserves_es (getspc_es (esl1 ! (i - n))) (gets_es (esl1 ! (i - n)))"
+                                by (simp add: preserves_es_def)
+                              with d1 show ?thesis by simp
+                            qed
+                          }
+                          then show ?thesis by auto
+                        qed
+
+                        with b22 show ?thesis by (simp add:commit_es_def preserves_es_def)
                       qed
-                  }
-                  then show ?thesis by auto
+                    }
+                    then show ?thesis by auto
                   qed
-
-                then show ?thesis by (simp add:commit_es_def)
-
+                }
+                then show ?thesis by auto
               qed
-          }
-          then show ?thesis by auto
-          qed
-      }
-      then show ?thesis by auto
-      qed
-        
-    then show ?thesis by (simp add: es_validity_def) 
-  qed
+
+              then show ?thesis by (simp add: es_validity_def) 
+            qed
 
 
 primrec parse_es_cpts_i2 :: "('l,'k,'s) esconfs \<Rightarrow>('l,'k,'s) event set \<Rightarrow> 
@@ -5516,28 +5731,27 @@ lemma e_sim_es_same_commit:
       by (simp add: gets_es_def getspc_es_def getx_es_def rm_evtsys1_def rm_evtsys_def) 
     from p1 a2 have a3: "length esl = length el" by (simp add:rm_evtsys_def)
 
-    from b3 have b4: "\<forall>i. Suc i<length el \<longrightarrow> (\<exists>t. el!i -et-t\<rightarrow> el!(Suc i)) \<longrightarrow> ann_preserves_e (el!i) 
-                      \<and> (gets_e (el!i), gets_e (el!Suc i)) \<in> guar" 
-      by (simp add:commit_e_def)
-    then show "esl\<in>commit_es(guar,post)"
+    from b3 have b4: "\<forall>i. Suc i<length el \<longrightarrow> 
+               (\<exists>t. el!i -et-t\<rightarrow> el!(Suc i)) \<longrightarrow> (gets_e (el!i), gets_e (el!Suc i)) \<in> guar" 
+               by (simp add:commit_e_def)
+    then show "esl\<in>commit_es(guar,post)" 
       proof -
-        have "\<forall>i. Suc i<length esl \<longrightarrow> (\<exists>t. esl!i -es-t\<rightarrow> esl!(Suc i)) \<longrightarrow> 
-              ann_preserves_es (esl!i) \<and> (gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
+        have "\<forall>i. Suc i<length esl \<longrightarrow> (\<exists>t. esl!i -es-t\<rightarrow> esl!(Suc i)) 
+              \<longrightarrow> (gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
           proof -
           {
             fix i
             assume c0: "Suc i<length esl"
               and  c1: "\<exists>t. esl!i -es-t\<rightarrow> esl!(Suc i)"
             
-            have "ann_preserves_es (esl!i) \<and> (gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
+            have "(gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
               proof(cases "i = 0")
                 assume d0: "i = 0"
                 from p2 have "(BasicEvent e, s, x) -et-(EvtEnt (BasicEvent e))\<sharp>k\<rightarrow> (ev, s1, x1)"
                   using evtsysent_evtent by fastforce
                 with a2 b4 have "(s, s1) \<in> guar" using gets_e_def
                   by (metis a3 c0 d0 fst_conv nth_Cons_0 nth_Cons_Suc snd_conv)
-                with p1 d0 show ?thesis 
-                  by (simp add: gets_es_def d0 ann_preserves_es_def getspc_es_def)
+                with p1 show ?thesis by (simp add: gets_es_def d0)
               next
                 assume d0: "i \<noteq> 0"
                 then show ?thesis
@@ -5583,10 +5797,10 @@ lemma e_sim_es_same_commit:
                             gets_es_def getx_es_def EvtSysrm
                             by (smt List.nth_tl Suc_lessE diff_Suc_1 fst_conv 
                               length_tl list.sel(3) nth_map snd_conv)
-                          ultimately have "ann_preserves_e (el ! i) \<and> (si,si')\<in>guar" 
-                            using b4 f1 a3 c0 gets_e_def by (metis fst_conv snd_conv)
-                          with e1 e2 f2 show ?thesis by (simp add:gets_es_def ann_preserves_es_def
-                          getspc_es_def ann_preserves_e_def getspc_e_def gets_e_def)
+                        ultimately have "(si,si')\<in>guar" using b4 f1 a3 c0 gets_e_def
+                          by (metis fst_conv snd_conv)
+
+                        with e2 show ?thesis by (simp add:gets_es_def)
                       next
                         assume f0: "\<exists>e. getspc_es (esl!Suc i) = EvtSeq e (EvtSys es)"
                         then obtain e' where f1: "getspc_es (esl!Suc i) = EvtSeq e' (EvtSys es)"
@@ -5603,10 +5817,10 @@ lemma e_sim_es_same_commit:
                           using getspc_es_def getspc_e_def rm_evtsys_def rm_evtsys1_def 
                             gets_es_def getx_es_def EvtSeqrm
                             by (smt Suc_lessD fst_conv less_Suc_eq_0_disj list.simps(9) nth_Cons_Suc nth_map snd_conv)
-                        ultimately have "ann_preserves_e (el ! i) \<and> (si,si')\<in>guar" using b4 f1 a3 c0 gets_e_def
+                        ultimately have "(si,si')\<in>guar" using b4 f1 a3 c0 gets_e_def
                           by (metis fst_conv snd_conv)
-                        with e1 e2 f2 show ?thesis by (simp add:gets_es_def ann_preserves_es_def
-                          getspc_es_def ann_preserves_e_def getspc_e_def gets_e_def)
+
+                        with e2 show ?thesis by (simp add:gets_es_def)
                       qed
                   qed
               qed
@@ -5615,9 +5829,81 @@ lemma e_sim_es_same_commit:
           qed
         then show ?thesis by (simp add:commit_es_def)
       qed
+  qed
+
+lemma e_sim_es_same_preserve: 
+  "\<lbrakk>esl\<in>cpts_es; esl = (EvtSys es, s, x) # (EvtSeq ev (EvtSys es), s1,x1) # xs;
+      (EvtSys es, s, x) -es-(EvtEnt (BasicEvent e))\<sharp>k\<rightarrow> (EvtSeq ev (EvtSys es), s1,x1);
+      \<not>(\<exists>j. j > 0 \<and> Suc j < length esl \<and> getspc_es (esl!j) = EvtSys es \<and> getspc_es (esl!Suc j) \<noteq> EvtSys es);
+      el = (BasicEvent e, s, x) # rm_evtsys ((EvtSeq ev (EvtSys es), s1,x1) # xs); 
+      e_sim_es esl el es e; el\<in> preserves_e\<rbrakk>
+      \<Longrightarrow> esl\<in> preserves_es"
+proof -
+  assume p0: "esl\<in>cpts_es"
+    and  p1: "esl = (EvtSys es, s, x) # (EvtSeq ev (EvtSys es), s1,x1) # xs"
+    and  p2: "(EvtSys es, s, x) -es-(EvtEnt (BasicEvent e))\<sharp>k\<rightarrow> (EvtSeq ev (EvtSys es), s1,x1)"
+    and  p3: "\<not>(\<exists>j. j > 0 \<and> Suc j < length esl \<and> getspc_es (esl!j) = EvtSys es 
+                    \<and> getspc_es (esl!Suc j) \<noteq> EvtSys es)"
+    and  p4: "el = (BasicEvent e, s, x) # rm_evtsys ((EvtSeq ev (EvtSys es), s1,x1) # xs)" 
+    and  a1: "e_sim_es esl el es e"
+    and  b3: "el\<in>preserves_e"
+    from p3 have p3_1: "\<forall>j. j > 0 \<and> Suc j < length esl \<longrightarrow> getspc_es (esl ! j) = EvtSys es 
+          \<longrightarrow> getspc_es (esl ! Suc j) = EvtSys es" using noevtent_inmid_eq by auto
+    from p0 p1 p2 p3 p4 have a0: "el \<in> cpts_ev" using rm_evtsys_in_cptse by metis
+    let ?esl1 = "(EvtSeq ev (EvtSys es), s1,x1) # xs"
+    let ?el1 = "rm_evtsys ((EvtSeq ev (EvtSys es), s1,x1) # xs)"
+    from p4 have a2: "el = (BasicEvent e, s, x) # (ev,s1,x1) # rm_evtsys xs" 
+      by (simp add: gets_es_def getspc_es_def getx_es_def rm_evtsys1_def rm_evtsys_def) 
+    from p1 a2 have a3: "length esl = length el" by (simp add:rm_evtsys_def)
+
+    from b3 have b4: "\<forall>i. i<length el \<longrightarrow> ann_preserves_e (getspc_e (el!i)) (gets_e (el!i))" 
+               by (simp add:preserves_e_def)
+             then show "esl\<in>preserves_es" 
+             proof -
+               have "\<forall>i. i<length esl \<longrightarrow> ann_preserves_es (getspc_es (esl!i)) (gets_es (esl!i))"
+               proof -
+                 {
+                   fix i
+                   assume c0: "i<length esl"
+            
+                   have "ann_preserves_es (getspc_es (esl!i)) (gets_es (esl!i))"
+                   proof(cases "i = 0")
+                     assume d0: "i = 0"
+                     from p1 d0 have "esl!i = (EvtSys es, s, x)" by simp
+                     then show ?thesis by (simp add: getspc_es_def)
+                   next
+                     assume d0: "i \<noteq> 0"
+                     then show ?thesis
+                     proof(cases "getspc_es (esl!i) = EvtSys es")
+                       assume e0: "getspc_es (esl!i) = EvtSys es"
+                       then show ?thesis by (simp add: getspc_es_def)
+                     next
+                       assume e0: "getspc_es (esl!i) \<noteq> EvtSys es"
+                       from p0 p1 c0 have "getspc_es (esl!i) = EvtSys es \<or> 
+                        (\<exists>e. getspc_es (esl!i) = EvtSeq e (EvtSys es))" 
+                         using evtsys_all_es_in_cpts getspc_es_def
+                         by (metis fst_conv length_Cons nth_Cons_0 zero_less_Suc) 
+                       with e0 have "\<exists>e. getspc_es (esl!i) = EvtSeq e (EvtSys es)" by simp
+                       then obtain e where e1: "getspc_es (esl!i) = EvtSeq e (EvtSys es)" by auto
+
+                       obtain esi and si and xi  where e2: "esl!i = (esi,si,xi)"
+                         by (metis prod.collapse)
+                    
+                       with p1 p4 a3 c0 d0 e1 have f1 : "el!i = (e, si, xi)"
+                         using getspc_es_def getspc_e_def rm_evtsys_def rm_evtsys1_def gets_es_def getx_es_def EvtSeqrm
+                         by (smt Suc_lessD fst_conv less_Suc_eq_0_disj list.simps(9) nth_Cons_Suc nth_map snd_conv)
+                       with a3 b4 c0  have "ann_preserves_e e si"
+                         by (metis gets_e_def getspc_e_def prod.sel(1) prod.sel(2))
+                       with e1 e2 f1 show ?thesis
+                         by (simp add: gets_es_def)                     
+                     qed
+                   qed
+                 }
+          then show ?thesis by auto
+        qed
+        then show ?thesis by (simp add:preserves_es_def)
+      qed
     qed
-
-
 
 lemma rm_evtsys_assum_comm: 
     "\<lbrakk>esl\<in>cpts_es; esl = (EvtSys es, s, x) # (EvtSeq ev (EvtSys es), s1,x1) # xs;
@@ -5651,8 +5937,42 @@ lemma rm_evtsys_assum_comm:
         with p5 have b3: "el\<in>commit_e(guar,post)" by simp
         with p0 p1 p2 p3 p4 a1 show "esl\<in>commit_es(guar,post)" using e_sim_es_same_commit by metis
       qed
-    qed
+  qed
 
+
+lemma rm_evtsys_assum_preserve: 
+    "\<lbrakk>esl\<in>cpts_es; esl = (EvtSys es, s, x) # (EvtSeq ev (EvtSys es), s1,x1) # xs;
+      (EvtSys es, s, x) -es-(EvtEnt (BasicEvent e))\<sharp>k\<rightarrow> (EvtSeq ev (EvtSys es), s1,x1);
+      \<not>(\<exists>j. j > 0 \<and> Suc j < length esl \<and> getspc_es (esl!j) = EvtSys es \<and> getspc_es (esl!Suc j) \<noteq> EvtSys es);
+      el = (BasicEvent e, s, x) # rm_evtsys ((EvtSeq ev (EvtSys es), s1,x1) # xs); 
+      el\<in>assume_e(pre,rely) \<longrightarrow> el\<in> preserves_e \<rbrakk>
+      \<Longrightarrow> esl\<in>assume_es(pre,rely) \<longrightarrow> esl\<in> preserves_es" 
+  proof -
+    assume p0: "esl\<in>cpts_es"
+      and  p1: "esl = (EvtSys es, s, x) # (EvtSeq ev (EvtSys es), s1,x1) # xs"
+      and  p2: "(EvtSys es, s, x) -es-(EvtEnt (BasicEvent e))\<sharp>k\<rightarrow> (EvtSeq ev (EvtSys es), s1,x1)"
+      and  p3: "\<not>(\<exists>j. j > 0 \<and> Suc j < length esl \<and> getspc_es (esl!j) = EvtSys es 
+                    \<and> getspc_es (esl!Suc j) \<noteq> EvtSys es)"
+      and  p4: "el = (BasicEvent e, s, x) # rm_evtsys ((EvtSeq ev (EvtSys es), s1,x1) # xs)" 
+      and  p5: "el\<in>assume_e(pre,rely) \<longrightarrow> el\<in> preserves_e"
+    from p3 have p3_1: "\<forall>j. j > 0 \<and> Suc j < length esl \<longrightarrow> getspc_es (esl ! j) = EvtSys es 
+          \<longrightarrow> getspc_es (esl ! Suc j) = EvtSys es" using noevtent_inmid_eq by auto
+    from p0 p1 p2 p3 p4 have a0: "el \<in> cpts_ev" using rm_evtsys_in_cptse by metis
+    let ?esl1 = "(EvtSeq ev (EvtSys es), s1,x1) # xs"
+    let ?el1 = "rm_evtsys ((EvtSeq ev (EvtSys es), s1,x1) # xs)"
+    from p0 p1 p2 p3 p4 a0 have a1: "e_sim_es esl el es e" 
+      using fstent_nomident_e_sim_es2 by metis
+    from p4 have a2: "el = (BasicEvent e, s, x) # (ev,s1,x1) # rm_evtsys xs" 
+      by (simp add: gets_es_def getspc_es_def getx_es_def rm_evtsys1_def rm_evtsys_def) 
+    from p1 a2 have a3: "length esl = length el" by (simp add:rm_evtsys_def)
+    show ?thesis
+      proof 
+        assume b0: "esl\<in>assume_es(pre,rely)"
+        with p0 p1 p2 p3 p4 a1 have b2: "el\<in>assume_e(pre,rely)" using e_sim_es_same_assume by metis
+        with p5 have b3: "el\<in> preserves_e" by simp
+        with p0 p1 p2 p3 p4 a1 show "esl\<in> preserves_es" using e_sim_es_same_preserve by metis
+      qed
+    qed
 
 lemma EventSys_sound_aux1: 
     "\<lbrakk>\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef];
@@ -5694,7 +6014,48 @@ lemma EventSys_sound_aux1:
     with c1 c3 c4 c41 have c7: "esl\<in>assume_es(Pre ei, Rely ei) \<longrightarrow> esl\<in>commit_es(Guar ei,Post ei)"
       using rm_evtsys_assum_comm by metis
     then show ?thesis using c6 c61 by blast
-  qed
+  qed         
+
+lemma EventSys_sound_aux1_preserve: 
+    "\<lbrakk>\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef];
+     esl\<in>cpts_es;length esl \<ge> 2 \<and> getspc_es (esl!0) = EvtSys es \<and> getspc_es (esl!1) \<noteq> EvtSys es;
+     \<not>(\<exists>j. j > 0 \<and> Suc j < length esl \<and> getspc_es (esl!j) = EvtSys es \<and> getspc_es (esl!Suc j) \<noteq> EvtSys es)\<rbrakk>
+      \<Longrightarrow> \<exists>m\<in>es. (esl\<in>assume_es(Pre m,Rely m) \<longrightarrow> esl\<in> preserves_es)"
+  proof -
+    assume p0: "\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef]"
+      and  a0: "length esl \<ge> 2 \<and> getspc_es (esl!0) = EvtSys es \<and> getspc_es (esl!1) \<noteq> EvtSys es"
+      and  c41: "\<not>(\<exists>j. j > 0 \<and> Suc j < length esl \<and> getspc_es (esl!j) = EvtSys es \<and> getspc_es (esl!Suc j) \<noteq> EvtSys es)"
+      and  c1: "esl\<in>cpts_es"
+
+    from a0 c1 have c2: "\<exists>s x ev s1 x1 xs. esl = (EvtSys es, s, x) # (EvtSeq ev (EvtSys es), s1,x1) # xs"
+      by (simp add:fst_esys_snd_eseq_exist)
+    then obtain s and x and ev and s1 and x1 and xs where c3:
+      "esl = (EvtSys es, s, x) # (EvtSeq ev (EvtSys es), s1,x1) # xs" by auto
+    with c1 have "\<exists>e k. (EvtSys es, s, x) -es-(EvtEnt (BasicEvent e))\<sharp>k\<rightarrow> (EvtSeq ev (EvtSys es), s1,x1)"
+      using fst_esys_snd_eseq_exist_evtent2 by fastforce
+    then obtain e and k where c4: 
+      "(EvtSys es, s, x) -es-(EvtEnt (BasicEvent e))\<sharp>k\<rightarrow> (EvtSeq ev (EvtSys es), s1,x1)"
+      by auto
+    let ?el = "(BasicEvent e, s, x) # rm_evtsys ((EvtSeq ev (EvtSys es), s1,x1) # xs)"
+    
+    from c1 c3 c4 c41 have c5: "?el \<in> cpts_ev" using rm_evtsys_in_cptse by metis
+    from c4 have "\<exists>ei\<in>es. ei = BasicEvent e" using evtsysent_evtent by metis
+    then obtain ei where c6: "ei\<in>es \<and> ei = BasicEvent e" by auto
+    from c3 c4 c6 have c61: "esl!0-es-(EvtEnt ei)\<sharp>k\<rightarrow>esl!1" by simp
+    have c8: "?el\<in>assume_e(Pre ei, Rely ei) \<longrightarrow> ?el\<in> preserves_e" 
+      proof 
+        assume d0: "?el\<in>assume_e(Pre ei, Rely ei)"
+        moreover
+        from p0 c6 have d1: "\<Turnstile> ei sat\<^sub>e [Pre ei, Rely ei, Guar ei, Post ei]" by auto
+        moreover
+        from c5 have "?el\<in>cpts_of_ev (BasicEvent e) s x" by (simp add:cpts_of_ev_def)
+        ultimately show "?el\<in> preserves_e" using evt_validity_def c6
+          by fastforce 
+      qed
+    with c1 c3 c4 c41 have c7: "esl\<in>assume_es(Pre ei, Rely ei) \<longrightarrow> esl\<in> preserves_es"
+      using rm_evtsys_assum_preserve by metis
+    then show ?thesis using c6 c61 by blast
+  qed    
 
 lemma EventSys_sound_aux1_forall: 
     "\<lbrakk>\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef];
@@ -5741,6 +6102,52 @@ lemma EventSys_sound_aux1_forall:
       then show ?thesis by auto
       qed
   qed
+
+lemma EventSys_sound_aux1_forall_preserve: 
+    "\<lbrakk>\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef];
+     esl\<in>cpts_es;length esl \<ge> 2 \<and> getspc_es (esl!0) = EvtSys es \<and> getspc_es (esl!1) \<noteq> EvtSys es;
+     \<not>(\<exists>j. j > 0 \<and> Suc j < length esl \<and> getspc_es (esl!j) = EvtSys es \<and> getspc_es (esl!Suc j) \<noteq> EvtSys es)\<rbrakk>
+      \<Longrightarrow> \<forall>m\<in>es. (\<exists>k. esl!0-es-(EvtEnt m)\<sharp>k\<rightarrow>esl!1) 
+                          \<longrightarrow> (esl\<in>assume_es(Pre m,Rely m) \<longrightarrow> esl\<in> preserves_es)"
+  proof -
+    assume p0: "\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef]"
+      and  a0: "length esl \<ge> 2 \<and> getspc_es (esl!0) = EvtSys es \<and> getspc_es (esl!1) \<noteq> EvtSys es"
+      and  c41: "\<not>(\<exists>j. j > 0 \<and> Suc j < length esl \<and> getspc_es (esl!j) = EvtSys es \<and> getspc_es (esl!Suc j) \<noteq> EvtSys es)"
+      and  c1: "esl\<in>cpts_es"
+    then show ?thesis
+      proof -
+      {
+        fix m
+        assume c01: "m\<in>es"
+          and  c02: "\<exists>k. esl!0-es-(EvtEnt m)\<sharp>k\<rightarrow>esl!1"
+        from a0 c1 have c2: "\<exists>s x ev s1 x1 xs. esl = (EvtSys es, s, x) # (EvtSeq ev (EvtSys es), s1,x1) # xs"
+          by (simp add:fst_esys_snd_eseq_exist)
+        then obtain s and x and ev and s1 and x1 and xs where c3:
+          "esl = (EvtSys es, s, x) # (EvtSeq ev (EvtSys es), s1,x1) # xs" by auto
+        with c02 have "\<exists>k. (EvtSys es, s, x) -es-(EvtEnt m)\<sharp>k\<rightarrow> (EvtSeq ev (EvtSys es), s1,x1)" by simp
+        then obtain k where c4: "(EvtSys es, s, x) -es-(EvtEnt m)\<sharp>k\<rightarrow> (EvtSeq ev (EvtSys es), s1,x1)" by auto
+        then have "\<exists>e. m = BasicEvent e" by (meson evtent_is_basicevt) 
+        then obtain e where c40: "m = BasicEvent e" by auto
+        let ?el = "(m, s, x) # rm_evtsys ((EvtSeq ev (EvtSys es), s1,x1) # xs)"    
+        from c1 c3 c4 c40 c41 have c5: "?el \<in> cpts_ev" using rm_evtsys_in_cptse by metis
+
+        from c3 c4 c40 have c61: "esl!0-es-(EvtEnt m)\<sharp>k\<rightarrow>esl!1" by simp
+        have c8: "?el\<in>assume_e(Pre m, Rely m) \<longrightarrow> ?el\<in> preserves_e" 
+          proof 
+            assume d0: "?el\<in>assume_e(Pre m, Rely m)"
+            moreover
+            from p0 c01 c40 have d1: "\<Turnstile> m sat\<^sub>e [Pre m, Rely m, Guar m, Post m]" by auto
+            moreover
+            from c5 c40 have "?el\<in>cpts_of_ev (BasicEvent e) s x" by (simp add:cpts_of_ev_def)
+            ultimately show "?el\<in> preserves_e" using evt_validity_def c40
+              by fastforce 
+          qed
+        with c1 c3 c4 c40 c41 have c7: "esl\<in>assume_es(Pre m, Rely m) \<longrightarrow> esl\<in>preserves_es"
+          using rm_evtsys_assum_preserve by metis
+      }
+      then show ?thesis by auto
+      qed
+    qed
 
 lemma EventSys_sound_seg_aux0_exist: 
     "\<lbrakk>esl\<in>cpts_es;length esl \<ge> 2; getspc_es (esl!0) = EvtSys es; getspc_es (esl!1) \<noteq> EvtSys es\<rbrakk>
@@ -5850,7 +6257,7 @@ lemma EventSys_sound_seg_aux0_forall:
       }
       then show ?thesis by auto
       qed
-  qed
+    qed
 
 lemma EventSys_sound_seg_aux0: 
     "\<lbrakk>\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef];
@@ -6065,6 +6472,7 @@ lemma EventSys_sound_aux_i_forall:
       qed
   qed
 
+
 lemma EventSys_sound_aux_i: 
     "\<lbrakk>\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef];
      \<forall>ef\<in>es. pre \<subseteq> Pre ef;  \<forall>ef\<in>es. rely \<subseteq> Rely ef;
@@ -6125,7 +6533,7 @@ lemma EventSys_sound_aux_i:
       }
       then show ?thesis by auto
       qed
-  qed
+    qed
 
 
 lemma EventSys_sound_aux_last_forall: 
@@ -6302,10 +6710,9 @@ lemma EventSys_sound_aux_last_forall:
       qed
     }
     then show ?thesis by auto qed
-qed
+  qed
 
-
-lemma EventSys_sound_aux_last: 
+lemma EventSys_sound_aux_last:                                                                   
     "\<lbrakk>\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef];
      \<forall>ef\<in>es. pre \<subseteq> Pre ef;  \<forall>ef\<in>es. rely \<subseteq> Rely ef;
      \<forall>ef\<in>es. Guar ef \<subseteq> guar; \<forall>ef\<in>es. Post ef \<subseteq> post;
@@ -6347,6 +6754,166 @@ lemma EventSys_sound_aux_last:
     with b1 show ?thesis by auto
   qed
 
+lemma EventSys_sound_aux_i_preserve: 
+    "\<lbrakk>\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef];
+     \<forall>ef\<in>es. pre \<subseteq> Pre ef;  \<forall>ef\<in>es. rely \<subseteq> Rely ef;
+     \<forall>ef\<in>es. Guar ef \<subseteq> guar; \<forall>ef\<in>es. Post ef \<subseteq> post;
+     \<forall>ef1 ef2. ef1\<in>es \<and> ef2\<in>es \<longrightarrow> Post ef1 \<subseteq> Pre ef2;
+     esl\<in>cpts_es; esl = (EvtSys es, s, x) # (EvtSeq e (EvtSys es), s1,x1) # xs;
+     esl\<in>assume_es(pre,rely);
+     elst = tl (parse_es_cpts_i2 esl es [[]]); i < length elst\<rbrakk> \<Longrightarrow> 
+     elst ! i \<in> preserves_es"
+proof -
+  assume p0: "\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef]"
+    and  p1: "\<forall>ef\<in>es. pre \<subseteq> Pre ef"
+    and  p2: "\<forall>ef\<in>es. rely \<subseteq> Rely ef"
+    and  p3: "\<forall>ef\<in>es. Guar ef \<subseteq> guar"
+    and  p4: "\<forall>ef\<in>es. Post ef \<subseteq> post"
+    and  p5[rule_format]: "\<forall>ef1 ef2. ef1\<in>es \<and> ef2\<in>es \<longrightarrow> Post ef1 \<subseteq> Pre ef2"
+    and  p8: "esl\<in>cpts_es"
+    and  p9: "esl = (EvtSys es, s, x) # (EvtSeq e (EvtSys es), s1,x1) # xs"
+    and  p10: "esl\<in>assume_es(pre,rely)"
+    and  p11: "elst = tl (parse_es_cpts_i2 esl es [[]])"
+    and p12: "i < length elst"
+  from p9 p8 p11 have a0[rule_format]: "\<forall>i. i < length elst \<longrightarrow> length (elst!i) \<ge> 2 \<and>
+                  getspc_es (elst!i!0) = EvtSys es \<and> getspc_es (elst!i!1) \<noteq> EvtSys es"
+    using parse_es_cpts_i2_start_aux by metis
+  from p9 p8 p11 have a1: "\<forall>i. i < length elst \<longrightarrow> \<not>(\<exists>j. j > 0 \<and> Suc j < length (elst!i) \<and> 
+            getspc_es (elst!i!j) = EvtSys es \<and> getspc_es (elst!i!Suc j) \<noteq> EvtSys es)"
+    using parse_es_cpts_i2_noent_mid by metis
+  from p9 p8 p11 have a2: "concat elst = esl" using parse_es_cpts_i2_concat3 by metis
+  show ?thesis
+  proof-
+    {
+      assume b0: " i < length elst"
+      then have "elst ! i \<in> preserves_es"
+      proof (induct i)
+        case 0
+        let ?els = "elst ! 0 "
+        have c1: "?els \<in> cpts_es"
+        proof -
+          from a0 have c11: "\<forall>i<length elst. elst ! i \<noteq> []"
+            using list.size(3) not_numeral_le_zero by force
+             with a2 "0.prems" have "\<exists>m n. m \<le> length esl \<and> n \<le> length esl \<and> m \<le> n \<and> ?els = take (n - m) (drop m esl)"
+               using concat_i_lm1 by blast
+             then obtain m and n where d1: "m \<le> length esl \<and> n \<le> length esl \<and> m \<le> n
+                          \<and> ?els = take (n - m) (drop m esl)" by auto
+             have "?els \<noteq> []" using "0.prems" c11 by blast
+             with p8 d1 show ?thesis by (simp add: cpts_es_seg2) 
+           qed
+           have c2: "\<not>(\<exists>j. j > 0 \<and> Suc j < length ?els \<and> getspc_es (?els!j) = EvtSys es 
+                     \<and> getspc_es (?els!Suc j) \<noteq> EvtSys es)" 
+           proof -
+             from a0 have "getspc_es (elst ! 0 ! 0) = EvtSys es" using "0.prems" by blast
+             with a1 show ?thesis  using "0.prems" by blast
+           qed
+           from a0 have c3: "2 \<le> length ?els \<and> getspc_es (?els ! 0) = EvtSys es \<and> getspc_es (?els ! 1) \<noteq> EvtSys es"
+             using "0.prems" by blast
+           with p0 c1 c2  have c4: "\<forall>ei\<in>es. (\<exists>k. ?els!0-es-(EvtEnt ei)\<sharp>k\<rightarrow>?els!1) 
+               \<longrightarrow> (?els\<in>assume_es(Pre ei,Rely ei) \<longrightarrow> ?els \<in> preserves_es)"
+             using EventSys_sound_aux1_forall_preserve[of es Pre Rely Guar Post ?els] by auto
+
+           from p10 a2 have "?els\<in>assume_es(pre,rely)"
+           proof -
+             from a0 have d1: "\<forall>i<length elst. elst ! i \<noteq> []" 
+               using list.size(3) not_numeral_le_zero by force
+             with a2 "0.prems" have "\<exists>m n. m \<le> length esl \<and> n \<le> length esl \<and> m \<le> n \<and> ?els = take (n - m) (drop m esl)"
+               using concat_i_lm1 by blast
+             moreover
+             from p10 have "\<forall>i. Suc i<length esl \<longrightarrow> esl!i -ese\<rightarrow> esl!(Suc i) \<longrightarrow> 
+                  (gets_es (esl!i), gets_es (esl!Suc i)) \<in> rely" by (simp add:assume_es_def)
+             ultimately have "\<forall>i. Suc i<length ?els \<longrightarrow> ?els!i -ese\<rightarrow> ?els!(Suc i) \<longrightarrow> 
+               (gets_es (?els!i), gets_es (?els!Suc i)) \<in> rely"
+               using rely_takedrop_rely by blast
+             moreover
+             have "gets_es (?els!0) \<in> pre"
+             proof -
+               from a2 "0.prems" have "?els!0 = esl!0"
+                 by (metis (no_types, lifting) d1 concat.simps(2) cpts_es_not_empty 
+                     hd_append2 length_greater_0_conv list.collapse nth_Cons_0 p8 )
+               moreover
+               from p10 have "gets_es (esl!0) \<in> pre" by (simp add:assume_es_def)
+               ultimately show ?thesis by simp
+             qed
+             ultimately show ?thesis by (simp add:assume_es_def)
+           qed
+
+           with p1 p2 c4 have "\<forall>ei\<in>es. ?els\<in>assume_es(Pre ei, Rely ei)" using assume_es_imp
+             by metis
+
+           with c1 c3 c4 show ?case using EventSys_sound_seg_aux0_exist by blast
+         next
+           case (Suc j)
+           let ?els = "elst ! (Suc j)"
+           have c21 : "?els \<in> cpts_es"
+           proof-
+             from a0 have c11: "\<forall>i<length elst. elst ! i \<noteq> []"
+            using list.size(3) not_numeral_le_zero by force
+          with a2  have "\<exists>m n. m \<le> length esl \<and> n \<le> length esl \<and> m \<le> n \<and> ?els = take (n - m) (drop m esl)"
+               using concat_i_lm1 Suc.prems by blast
+             then obtain m and n where d1: "m \<le> length esl \<and> n \<le> length esl \<and> m \<le> n
+                          \<and> ?els = take (n - m) (drop m esl)" by auto
+             have "?els \<noteq> []" using Suc.prems c11 by blast
+             with p8 d1 show ?thesis by (simp add: cpts_es_seg2) 
+           qed
+           have c22: "\<not>(\<exists>j. j > 0 \<and> Suc j < length ?els \<and> getspc_es (?els!j) = EvtSys es 
+                     \<and> getspc_es (?els!Suc j) \<noteq> EvtSys es)" 
+           proof -
+             from a0 have "getspc_es (elst ! 0 ! 0) = EvtSys es" using Suc.prems by fastforce
+             with a1 show ?thesis  using Suc.prems by blast
+           qed
+           from a0 have c23: "2 \<le> length ?els \<and> getspc_es (?els ! 0) = EvtSys es \<and> getspc_es (?els ! 1) \<noteq> EvtSys es"
+             using Suc.prems by blast
+           with p0 c21 c22 have c23: "\<forall>ei\<in>es. (\<exists>k. ?els!0-es-(EvtEnt ei)\<sharp>k\<rightarrow>?els!1) 
+               \<longrightarrow> (?els\<in>assume_es(Pre ei,Rely ei) \<longrightarrow> ?els \<in> preserves_es)"
+             using EventSys_sound_aux1_forall_preserve[of es Pre Rely Guar Post ?els] by auto
+
+           have "\<exists>m\<in>es. (\<exists>k. ?els!0-es-(EvtEnt m)\<sharp>k\<rightarrow>?els!1)"
+             using EventSys_sound_seg_aux0_exist Suc.prems a0 c21 by blast
+           then obtain ei where c24: "ei \<in> es \<and> (\<exists>k. ?els!0-es-(EvtEnt ei)\<sharp>k\<rightarrow>?els!1)" by blast
+
+
+           with p10 a2 have "?els\<in> assume_es(Pre ei, Rely ei)"
+           proof -
+             from a0 have d21: "\<forall>i<length elst. elst ! i \<noteq> []" 
+               using list.size(3) not_numeral_le_zero by force
+             with a2 Suc.prems have "\<exists>m n. m \<le> length esl \<and> n \<le> length esl \<and> m \<le> n \<and> ?els = take (n - m) (drop m esl)"
+               using concat_i_lm1 by blast
+             moreover
+             from p10 have "\<forall>i. Suc i<length esl \<longrightarrow> esl!i -ese\<rightarrow> esl!(Suc i) \<longrightarrow> 
+                  (gets_es (esl!i), gets_es (esl!Suc i)) \<in> rely" by (simp add:assume_es_def)
+             then have "\<forall>i. Suc i<length ?els \<longrightarrow> ?els!i -ese\<rightarrow> ?els!(Suc i) \<longrightarrow> 
+               (gets_es (?els!i), gets_es (?els!Suc i)) \<in> rely"
+               using rely_takedrop_rely calculation by blast
+             ultimately have "\<forall>i. Suc i<length ?els \<longrightarrow> ?els!i -ese\<rightarrow> ?els!(Suc i) \<longrightarrow> 
+               (gets_es (?els!i), gets_es (?els!Suc i)) \<in> Rely ei"
+               using c24 p2 by blast
+             moreover
+             have "gets_es (?els!0) \<in> Pre ei"
+             proof-
+               from p0 p1 p2 p3 p4 p5 p8 p9 p10 p11 have "\<forall>i. Suc i < length elst \<longrightarrow> 
+                (\<exists>m\<in>es. elst!i@[(elst!Suc i)!0]\<in>commit_es(Guar m,Post m)
+                                \<and> gets_es ((elst!Suc i)!0) \<in> Post m
+                \<and> (\<exists>k. (elst!i@[(elst!Suc i)!0])!0-es-(EvtEnt m)\<sharp>k\<rightarrow>(elst!i@[(elst!Suc i)!0])!1))"
+                 using EventSys_sound_aux_i [of es Pre Rely Guar Post pre rely guar post esl s x e s1 x1 xs elst]
+                 by auto[1]
+               then have "\<exists>m \<in> es. gets_es ((elst!Suc j)!0) \<in> Post m"
+                 using Suc.prems by auto
+               then have "gets_es ((elst!Suc j)!0) \<in> Pre ei"
+                 by (meson c24 contra_subsetD p5)
+               then show ?thesis by simp
+             qed
+
+             ultimately show ?thesis by (simp add:assume_es_def)
+           qed
+
+           with c21 c23 c24 show ?case by blast
+         qed
+       }
+       with p12 show ?thesis by auto
+     qed
+   qed
+
 
 lemma EventSys_sound_0: 
     "\<lbrakk>\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef];
@@ -6357,7 +6924,7 @@ lemma EventSys_sound_0:
      esl\<in>cpts_es; esl = (EvtSys es, s, x) # (EvtSeq e (EvtSys es), s1,x1) # xs;
      esl\<in>assume_es(pre,rely)\<rbrakk>
       \<Longrightarrow> \<forall>i. Suc i<length esl \<longrightarrow> (\<exists>t. esl!i -es-t\<rightarrow> esl!(Suc i)) \<longrightarrow> 
-          ann_preserves_es (esl!i) \<and> (gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
+                          (gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
   proof -
     assume p0: "\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef]"
       and  p1: "\<forall>ef\<in>es. pre \<subseteq> Pre ef"
@@ -6405,7 +6972,7 @@ lemma EventSys_sound_0:
           using concat_equiv [of esl ?elst] a0 b0 by auto
         then obtain k and j where b2: "k < length ?elst \<and> j \<le> length (?elst!k) \<and> 
                   drop i esl = (drop j (?elst!k)) @ concat (drop (Suc k) ?elst)" by auto
-        have "ann_preserves_es (esl!i) \<and> (gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
+        have "(gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
           proof(cases "k = length ?elst - 1")
             assume c0: "k = length ?elst - 1"
             with b2 have c1: "drop i esl = drop j (last ?elst)"
@@ -6418,9 +6985,9 @@ lemma EventSys_sound_0:
             from c1 c3 have c5: "esl ! Suc i = (last ?elst) ! Suc j"
               by (metis Cons_nth_drop_Suc Suc_lessD b0 list.sel(3) nth_via_drop) 
             from a4 have "\<forall>i. Suc i<length (last ?elst) \<longrightarrow> (\<exists>t. (last ?elst)!i -es-t\<rightarrow> (last ?elst)!(Suc i)) 
-                  \<longrightarrow> ann_preserves_es ((last ?elst)!i) \<and> (gets_es ((last ?elst)!i), gets_es ((last ?elst)!Suc i)) \<in> Guar m" 
+                  \<longrightarrow> (gets_es ((last ?elst)!i), gets_es ((last ?elst)!Suc i)) \<in> Guar m" 
               by (simp add: commit_es_def)
-            with b1 c3 c4 c5 have "ann_preserves_es (esl ! i) \<and> (gets_es (esl ! i), gets_es (esl ! Suc i)) \<in> Guar m"
+            with b1 c3 c4 c5 have "(gets_es (esl ! i), gets_es (esl ! Suc i)) \<in> Guar m"
               by (metis Cons_nth_drop_Suc b0 c1 length_drop list.sel(3) zero_less_diff) 
             with p3 a4 show ?thesis by auto
           next
@@ -6450,9 +7017,9 @@ lemma EventSys_sound_0:
                     from e0 d4 have e2: "esl ! Suc i = (last ?elst) ! 1"
                       by (metis a0 b01 concat.simps(1) d5 last_conv_nth) 
                     from a4 have "\<forall>i. Suc i<length (last ?elst) \<longrightarrow> (\<exists>t. (last ?elst)!i -es-t\<rightarrow> (last ?elst)!(Suc i)) 
-                    \<longrightarrow> ann_preserves_es ((last ?elst)!i) \<and> (gets_es ((last ?elst)!i), gets_es ((last ?elst)!Suc i)) \<in> Guar m" 
+                          \<longrightarrow> (gets_es ((last ?elst)!i), gets_es ((last ?elst)!Suc i)) \<in> Guar m" 
                       by (simp add: commit_es_def)
-                    with b1 e1 e2 have "ann_preserves_es (esl!i) \<and> (gets_es (esl ! i), gets_es (esl ! Suc i)) \<in> Guar m"
+                    with b1 e1 e2 have "(gets_es (esl ! i), gets_es (esl ! Suc i)) \<in> Guar m"
                       by (metis One_nat_def Suc_1 Suc_le_lessD a0 b01 concat.simps(1) d2 e0 last_conv_nth)
                     with p3 a4 show ?thesis by auto
                   next
@@ -6465,7 +7032,7 @@ lemma EventSys_sound_0:
                     then obtain m where e1: "m\<in>es \<and> ?els'\<in>commit_es(Guar m,Post m)"
                       by auto
                     then have e2: "\<forall>i. Suc i<length ?els' \<longrightarrow> (\<exists>t. ?els'!i -es-t\<rightarrow> ?els'!(Suc i)) 
-                    \<longrightarrow> ann_preserves_es (?els'!i) \<and> (gets_es (?els'!i), gets_es (?els'!Suc i)) \<in> Guar m"
+                                  \<longrightarrow> (gets_es (?els'!i), gets_es (?els'!Suc i)) \<in> Guar m"
                       by (simp add: commit_es_def)
                     from d4 have e3: "esl ! i = ?els' ! 0"
                       by (metis (no_types, lifting) Suc_le_eq d2 dual_order.strict_trans lessI nth_append numeral_2_eq_2)
@@ -6473,10 +7040,8 @@ lemma EventSys_sound_0:
                       by (metis (no_types, lifting) Suc_1 Suc_le_lessD d2 nth_append) 
                     from b1 e3 e4 have e5: "\<exists>t. ?els'!0 -es-t\<rightarrow> ?els'!1" by simp
                     have "length ?els' > 1" using d2 by auto 
-                    with e2 e5 have "ann_preserves_es (?els'!0) \<and> (gets_es (?els'!0), gets_es (?els'!1)) 
-                    \<in> Guar m" by simp
-                    with e3 e4 have "ann_preserves_es (esl ! i) \<and> (gets_es (esl ! i), gets_es (esl ! Suc i)) 
-                    \<in> Guar m" by simp
+                    with e2 e5 have "(gets_es (?els'!0), gets_es (?els'!1)) \<in> Guar m" by simp
+                    with e3 e4 have "(gets_es (esl ! i), gets_es (esl ! Suc i)) \<in> Guar m" by simp
                     with p3 e1 show ?thesis by auto
                   qed
               next
@@ -6512,15 +7077,13 @@ lemma EventSys_sound_0:
                           ?els'\<in>commit_es(Guar m,Post m)"
                       by auto
                     then have e8: "\<forall>i. Suc i<length ?els' \<longrightarrow> (\<exists>t. ?els'!i -es-t\<rightarrow> ?els'!(Suc i)) 
-                    \<longrightarrow> ann_preserves_es (?els'!i) \<and> (gets_es (?els'!i), gets_es (?els'!Suc i)) \<in> Guar m"
+                                  \<longrightarrow> (gets_es (?els'!i), gets_es (?els'!Suc i)) \<in> Guar m"
                       by (simp add: commit_es_def)
                     
                     from b1 e5 e6 have e9: "\<exists>t. ?els'!j -es-t\<rightarrow> ?els'!Suc j" by simp
                     have "Suc j < length ?els'" using e0 d0 by auto 
-                    with e8 e9 have "ann_preserves_es (?els'!j) \<and> (gets_es (?els'!j), gets_es (?els'!Suc j)) 
-                                    \<in> Guar m" by simp
-                    with e5 e6 have "ann_preserves_es (esl!i) \<and> (gets_es (esl ! i), gets_es (esl ! Suc i)) 
-                                    \<in> Guar m" by simp
+                    with e8 e9 have "(gets_es (?els'!j), gets_es (?els'!Suc j)) \<in> Guar m" by simp
+                    with e5 e6 have "(gets_es (esl ! i), gets_es (esl ! Suc i)) \<in> Guar m" by simp
                     with p3 e7 show ?thesis by auto
 
                   next
@@ -6536,7 +7099,7 @@ lemma EventSys_sound_0:
                     then obtain m where e2: "m\<in>es \<and> ?els'\<in>commit_es(Guar m,Post m)"
                       by auto
                     then have e3: "\<forall>i. Suc i<length ?els' \<longrightarrow> (\<exists>t. ?els'!i -es-t\<rightarrow> ?els'!(Suc i)) 
-                     \<longrightarrow> ann_preserves_es (?els'!i) \<and> (gets_es (?els'!i), gets_es (?els'!Suc i)) \<in> Guar m"
+                                  \<longrightarrow> (gets_es (?els'!i), gets_es (?els'!Suc i)) \<in> Guar m"
                       by (simp add: commit_es_def)
                     from d1 e00 have e4: "esl ! i = ?els' ! j"
                       by (simp add: d0 nth_append) 
@@ -6544,10 +7107,8 @@ lemma EventSys_sound_0:
                       by (simp add: Suc_lessI nth_append) 
                     from b1 e5 e4 have e6: "\<exists>t. ?els'!j -es-t\<rightarrow> ?els'!Suc j" by simp
                     have "Suc j < length ?els'" using e00 by auto 
-                    with e3 e4 e6 have "ann_preserves_es (?els'!j) \<and> (gets_es (?els'!j), gets_es (?els'!Suc j)) 
-                                        \<in> Guar m" by simp
-                    with e4 e5 have "ann_preserves_es (esl ! i) \<and> (gets_es (esl ! i), gets_es (esl ! Suc i)) 
-                                        \<in> Guar m" by simp
+                    with e3 e4 e6 have "(gets_es (?els'!j), gets_es (?els'!Suc j)) \<in> Guar m" by simp
+                    with e4 e5 have "(gets_es (esl ! i), gets_es (esl ! Suc i)) \<in> Guar m" by simp
                     with p3 e2 show ?thesis by auto
                   qed    
               qed
@@ -6556,7 +7117,62 @@ lemma EventSys_sound_0:
       then show ?thesis by auto
       qed
 
-    qed
+  qed  
+
+lemma preserves_es_append : "\<lbrakk> l = xs @ ys; xs \<in> preserves_es; ys \<in> preserves_es \<rbrakk> \<Longrightarrow> l \<in> preserves_es"
+  by (simp add: preserves_es_def nth_append)
+
+lemma preserves_es_append1 : "\<lbrakk>l \<in> preserves_es; l = xs @ ys \<rbrakk> \<Longrightarrow> xs \<in> preserves_es \<and> ys \<in> preserves_es"
+  apply (simp add: preserves_es_def)
+  apply (rule conjI, clarify)
+   apply (metis nth_append trans_less_add1)
+  apply clarify
+  apply (erule_tac x = "length xs + i" in allE, simp add: nth_append)
+  done
+
+lemma concat_preserve : "\<lbrakk>\<forall>i. i < length elst \<longrightarrow> elst ! i \<in> preserves_es; concat elst = esl \<rbrakk>
+                          \<Longrightarrow> esl \<in> preserves_es"
+  apply (induct elst arbitrary: esl, simp add: preserves_es_def)
+  apply (rule_tac xs = a and ys = "concat elst" in preserves_es_append, simp)
+   apply auto[1]
+  by fastforce
+
+
+lemma EventSys_sound_0_preserve: 
+    "\<lbrakk>\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef];
+     \<forall>ef\<in>es. pre \<subseteq> Pre ef;  \<forall>ef\<in>es. rely \<subseteq> Rely ef;
+     \<forall>ef\<in>es. Guar ef \<subseteq> guar; \<forall>ef\<in>es. Post ef \<subseteq> post;
+     \<forall>ef1 ef2. ef1\<in>es \<and> ef2\<in>es \<longrightarrow> Post ef1 \<subseteq> Pre ef2;
+     stable pre rely; \<forall>s. (s, s)\<in>guar;
+     esl\<in>cpts_es; esl = (EvtSys es, s, x) # (EvtSeq e (EvtSys es), s1,x1) # xs;
+     esl\<in>assume_es(pre,rely)\<rbrakk>
+      \<Longrightarrow> esl \<in> preserves_es"
+proof -
+  assume p0: "\<forall>ef\<in>es. \<Turnstile> ef sat\<^sub>e [Pre ef, Rely ef, Guar ef, Post ef]"
+      and  p1: "\<forall>ef\<in>es. pre \<subseteq> Pre ef"
+      and  p2: "\<forall>ef\<in>es. rely \<subseteq> Rely ef"
+      and  p3: "\<forall>ef\<in>es. Guar ef \<subseteq> guar"
+      and  p4: "\<forall>ef\<in>es. Post ef \<subseteq> post"
+      and  p5: "\<forall>ef1 ef2. ef1\<in>es \<and> ef2\<in>es \<longrightarrow> Post ef1 \<subseteq> Pre ef2"
+      and  p6: "stable pre rely"
+      and  p7: "\<forall>s. (s, s)\<in>guar"
+      and  p8: "esl\<in>cpts_es"
+      and  p9: "esl = (EvtSys es, s, x) # (EvtSeq e (EvtSys es), s1,x1) # xs"
+      and  p10: "esl\<in>assume_es(pre,rely)"
+  let ?elst = "tl (parse_es_cpts_i2 esl es [[]])"
+  from p9 p8 have a0: "concat ?elst = esl" using parse_es_cpts_i2_concat3 by metis
+
+  from p9 p8 have a1: "\<forall>i. i < length ?elst \<longrightarrow> length (?elst!i) \<ge> 2 \<and>
+      getspc_es (?elst!i!0) = EvtSys es \<and> getspc_es (?elst!i!1) \<noteq> EvtSys es"
+    using parse_es_cpts_i2_start_aux by metis
+
+  from p0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p10
+  have "\<forall>i.  i < length ?elst \<longrightarrow> ?elst ! i \<in> preserves_es"
+      using EventSys_sound_aux_i_preserve 
+        [of es Pre Rely Guar Post pre rely guar post esl s x e s1 x1 xs ?elst] by blast
+    then show ?thesis
+      by (rule concat_preserve, simp add: a0)
+  qed
 
 
 lemma EventSys_sound : 
@@ -6575,11 +7191,11 @@ lemma EventSys_sound :
       and  p5: "\<forall>ef1 ef2. ef1\<in>es \<and> ef2\<in>es \<longrightarrow> Post ef1 \<subseteq> Pre ef2"
       and  p6: "stable pre rely"
       and  p7: "\<forall>s. (s, s)\<in>guar"
-    then have "\<forall>s x. (cpts_of_es (EvtSys es) s x) \<inter> assume_es(pre, rely) \<subseteq> commit_es(guar, post)"
+    then have "\<forall>s x. (cpts_of_es (EvtSys es) s x) \<inter> assume_es(pre, rely) \<subseteq> commit_es(guar, post) \<inter> preserves_es"
       proof-
       {
         fix s x
-        have "\<forall>esl. esl\<in>(cpts_of_es (EvtSys es) s x) \<inter> assume_es (pre, rely) \<longrightarrow> esl\<in> commit_es (guar, post)"
+        have "\<forall>esl. esl\<in>(cpts_of_es (EvtSys es) s x) \<inter> assume_es (pre, rely) \<longrightarrow> esl\<in> commit_es (guar, post) \<inter> preserves_es"
           proof -
           {
             fix esl
@@ -6588,15 +7204,15 @@ lemma EventSys_sound :
             then have a1_1: "esl!0 = (EvtSys es, s, x)" by (simp add:cpts_of_es_def)
             from a1 have a1_2: "esl \<in> cpts_es" by (simp add:cpts_of_es_def)
             from a0 have a2: "esl\<in>assume_es (pre, rely)" by simp
-            then have "\<forall>i. Suc i<length esl \<longrightarrow> (\<exists>t. esl!i -es-t\<rightarrow> esl!(Suc i)) \<longrightarrow> 
-            ann_preserves_es (esl!i) \<and> (gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
+            then have  "\<forall>i. Suc i<length esl \<longrightarrow> (\<exists>t. esl!i -es-t\<rightarrow> esl!(Suc i)) \<longrightarrow> 
+                          (gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
               proof -
               {
                 fix i
                 assume b0: "Suc i<length esl"
                   and  b1: "\<exists>t. esl!i -es-t\<rightarrow> esl!(Suc i)"
                 then obtain t where b2: "esl!i -es-t\<rightarrow> esl!(Suc i)" by auto
-                from a1_2 b0 b1 have "ann_preserves_es (esl!i) \<and> (gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
+                from a1_2 b0 b1 have "(gets_es (esl!i), gets_es (esl!Suc i)) \<in> guar"
                   proof(cases "\<forall>i. Suc i \<le> length esl \<longrightarrow> getspc_es (esl ! i) = EvtSys es")
                     assume c0: "\<forall>i. Suc i \<le> length esl \<longrightarrow> getspc_es (esl ! i) = EvtSys es"
 
@@ -6682,7 +7298,7 @@ lemma EventSys_sound :
                     
                     from p0 p1 p2 p3 p4 p5 p6 p7 c7 c8 c10 
                     have c11: "\<forall>i. Suc i<length ?esl \<longrightarrow> (\<exists>t. ?esl!i -es-t\<rightarrow> ?esl!(Suc i)) \<longrightarrow> 
-                    ann_preserves_es (?esl!i) \<and> (gets_es (?esl!i), gets_es (?esl!Suc i)) \<in> guar" 
+                          (gets_es (?esl!i), gets_es (?esl!Suc i)) \<in> guar" 
                       using EventSys_sound_0 
                           [of es Pre Rely Guar Post pre rely guar post ?esl s x e s1 x1 xs] by simp
                     
@@ -6694,7 +7310,7 @@ lemma EventSys_sound :
                     moreover
                     from b1 c12 c13 have "\<exists>t. ?esl ! (i - n) -es-t\<rightarrow> ?esl ! Suc (i - n)" by simp
                     ultimately 
-                    have "ann_preserves_es (?esl ! (i - n)) \<and> (gets_es (?esl ! (i - n)), gets_es (?esl ! Suc (i - n))) \<in> guar" 
+                    have "(gets_es (?esl ! (i - n)), gets_es (?esl ! Suc (i - n))) \<in> guar" 
                       using c11 by simp
                     
                     with c12 c13 show ?thesis by simp
@@ -6704,16 +7320,90 @@ lemma EventSys_sound :
               }
               then show ?thesis by auto
               qed
-            then have "esl\<in>commit_es (guar, post)" by (simp add:commit_es_def)
-          }
-          then show ?thesis by auto
+              then have l1 : "esl\<in>commit_es (guar, post)" by (simp add:commit_es_def)
+
+              from a2 have "esl \<in> preserves_es"
+              proof(cases "\<forall>i. Suc i \<le> length esl \<longrightarrow> getspc_es (esl ! i) = EvtSys es")
+                assume c0: "\<forall>i. Suc i \<le> length esl \<longrightarrow> getspc_es (esl ! i) = EvtSys es"
+                then show ?thesis  by (simp add: preserves_es_def)
+              next
+                assume c0: "\<not> (\<forall>i. Suc i \<le> length esl \<longrightarrow> getspc_es (esl ! i) = EvtSys es)"
+                then obtain m where c1: "Suc m \<le> length esl \<and> getspc_es (esl ! m) \<noteq> EvtSys es"
+                  by auto
+                from a1_1 have c2: "getspc_es (esl!0) = EvtSys es" by (simp add:getspc_es_def)
+                from c1 have "\<exists>i. i \<le> m \<and> getspc_es (esl ! i) \<noteq> EvtSys es" by auto
+                with a1_2 a1_1 c1 c2 have "\<exists>i. (i < m \<and> getspc_es (esl ! i) = EvtSys es 
+                                          \<and> getspc_es (esl ! Suc i) \<noteq> EvtSys es) 
+                                          \<and> (\<forall>j. j < i \<longrightarrow> getspc_es (esl ! j) = EvtSys es)" 
+                      using evtsys_fst_ent by blast
+                    then obtain n where c3: "(n < m \<and> getspc_es (esl ! n) = EvtSys es 
+                    \<and> getspc_es (esl ! Suc n) \<noteq> EvtSys es) \<and> (\<forall>j. j < n \<longrightarrow> getspc_es (esl ! j) = EvtSys es)" by auto
+                    let ?esl1 = "take n esl"
+                    let ?esl = "drop n esl"
+                    from c3 have c4: "?esl1 \<in> preserves_es" by (simp add: preserves_es_def)
+
+                    from c1 c3 have c5: "length ?esl \<ge> 2"
+                      by (metis One_nat_def Suc_eq_plus1_left Suc_le_eq length_drop 
+                          less_diff_conv less_trans_Suc numeral_2_eq_2)
+                    from c1 c3 have c6: "getspc_es (?esl!0) = EvtSys es \<and> getspc_es (?esl!1) \<noteq> EvtSys es"
+                      by force
+
+                    from a1_2 c1 c3 have c7: "?esl \<in> cpts_es" using cpts_es_dropi
+                      using cpts_es_dropi2 by fastforce
+                    from c5 c6 c7 have "\<exists>s x ev s1 x1 xs. ?esl = (EvtSys es, s, x) # (EvtSeq ev (EvtSys es), s1,x1) # xs"
+                      using fst_esys_snd_eseq_exist by blast
+                    then obtain s and x and e and s1 and x1 and xs where c8:
+                        "?esl = (EvtSys es, s, x) # (EvtSeq e (EvtSys es), s1,x1) # xs" by auto
+
+                    have c9: "?esl\<in>assume_es(pre,rely)"
+                    proof(cases "n = 0")
+                      assume d0: "n = 0"
+                      then have "?esl = esl" by simp
+                      with a2 show ?thesis by simp
+                    next
+                      assume d0: "n \<noteq> 0"
+                      let ?eslh = "take (n + 1) esl"
+                      from a2 have d1: "\<forall>i. Suc i<length ?esl \<longrightarrow> ?esl!i -ese\<rightarrow> ?esl!(Suc i) 
+                          \<longrightarrow> (gets_es (?esl!i), gets_es (?esl!Suc i)) \<in> rely" by (simp add:assume_es_def)
+                      have "gets_es (?esl!0) \<in> pre"
+                      proof - 
+                        from a2 d0 have "gets_es (?eslh!0) \<in> pre" by (simp add:assume_es_def)
+                        moreover
+                        from a2 have "\<forall>i. Suc i<length ?eslh \<longrightarrow> ?eslh!i -ese\<rightarrow> ?eslh!(Suc i) 
+                              \<longrightarrow> (gets_es (?eslh!i), gets_es (?eslh!Suc i)) \<in> rely" by (simp add:assume_es_def)
+                        ultimately have "?eslh \<in> assume_es(pre, rely)" by (simp add:assume_es_def)
+                        moreover
+                        from c3 have "\<forall>i<length ?eslh. getspc_es (?eslh!i) = EvtSys es"
+                          by (metis Suc_eq_plus1 length_take less_antisym min_less_iff_conj nth_take) 
+                        ultimately have "\<forall>i<length ?eslh. gets_es (?eslh!i) \<in> pre" 
+                          using p6 pre_trans by blast
+                        with d0 have "gets_es (?eslh ! n) \<in> pre"
+                          by (metis (no_types, lifting)  Suc_le_lessD add_Suc c1 c3 le_less_trans 
+                             length_take less_Suc_eq less_imp_le less_imp_le_nat min_less_iff_conj 
+                             plus_1_eq_Suc semiring_normalization_rules(24)) 
+                            then show ?thesis by (simp add: c8 nth_via_drop) 
+                          qed
+                        with d1 show ?thesis by (simp add:assume_es_def)
+                      qed
+                    
+                    from p0 p1 p2 p3 p4 p5 p6 p7 c7 c8 c9 
+                    have c10: "?esl \<in> preserves_es" 
+                      using EventSys_sound_0_preserve 
+                          [of es Pre Rely Guar Post pre rely guar post ?esl s x e s1 x1 xs] by simp
+                    with c4 show ?thesis
+                      by (rule_tac xs = "?esl1" and ys = "?esl" in preserves_es_append, simp_all)
+                  qed
+
+                  with l1 have "esl \<in> commit_es (guar, post) \<inter> preserves_es" by auto
+                }        
+                then show ?thesis by auto
+              qed
+            }
+            then show ?thesis by blast
           qed
-      }
-      then show ?thesis by blast
-      qed
         
-    then show "\<Turnstile> EvtSys es sat\<^sub>s [pre, rely, guar, post]" by (simp add:es_validity_def)
-  qed
+          then show "\<Turnstile> EvtSys es sat\<^sub>s [pre, rely, guar, post]" by (simp add:es_validity_def)
+        qed
 
 
 
@@ -6727,9 +7417,9 @@ lemma esys_seq_sound:
       and  p2: "guar' \<subseteq> guar"
       and  p3: "post' \<subseteq> post"
       and  p4: "\<Turnstile> esys sat\<^sub>s [pre', rely', guar', post']"
-    from p4 have p5: "\<forall>s x. (cpts_of_es esys s x) \<inter> assume_es(pre', rely') \<subseteq> commit_es(guar', post')"
+    from p4 have p5: "\<forall>s x. (cpts_of_es esys s x) \<inter> assume_es(pre', rely') \<subseteq> commit_es(guar', post') \<inter> preserves_es"
       by (simp add: es_validity_def)
-    have "\<forall>s x. (cpts_of_es esys s x) \<inter> assume_es(pre, rely) \<subseteq> commit_es(guar, post)"
+    have "\<forall>s x. (cpts_of_es esys s x) \<inter> assume_es(pre, rely) \<subseteq> commit_es(guar, post) \<inter> preserves_es"
       proof -
       {
         fix c s x
@@ -6737,8 +7427,8 @@ lemma esys_seq_sound:
         then have "c\<in>(cpts_of_es esys s x) \<and> c\<in>assume_es(pre, rely)" by simp
         with p0 p1 have "c\<in>(cpts_of_es esys s x) \<and> c\<in>assume_es(pre', rely')"
           using assume_es_imp[of pre pre' rely rely' c] by simp
-        with p5 have "c\<in>commit_es(guar', post')" by auto
-        with p2 p3 have "c\<in>commit_es(guar, post)" 
+        with p5 have "c\<in>commit_es(guar', post') \<inter> preserves_es" by auto
+        with p2 p3 have "c\<in>commit_es(guar, post) \<inter> preserves_es" 
           using commit_es_imp[of guar' guar post' post c] by simp
       }
       then show ?thesis by auto
@@ -6842,7 +7532,7 @@ lemma conjoin_comm_imp_rely_n[rule_format]:
     from p6 have p8: "\<forall>k. length (cs k) = length c" by (simp add:conjoin_def same_length_def)
     from p4 p6 have p7: "\<forall>k. cs k \<in> cpts_of_es (pes k) s x" using conjoin_imp_cptses_k by auto
     then have p9: "\<forall>k. cs k \<in> cpts_es \<and> cs k !0 = (pes k,s,x)" by (simp add:cpts_of_es_def)
-    from p6 have p10: "\<forall>k j. j < length c \<longrightarrow> gets (c!j) = gets_es ((cs k)!j)" by (simp add:conjoin_def same_state_def)
+    from p6 have p11: "\<forall>k j. j < length c \<longrightarrow> gets (c!j) = gets_es ((cs k)!j)" by (simp add:conjoin_def same_state_def)
     {
       fix n
       have "\<forall>k. n \<le> length (cs k) \<and> n > 0 \<longrightarrow> take n (cs k) \<in> assume_es(Pre k, Rely k)"
@@ -6971,7 +7661,7 @@ lemma conjoin_comm_imp_rely_n[rule_format]:
                             
                             with p8 e1 f0 c0 dd0 have "(gets_es (?esl2 ! (m-1)), gets_es (?esl2 ! m))\<in>Guar k'"
                               by (metis (no_types, lifting) One_nat_def Suc_pred diff_less_Suc length_take lessI min.absorb2 nth_take)
-                            with p3 p10 c0 f0 e2 show ?thesis
+                            with p3 p11 c0 f0 e2 show ?thesis
                               by (smt Suc_diff_1 Suc_leD c3 dd0 le_less_linear not_less_eq_eq nth_take subsetCE)
                           qed
                       next
@@ -6984,7 +7674,7 @@ lemma conjoin_comm_imp_rely_n[rule_format]:
                         from p8 c0 d0 have e1:"Suc i < length c" by simp
                         ultimately have "(gets (c!i), gets (c!Suc i)) \<in> rely" using e0 by simp
                         with p2 have "(gets (c!i), gets (c!Suc i)) \<in> Rely k" by auto
-                        with p8 p10 c0 d0 show ?thesis
+                        with p8 p11 c0 d0 show ?thesis
                           using Suc_lessD e1 d2 by auto 
                       qed
                   }
@@ -7044,7 +7734,7 @@ lemma cpts_es_sat_rely[rule_format]:
       and  p7: "\<forall>k. cs k \<in> cpts_of_es (pes k) s x"
     from p6 have p8: "\<forall>k. length (cs k) = length c" by (simp add:conjoin_def same_length_def)
     from p7 have p9: "\<forall>k. cs k \<in> cpts_es" using cpts_of_es_def mem_Collect_eq by fastforce 
-    from p6 have p10: "\<forall>k j. j < length c \<longrightarrow> gets (c!j) = gets_es ((cs k)!j)" by (simp add:conjoin_def same_state_def)
+    from p6 have p11: "\<forall>k j. j < length c \<longrightarrow> gets (c!j) = gets_es ((cs k)!j)" by (simp add:conjoin_def same_state_def)
     {
       fix n
       have "\<forall>k. n \<le> length (cs k) \<and> n > 0 \<longrightarrow> take n (cs k)\<in>assume_es(Pre k, Rely k)"
@@ -7175,7 +7865,7 @@ lemma cpts_es_sat_rely[rule_format]:
                           
                           with p8 e1 f0 c0 dd0 have "(gets_es (?esl2 ! (m-1)), gets_es (?esl2 ! m))\<in>Guar k'"
                             by (metis (no_types, lifting) One_nat_def Suc_pred diff_less_Suc length_take lessI min.absorb2 nth_take)
-                          with p3 p10 c0 f0 e2 show ?thesis
+                          with p3 p11 c0 f0 e2 show ?thesis
                             by (smt Suc_diff_1 Suc_leD c3 dd0 le_less_linear not_less_eq_eq nth_take subsetCE)
                         qed
                     next
@@ -7188,7 +7878,7 @@ lemma cpts_es_sat_rely[rule_format]:
                       from p8 c0 d0 have e1:"Suc i < length c" by simp
                       ultimately have "(gets (c!i), gets (c!Suc i)) \<in> rely" using e0 by simp
                       with p2 have "(gets (c!i), gets (c!Suc i)) \<in> Rely k" by auto
-                      with p8 p10 c0 d0 show ?thesis
+                      with p8 p11 c0 d0 show ?thesis
                         using Suc_lessD e1 d2 by auto 
                     qed
                 }

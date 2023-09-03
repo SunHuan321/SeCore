@@ -51,7 +51,7 @@ definition evt_validity :: "('l,'k,'s) event \<Rightarrow> 's set \<Rightarrow> 
 
 primrec ann_preserves_es :: "('l,'k,'s) esys \<Rightarrow> 's \<Rightarrow> bool"
   where "ann_preserves_es (EvtSeq e es) s = (ann_preserves_e e s)" |
-        "ann_preserves_es (EvtSys es) s = (\<forall>e \<in> es. ann_preserves_e e s)"
+        "ann_preserves_es (EvtSys es) s = True"
 
 definition assume_es :: "('s set \<times> ('s \<times> 's) set) \<Rightarrow> (('l,'k,'s) esconfs) set" where
   "assume_es \<equiv> \<lambda>(pre, rely). {c. gets_es (c!0) \<in> pre \<and> (\<forall>i. Suc i<length c \<longrightarrow> 
