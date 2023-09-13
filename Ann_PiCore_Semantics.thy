@@ -253,6 +253,12 @@ done
 
 lemma evt_not_eq_in_tran2 [simp]: "\<not>(\<exists>et. (P,s,x) -et-et\<rightarrow> (P,t,y))" by simp
 
+lemma ev_tran_cmd_anony: 
+  "\<lbrakk>(e1, s1, x1) -et-(Cmd x\<sharp>k)\<rightarrow> (e2, s2, x2)\<rbrakk> \<Longrightarrow> e1 = AnonyEvent x"
+  apply(rule etran.cases)
+  by (simp add: get_actk_def)+
+
+
 subsubsection \<open>Event Systems\<close>
 
 lemma esconf_trip: "\<lbrakk>gets_es c = s; getspc_es c = spc; getx_es c = x\<rbrakk> \<Longrightarrow> c = (spc,s,x)"
@@ -448,6 +454,15 @@ lemma cmd_enable_impl_anonyevt:
   apply (simp add: get_actk_def)+
   done
 
+lemma evtseq_cmd_tran_anonyevt: 
+    "\<lbrakk>(es, s, x) -es-(Cmd c)\<sharp>k\<rightarrow> (es', s', x')\<rbrakk> 
+        \<Longrightarrow> \<exists> es1. es = EvtSeq (AnonyEvent c) es1"
+  apply(rule estran.cases)
+     apply (simp add: get_actk_def)+
+   apply (simp add: ev_tran_cmd_anony get_actk_def)
+  by (simp add: ev_tran_cmd_anony get_actk_def)
+
+
 lemma cmd_enable_impl_notesys: 
     "\<lbrakk>(es, s, x) -es-(Cmd c)\<sharp>k\<rightarrow> (es', s', x')\<rbrakk> 
         \<Longrightarrow> \<not>(\<exists>ess. es = EvtSys ess)"
@@ -638,5 +653,30 @@ lemma evtent_in_pes_notchgstate: "\<lbrakk>(pes, s, x) -pes-(EvtEnt e)\<sharp>k\
   
 lemma evtent_in_pes_notchgstate2: "\<lbrakk>esc1 -pes-(EvtEnt e)\<sharp>k\<rightarrow> esc2\<rbrakk> \<Longrightarrow> gets esc1 = gets esc2"
   using evtent_in_pes_notchgstate by (metis pesconf_trip) 
+
+lemma pes_cmd_tran_anonyevt: "\<lbrakk>(pes, s, x) -pes-(Cmd c)\<sharp>k\<rightarrow> (pes', s', x')\<rbrakk> \<Longrightarrow> \<exists>es. pes k = EvtSeq (AnonyEvent c) es"
+  apply (rule pestran.cases)
+   apply (simp add: get_actk_def)+
+  by (simp add: evtseq_cmd_tran_anonyevt get_actk_def)
+
+
+lemma pes_cmd_tran_anonyevt1: "\<lbrakk>(pes, s, x) -pes-(Cmd c)\<sharp>k\<rightarrow> (pes', s', x')\<rbrakk> \<Longrightarrow> 
+                               \<exists>e. ((AnonyEvent c), s , x) -et-(Cmd c)\<sharp>k\<rightarrow> (e, s', x')"
+proof-
+  assume c0: "(pes, s, x) -pes-(Cmd c)\<sharp>k\<rightarrow> (pes', s', x')"
+  then have "\<exists>es. pes k = EvtSeq (AnonyEvent c) es" 
+    by (meson pes_cmd_tran_anonyevt)
+  then obtain es where "pes k = EvtSeq (AnonyEvent c) es" by auto
+  then have "\<exists>es'. ((EvtSeq (AnonyEvent c) es), s, x)-es-(Cmd c)\<sharp>k\<rightarrow>(es', s', x')"
+    using c0 pestran_estran by fastforce
+  then obtain es' where "((EvtSeq (AnonyEvent c) es), s, x)-es-(Cmd c)\<sharp>k\<rightarrow>(es', s', x')" by auto
+  then show ?thesis
+    apply (rule estran.cases)
+      apply (simp add: get_actk_def)+
+     apply blast
+    by auto
+qed
+
+
 
 end

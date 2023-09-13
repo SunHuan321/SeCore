@@ -700,6 +700,7 @@ lemma noevtent_inmid_eq:
       = (\<forall>j. j > 0 \<and> Suc j < length esl \<longrightarrow> getspc_es (esl ! j) = EvtSys es \<longrightarrow> getspc_es (esl ! Suc j) = EvtSys es)"
       by blast
 
+
 lemma evtseq_next_in_cpts:
   "esl\<in>cpts_es \<Longrightarrow> \<forall>i. Suc i < length esl \<and> getspc_es (esl!i) = EvtSeq e esys
                        \<longrightarrow> getspc_es (esl!Suc i) = esys \<or> (\<exists>e. getspc_es (esl!Suc i) = EvtSeq e esys)"

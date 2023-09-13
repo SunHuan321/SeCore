@@ -4107,6 +4107,41 @@ lemma concat_list_lemma_take_n2 [rule_format]:
       qed
   qed
 
+lemma concat_list_lemma_i : "\<lbrakk>esl = concat lst; i < length esl\<rbrakk> \<Longrightarrow> \<exists>k j. k < length lst \<and> j < (length (lst ! k)) \<and>
+        esl ! i = lst ! k ! j "
+proof(induct lst arbitrary: i esl)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a lst)
+  assume a0: "\<And>i esl. esl = concat lst \<Longrightarrow> i < length esl \<Longrightarrow> \<exists>k j. k < length lst \<and> j < length (lst ! k) \<and> esl ! i = lst ! k ! j"
+     and a1: "esl = concat (a # lst)"
+     and a2: "i < length esl"
+  from a1 have b0 : "esl = a @ concat lst" by simp
+  then show ?case 
+  proof(cases "i < length a")
+    assume c0: "i < length a"
+    with b0 have "esl ! i = a ! i" by (simp add: nth_append)
+    then have "esl ! i = (a # lst) ! 0 ! i" by simp
+    with c0 show ?case by fastforce
+  next
+    let ?j = "i - length a"
+    let ?esl1 = "concat lst"
+
+    assume d0: "\<not> i < length a"
+    with b0 have "esl ! i = concat lst ! ?j" by (simp add: nth_append)
+    from b0 d0 have d1 : "?j < length ?esl1" using Cons.prems(2) by auto
+
+    with a0 have "\<exists>k j. k < length lst \<and> j < length (lst ! k) \<and> ?esl1 ! ?j = lst ! k ! j " by simp
+    then obtain k and j where  "k < length lst \<and> j < length (lst ! k) \<and> ?esl1 ! ?j = lst ! k ! j" by auto
+    then have "Suc k < length (a # lst) \<and> j < length ( (a # lst) ! Suc k) \<and> esl ! i = (a # lst) ! (Suc k) ! j"
+      by (simp add: \<open>esl ! i = concat lst ! (i - length a)\<close>)
+    then show ?case by fastforce
+  qed
+qed
+
+
+
 lemma concat_list_lemma [rule_format]: 
   "\<forall>esl lst. esl = concat lst \<and> (\<forall>i<length lst. length (lst!i) > 0)\<longrightarrow> 
         (\<forall>i. Suc i < length esl 
@@ -4977,6 +5012,22 @@ lemma parse_es_cpts_i2_drop_cptes:
     }
     then show ?thesis by auto
   qed
+
+lemma parse_es_cpts_i2_in_cptes: "\<lbrakk>esl = (EvtSys es, s, x) # (EvtSeq e (EvtSys es), s1,x1) # xs; esl\<in>cpts_es;
+        elst = tl (parse_es_cpts_i2 esl es [[]]); i < length elst\<rbrakk> \<Longrightarrow> elst!i \<in>cpts_es"
+proof-
+  assume p0: "esl = (EvtSys es, s, x) # (EvtSeq e (EvtSys es), s1,x1) # xs"
+    and  p1: "esl\<in>cpts_es"
+    and  p2: "elst = tl (parse_es_cpts_i2 esl es [[]])"
+    and  p3: "i < length elst"
+    then have p4: "concat elst = esl" using parse_es_cpts_i2_concat3 by metis
+    from p0 p1 p2 have p5: "\<forall>i. i < length elst \<longrightarrow> elst ! i \<noteq> []"
+      by (metis list.size(3) not_numeral_le_zero parse_es_cpts_i2_start_aux)
+    with p3 p4 have "\<exists>m n. m \<le> length esl \<and> n \<le> length esl \<and> m \<le> n \<and> elst ! i = take (n - m) (drop m esl)"
+      using concat_i_lm1[of elst esl i] by simp
+    with p1 p3 p5  show ?thesis by (metis cpts_es_seg2)
+  qed
+
 
 lemma parse_es_cpts_i2_in_cptes_i: 
   "\<lbrakk>esl = (EvtSys es, s, x) # (EvtSeq e (EvtSys es), s1,x1) # xs; esl\<in>cpts_es;
@@ -7130,6 +7181,9 @@ lemma preserves_es_append1 : "\<lbrakk>l \<in> preserves_es; l = xs @ ys \<rbrak
   apply (erule_tac x = "length xs + i" in allE, simp add: nth_append)
   done
 
+lemma preserves_e_append : "\<lbrakk> l = xs @ ys; xs \<in> preserves_e; ys \<in> preserves_e \<rbrakk> \<Longrightarrow> l \<in> preserves_e"
+  by (simp add: preserves_e_def nth_append)
+
 lemma concat_preserve : "\<lbrakk>\<forall>i. i < length elst \<longrightarrow> elst ! i \<in> preserves_es; concat elst = esl \<rbrakk>
                           \<Longrightarrow> esl \<in> preserves_es"
   apply (induct elst arbitrary: esl, simp add: preserves_es_def)
@@ -8131,9 +8185,9 @@ lemma parallel_seq_sound:
       and  p2: "guar' \<subseteq> guar"
       and  p3: "post' \<subseteq> post"
       and  p4: "\<Turnstile> pes SAT [pre', rely', guar', post']"
-    from p4 have p5: "\<forall>s x. (cpts_of_pes pes s x) \<inter> assume_pes(pre', rely') \<subseteq> commit_pes(guar', post')"
+    from p4 have p5: "\<forall>s x. (cpts_of_pes pes s x) \<inter> assume_pes(pre', rely') \<subseteq> commit_pes(guar', post') \<inter> preserves_pes"
       by (simp add: pes_validity_def)
-    have "\<forall>s x. (cpts_of_pes pes s x) \<inter> assume_pes(pre, rely) \<subseteq> commit_pes(guar, post)"
+    have "\<forall>s x. (cpts_of_pes pes s x) \<inter> assume_pes(pre, rely) \<subseteq> commit_pes(guar, post) \<inter> preserves_pes"
       proof -
       {
         fix c s x
@@ -8141,8 +8195,8 @@ lemma parallel_seq_sound:
         then have "c\<in>(cpts_of_pes pes s x) \<and> c\<in>assume_pes(pre, rely)" by simp
         with p0 p1 have "c\<in>(cpts_of_pes pes s x) \<and> c\<in>assume_pes(pre', rely')"
           using assume_pes_imp[of pre pre' rely rely' c] by simp
-        with p5 have "c\<in>commit_pes(guar', post')" by auto
-        with p2 p3 have "c\<in>commit_pes(guar, post)" 
+        with p5 have "c\<in>commit_pes(guar', post') \<inter> preserves_pes" by auto
+        with p2 p3 have "c\<in>commit_pes(guar, post) \<inter> preserves_pes" 
           using commit_pes_imp[of guar' guar post' post c] by simp
       }
       then show ?thesis by auto
