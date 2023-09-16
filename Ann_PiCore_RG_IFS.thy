@@ -433,7 +433,6 @@ proof-
             let ?pes = "paresys_spec pesf"
             let ?i = "length (c1 @ [C1']) - 2"
 
-
             have "\<exists>\<S>. AnonyEvent c \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)"
             proof-
               {
