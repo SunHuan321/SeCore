@@ -428,11 +428,37 @@ proof-
               with c0 c14 show ?thesis by (metis actk.iffs get_actk_def)
             qed
 
-
-
             let ?pes = "paresys_spec pesf"
             let ?i = "length (c1 @ [C1']) - 2"
+            have "\<exists>\<S>. AnonyEvent c \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)"
+            proof-
+              {
+                have "\<exists>el ef j. ef \<in> all_evts pesf \<and> getspc_e (el!0) = E\<^sub>e ef \<and> j < length el \<and>
+                      el!j = rm_evtsys1 ((getspc C1 k), gets C1, getx C1) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
+                  using act_cptpes_sat_e_sim[rule_format, of pesf "{s0}" UNIV s0 evtrgfs "c1 @ [C1']"
+                        x0 ?i k] parsys_sat_rg all_evts_are_basic evt_in_parsys_in_evtrgfs c1 c3 c4 c5 c50 c52
+                  by (smt One_nat_def Suc_1 Suc_diff_Suc Suc_less_eq diff_less insertI1 
+                      length_append_singleton zero_less_Suc)
+                then obtain el and ef and j where e0: "ef \<in> all_evts pesf \<and> getspc_e (el!0) = E\<^sub>e ef \<and> j < length el \<and>
+                      el!j = rm_evtsys1 ((getspc C1 k), gets C1, getx C1) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
+                  by auto
+                with p1 have "\<exists>\<S>. (E\<^sub>e ef) \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)" by blast
+                then obtain \<S> where e1: "(E\<^sub>e ef) \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)" by auto
 
+                from b5 b8 b12 c0 have "\<exists>es. getspc C1 k = EvtSeq (AnonyEvent c) es"
+                  by (metis evtseq_cmd_tran_anonyevt fst_conv getspc_def)
+                then obtain es where "getspc C1 k = EvtSeq (AnonyEvent c) es" by auto
+                with e0 b8 have e2: "el!j = (AnonyEvent c, s1, x1)" 
+                  using rm_evtsys1_def rm_evtsys0_def
+                  by (metis EvtSeqrm esconf_trip pesconf_trip prod.inject) 
+                  
+                  
+    
+
+
+              }
+
+(*
             have "\<exists>\<S>. AnonyEvent c \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)"
             proof-
               {
@@ -452,7 +478,7 @@ proof-
                     apply (simp add: compat_tran_def)
                     apply (erule_tac x = "?i" in allE, simp)
                     by (metis One_nat_def c1 diff_Suc_1 lessI pes_tran_not_etran1)
-                qed
+                      qed
 
                 then have  "\<exists>es. getspc_es ((cs k)!?i) = EvtSeq (AnonyEvent c) es"
                 proof-
@@ -524,6 +550,7 @@ proof-
               }
               then show ?thesis by auto
             qed
+*)
         then obtain \<S> where d0: "AnonyEvent c \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)" by auto
 
         have d1: "ann_preserves_e (AnonyEvent c) s1"

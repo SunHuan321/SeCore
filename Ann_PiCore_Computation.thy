@@ -752,7 +752,7 @@ lemma evtseq_next_in_cpts:
       }
       then show ?thesis by auto
       qed
-  qed
+    qed
 
 lemma evtseq_next_in_cpts_anony:
   "esl\<in>cpts_es \<Longrightarrow> \<forall>i. Suc i < length esl \<and> getspc_es (esl!i) = EvtSeq e esys \<and> is_anonyevt e
@@ -998,6 +998,15 @@ lemma evtsys_all_es_in_cpts_anony:
   qed
 
 
+lemma evtseq_all_es_in_cpts:
+  "\<lbrakk>esl\<in>cpts_es;  getspc_es (esl!0) = EvtSeq e esys;\<forall>i. i < length esl \<longrightarrow> getspc_es (esl!i) \<noteq> esys;
+    i < length esl; getspc_es (esl!i) \<noteq> esys\<rbrakk> \<Longrightarrow> \<exists>e. getspc_es (esl!i) = EvtSeq e esys"
+  apply (induct i, simp)
+  apply (subgoal_tac "\<exists>e. getspc_es (esl ! i) = EvtSeq e esys")
+  using evtseq_next_in_cpts apply blast
+  using Suc_lessD by blast
+
+
 lemma not_anonyevt_none_in_evtseq:
     "\<lbrakk>esl\<in>cpts_es; esl = (EvtSeq e es,s1,x1)#(es,s2,x2)#xs \<rbrakk> \<Longrightarrow> e \<noteq> AnonyEvent None"
   apply(rule cpts_es.cases)
@@ -1197,6 +1206,8 @@ lemma incpts_es_eseq_not_evtent:
         
     with a0 show ?thesis by (simp add: Cons_nth_drop_Suc Suc_lessD) 
   qed
+
+
 
 lemma evtsys_not_eq_in_tran_aux:"(P,s,x) -es-est\<rightarrow> (Q,t,y) \<Longrightarrow> P \<noteq> Q"
   apply(erule estran.cases)
