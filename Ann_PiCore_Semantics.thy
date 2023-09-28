@@ -372,7 +372,10 @@ lemma evtent_is_basicevt_inevtseq: "\<lbrakk>(EvtSeq e es,s1,x1) -es-EvtEnt e1\<
   apply(simp add:get_actk_def)+
   apply auto[1]
   by (metis ent_spec1 esys.inject(1) evtent_is_basicevt get_actk_def)
-  
+
+lemma evtent_is_basicevt_inevtseq1: "is_anonyevt e \<Longrightarrow> \<nexists>e1. (EvtSeq e es, s, x) -es-EvtEnt e1\<sharp>k\<rightarrow> (esc2,s2,x2)"
+  by (meson evtseq_no_evtent)
+
 lemma evtent_is_basicevt_inevtseq2: "\<lbrakk>esc1 -es-EvtEnt e1\<sharp>k\<rightarrow> esc2; getspc_es esc1 = EvtSeq e es\<rbrakk> 
     \<Longrightarrow> e = e1 \<and> (\<exists>e'. e = BasicEvent e')"
   proof -
@@ -442,6 +445,12 @@ lemma evtsys_evtent: "(EvtSys es, s, x) -es-t\<rightarrow> (es2, s1,x1) \<Longri
 lemma act_in_es_notchgstate: "\<lbrakk>(es, s, x) -es-(Cmd c)\<sharp>k\<rightarrow> (es', s', x')\<rbrakk> \<Longrightarrow> x = x'"
   apply(rule estran.cases)
   by (simp add: get_actk_def)+
+
+lemma evtseq_notchgx: "\<lbrakk>(EvtSeq e es, s, x) -es-t\<rightarrow> (es2, s1,x1)\<rbrakk> \<Longrightarrow> x = x1"
+  apply (rule estran.cases)
+     apply (simp)+
+  done
+
 
 lemma cmd_enable_impl_anonyevt: 
     "\<lbrakk>(es, s, x) -es-(Cmd c)\<sharp>k\<rightarrow> (es', s', x')\<rbrakk> 
@@ -623,7 +632,12 @@ lemma estran_impl_evtentorcmd2': "\<lbrakk>esc1 -es-t\<sharp>k\<rightarrow> esc2
     ultimately show ?thesis using p0 estran_impl_evtentorcmd'[of es1 s1 x1 t k es2 s2 x2] by simp 
   qed
 
-  
+lemma estran_impl_evtseq_basic_evtent: "\<lbrakk>is_basicevt e; (EvtSeq e es, s, x) -es-act\<sharp>k\<rightarrow> (EvtSeq e' es, s', x')\<rbrakk>
+                                        \<Longrightarrow> act = EvtEnt e"
+  by (metis act.exhaust cmd_enable_impl_anonyevt2 esys.inject(1) evtent_is_basicevt_inevtseq2 
+      getspc_es_def is_basicevt.simps(1) prod.sel(1))
+
+
 subsubsection \<open>Parallel Event Systems\<close>
 
 lemma pesconf_trip: "\<lbrakk>gets c = s; getspc c = spc; getx c = x\<rbrakk> \<Longrightarrow> c = (spc,s,x)"

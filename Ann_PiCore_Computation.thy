@@ -811,6 +811,7 @@ lemma evtseq_next_in_cpts_anony:
       qed
   qed
 
+
 lemma evtsys_next_in_cpts:
   "esl\<in>cpts_es \<Longrightarrow> \<forall>i. Suc i < length esl \<and> getspc_es (esl!i) = EvtSys es 
                        \<longrightarrow> getspc_es (esl!Suc i) = EvtSys es \<or> (\<exists>e. getspc_es (esl!Suc i) = EvtSeq e (EvtSys es))"
@@ -995,16 +996,80 @@ lemma evtsys_all_es_in_cpts_anony:
       }
       then show ?thesis by auto
       qed
-  qed
-
+    qed
 
 lemma evtseq_all_es_in_cpts:
-  "\<lbrakk>esl\<in>cpts_es;  getspc_es (esl!0) = EvtSeq e esys;\<forall>i. i < length esl \<longrightarrow> getspc_es (esl!i) \<noteq> esys;
-    i < length esl; getspc_es (esl!i) \<noteq> esys\<rbrakk> \<Longrightarrow> \<exists>e. getspc_es (esl!i) = EvtSeq e esys"
+  "\<lbrakk>esl\<in>cpts_es;  getspc_es (esl!0) = EvtSeq e esys; j \<le> length esl; \<forall>i. i < j \<longrightarrow> getspc_es (esl!i) \<noteq> esys;
+    i < j\<rbrakk> \<Longrightarrow> \<exists>e'. getspc_es (esl!i) = EvtSeq e' esys"
   apply (induct i, simp)
   apply (subgoal_tac "\<exists>e. getspc_es (esl ! i) = EvtSeq e esys")
-  using evtseq_next_in_cpts apply blast
+  using evtseq_next_in_cpts less_le_trans apply blast
   using Suc_lessD by blast
+
+lemma evtseq_all_es_in_cpts_anony:
+  "\<lbrakk>esl\<in>cpts_es;  getspc_es (esl!0) = EvtSeq e esys; is_anonyevt e; \<forall>i. Suc i < length esl 
+   \<longrightarrow> getspc_es (esl!i) \<noteq> esys; Suc i < length esl\<rbrakk> \<Longrightarrow> \<exists>e'. getspc_es (esl!i) = EvtSeq e' esys \<and> is_anonyevt e'"
+  apply (induct i, simp)
+  apply (subgoal_tac "\<exists>e'. getspc_es (esl ! i) = EvtSeq e' esys \<and> is_anonyevt e'")
+  using Suc_lessD evtseq_next_in_cpts_anony apply blast
+  using Suc_lessD by blast
+
+lemma evtseq_all_es_in_cpts_anony1:
+  "\<lbrakk>esl\<in>cpts_es;  getspc_es (esl!0) = EvtSeq e esys; is_anonyevt e; \<forall>i. Suc i < length esl 
+   \<longrightarrow> getspc_es (esl!i) \<noteq> esys; Suc i < length esl\<rbrakk> \<Longrightarrow> \<nexists>e. esl ! i -es-EvtEnt e\<sharp>k\<rightarrow> esl ! Suc i"
+  by (meson evtseq_all_es_in_cpts_anony evtseq_no_evtent2)
+  
+lemma evtseq_all_es_in_cpts_anony2:
+  "\<lbrakk>esl\<in>cpts_es; j < length esl; getspc_es (esl!j) = EvtSeq e esys; is_anonyevt e; \<forall>i. Suc i < length esl 
+   \<longrightarrow> getspc_es (esl!i) \<noteq> esys; i \<ge> j; Suc i < length esl\<rbrakk> \<Longrightarrow> \<nexists>e. esl ! i -es-EvtEnt e\<sharp>k\<rightarrow> esl ! Suc i"
+proof-
+  assume p0: "esl\<in>cpts_es"
+     and p1: "j < length esl"
+     and p2: "getspc_es (esl!j) = EvtSeq e esys"
+     and p3: "is_anonyevt e"
+     and p4: "\<forall>i. Suc i < length esl \<longrightarrow> getspc_es (esl!i) \<noteq> esys"
+     and p5: "i \<ge> j"
+     and p6: "Suc i < length esl"
+  let ?esl1 = "drop j esl"
+  from p0 p1 have a0: "?esl1 \<in> cpts_es" by (simp add: cpts_es_dropi2)
+  from p1 p2 have a1: "getspc_es (?esl1!0) = EvtSeq e esys" by (simp add: less_or_eq_imp_le)
+  from p1 p5 have a2: "esl ! i = ?esl1 ! (i - j)" by (simp add: less_imp_le p1 p5)
+  from p5 p6 have a3: "Suc (i - j) < length ?esl1" by auto
+  from p4 have a4: "\<forall>i. Suc i < length ?esl1 \<longrightarrow> getspc_es (?esl1!i) \<noteq> esys" by simp
+  with a0 a1 a2 a3 p3 show ?thesis using evtseq_all_es_in_cpts_anony1[of ?esl1 e esys "i - j"]
+    by (metis evtseq_all_es_in_cpts_anony evtseq_no_evtent2)
+qed
+
+lemma no_chg_x_in_evtseq: "\<lbrakk>esl\<in>cpts_es;  getspc_es (esl!0) = EvtSeq e esys; \<forall>i. Suc i < length esl 
+      \<longrightarrow> getspc_es (esl!i) \<noteq> esys; i < length esl\<rbrakk> \<Longrightarrow>  getx_es (esl!i) = getx_es (esl!0)"
+proof-
+  assume a0: "esl\<in>cpts_es"
+    and  a1: "getspc_es (esl!0) = EvtSeq e esys"
+    and  a2: "\<forall>i. Suc i < length esl \<longrightarrow> getspc_es (esl!i) \<noteq> esys"
+    and  a3: "i < length esl"
+  then show ?thesis
+  proof(induct i)
+    case 0
+    then show ?case by blast
+  next
+    case (Suc i)
+    assume b0: "esl \<in> cpts_es \<Longrightarrow> getspc_es (esl ! 0) = EvtSeq e esys \<Longrightarrow> \<forall>i. Suc i < length esl \<longrightarrow> 
+                getspc_es (esl ! i) \<noteq> esys \<Longrightarrow> i < length esl \<Longrightarrow> getx_es (esl ! i) = getx_es (esl ! 0)"
+    and    b1: "esl \<in> cpts_es"
+    and    b2: "getspc_es (esl ! 0) = EvtSeq e esys"
+    and    b3: "\<forall>i. Suc i < length esl \<longrightarrow> getspc_es (esl ! i) \<noteq> esys"
+    and    b4: "Suc i < length esl"
+    from b4 have "i < length esl" by auto
+    with b0 b1 b2 b3 have b5: "getx_es (esl ! i) = getx_es (esl ! 0)" by auto
+    from b1 b2 b3 b4 have "\<forall>i. Suc i < length esl \<longrightarrow> (\<exists>ei. getspc_es (esl!i) = EvtSeq ei esys)"
+      using evtseq_all_es_in_cpts[of esl e esys "length esl - 1"] by auto
+    with b4 have "\<exists>ei. getspc_es (esl!i) = EvtSeq ei esys" by auto
+    then have "\<exists>s x ei. esl!i = (EvtSeq ei esys, s, x)" by (metis esconf_trip)
+    then obtain s and x and ei where "esl!i = (EvtSeq ei esys, s, x)" by auto
+    with b4 have "getx_es (esl!(Suc i)) = getx_es (esl ! i)" sorry
+    with b5 show ?case by auto
+  qed
+qed
 
 
 lemma not_anonyevt_none_in_evtseq:

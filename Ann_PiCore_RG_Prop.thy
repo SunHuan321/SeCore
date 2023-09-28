@@ -32,6 +32,7 @@ lemma all_evts_same: "Domain (all_evts_es rgfes) = all_evts_esspec (evtsys_spec 
    E\<^sub>e_def fsts.intros apply force
   done
 
+
 lemma allbasicevts_es_blto_allevts: "all_basicevts_es esys \<subseteq> all_evts_esspec esys"
   apply(induct esys)
   apply auto[1]
@@ -92,6 +93,7 @@ lemma etran_nchg_curevt:
     }
     then show ?thesis by auto
   qed
+
 
 lemma compt_notevtent_iscmd:
   "c \<propto> cs \<Longrightarrow> \<forall>k i. Suc i < length (cs k) \<and> (\<exists>actk. c!i-pes-actk\<rightarrow>c!Suc i) 
@@ -1161,6 +1163,111 @@ lemma cur_evt_in_cpts_es:
     then show ?thesis by auto
   qed
 
+lemma evtseq_nchg_curevt: "\<lbrakk>c \<propto> cs; Suc i < length (cs k); (cs k ! i) -es-(Cmd cmd)\<sharp>k\<rightarrow> (cs k ! Suc i);
+                           cs k \<in> cpts_of_es (EvtSeq e es) s x; 
+                           \<forall>e \<in> all_evts_esspec (EvtSeq e es). is_basicevt e; 
+                           \<forall>i. Suc i < length (cs k) \<longrightarrow> getspc_es ((cs k)!i) \<noteq> es;
+                           \<forall>i. Suc i < length c \<longrightarrow> (\<exists>actk. ((c ! i) -pes-actk\<rightarrow> (c ! Suc i)))\<rbrakk>
+                        \<Longrightarrow> getx_es ((cs k)!i) k = e"
+proof-
+  assume p0: "c \<propto> cs"
+     and p1: "Suc i < length (cs k)"
+     and p2: "(cs k ! i) -es-(Cmd cmd)\<sharp>k\<rightarrow> (cs k ! Suc i)"
+     and p3: "cs k \<in> cpts_of_es (EvtSeq e es) s x"
+     and p4: "\<forall>ef \<in> all_evts_esspec (EvtSeq e es). is_basicevt ef"
+     and p5: "\<forall>i. Suc i < length (cs k) \<longrightarrow> getspc_es ((cs k)!i) \<noteq> es"
+     and p6: "\<forall>i. Suc i < length c \<longrightarrow> (\<exists>actk. ((c ! i) -pes-actk\<rightarrow> (c ! Suc i)))"
+  from p0 p1 p2 p3 p4 have "\<exists>m. m < i \<and> (\<exists>e. cs k!m -es-(EvtEnt e\<sharp>k)\<rightarrow> cs k!(Suc m))
+                    \<and> (\<forall>j. j > m \<and> j < i \<longrightarrow> \<not>(\<exists>e. cs k!j -es-(EvtEnt e\<sharp>k)\<rightarrow> cs k!(Suc j)))"
+    using cmd_impl_evtent_before_and_cmds[rule_format, of c cs k "EvtSeq e es" s x i] by blast
+  then obtain m and e1 where a0: "(m < i \<and>  cs k!m -es-(EvtEnt e1\<sharp>k)\<rightarrow> cs k!(Suc m))
+                    \<and> (\<forall>j. j > m \<and> j < i \<longrightarrow> \<not>(\<exists>e. cs k!j -es-(EvtEnt e\<sharp>k)\<rightarrow> cs k!(Suc j)))" by auto
+
+  with p0 p1 p6 have a1 : "\<forall>j. j > m \<and> j \<le> i \<longrightarrow> getx_es ((cs k)!j) k = e1"
+    using evtent_impl_curevt_in_cpts_es[of c cs m k e1 i]  
+    by (smt Suc_lessI dual_order.strict_trans entevt_ines_chg_selfx2 le_eq_less_or_eq not_less_eq)
+
+  have "\<exists>jj \<le> i. getspc_es ((cs k) ! jj) \<noteq> EvtSeq e es"
+  proof-
+    {
+      assume e0: "\<forall>jj \<le> i. getspc_es ((cs k) ! jj) = EvtSeq e es"
+      with p1 have e1: "getspc_es ((cs k) ! i) = EvtSeq e es" using Suc_lessD by blast
+      from p4 have "is_basicevt e" by simp
+      with a0 e0 have "\<not> (cs k ! i) -es-(Cmd cmd)\<sharp>k\<rightarrow> (cs k ! Suc i)" 
+        by (metis Suc_leI evtsys_not_eq_in_tran_aux1 less_or_eq_imp_le)
+      with p2 have False by blast
+    }
+    then show ?thesis by auto
+  qed
+  with p2 p3 p4 have " \<exists>jj. (jj \<le> i \<and> getspc_es (cs k ! jj) \<noteq> EvtSeq e es) \<and> (\<forall>m < jj. \<not> (m \<le> i \<and> getspc_es (cs k ! m) \<noteq> EvtSeq e es))"
+    using Ex_first_occurrence[of "\<lambda>j. j \<le> i \<and> getspc_es ((cs k) ! j) \<noteq> EvtSeq e es"] by blast
+  then obtain jj where a2: "jj \<le> i \<and> getspc_es (cs k ! jj) \<noteq> EvtSeq e es \<and> (\<forall>m < jj. getspc_es (cs k ! m) = EvtSeq e es)"
+    by auto
+
+  with p3 have a3: "jj > 0" 
+    by (metis (mono_tags, lifting) cpts_of_es_def getspc_es_def mem_Collect_eq neq0_conv prod.sel(1)) 
+
+  then have a4: "cs k ! (jj - 1) -es-EvtEnt e\<sharp>k\<rightarrow> cs k ! jj"
+  proof-
+    assume e0: "jj > 0"
+    with a2 have  "getspc_es (cs k ! (jj - 1)) = EvtSeq e es" by auto
+    then have "\<exists>s x. cs k ! (jj - 1) = (EvtSeq e es, s, x)" by (metis esconf_trip)
+    then obtain s and x where e1: "cs k ! (jj - 1) = (EvtSeq e es, s, x)" by auto
+    from p3 p5 have "\<exists>e'. getspc_es (cs k ! jj) = EvtSeq e' es" 
+      using evtseq_all_es_in_cpts[of "cs k" e es "length (cs k) - 1" jj]
+      by (smt Suc_less_eq2 a2 cpts_of_es_def diff_Suc_1 diff_le_self dual_order.strict_trans e0 
+          le_eq_less_or_eq mem_Collect_eq p1)
+    then have "\<exists>e' s' x'. cs k ! jj = (EvtSeq e' es, s', x')" by (metis esconf_trip)
+    then obtain e' and s' and x' where e2: "cs k ! jj = (EvtSeq e' es, s', x')" by auto
+    with e1 p3 a2 have "\<exists>act. (EvtSeq e es, s, x) -es-act\<sharp>k\<rightarrow> (EvtSeq e' es, s', x')"
+      using incpts_es_impl_evnorcomptran[rule_format, of "cs k" "jj - 1"]
+      by (smt One_nat_def Suc_pred \<open>getspc_es (cs k ! (jj - 1)) = EvtSeq e es\<close> acts_in_conjoin_cpts 
+          dual_order.strict_trans e0 esetran_eqconf1 le_imp_less_Suc p0 p1)
+    then obtain act where "(EvtSeq e es, s, x) -es-act\<sharp>k\<rightarrow> (EvtSeq e' es, s', x')" by auto
+    then show ?thesis 
+      using e1 e2 estran_impl_evtseq_basic_evtent p4 by fastforce
+  qed
+
+  from a2 have a5: "\<forall>m< jj - 1. \<nexists>e. cs k ! m -es-EvtEnt e\<sharp>k\<rightarrow> cs k ! Suc m"
+    by (metis One_nat_def Suc_mono Suc_pred a3 evtsys_not_eq_in_tran_aux1 less_SucI)
+
+  have a6: "\<forall>n. n \<ge> jj \<and> n < i \<longrightarrow> (\<nexists>e. cs k ! n -es-EvtEnt e\<sharp>k\<rightarrow> cs k ! Suc n)"
+  proof-
+    {
+      fix n
+      assume e0: " jj \<le> n \<and> n < i"
+      from a2 a3 have  "getspc_es (cs k ! (jj - 1)) = EvtSeq e es" by auto
+      then have "\<exists>s x. cs k ! (jj - 1) = (EvtSeq e es, s, x)" by (metis esconf_trip)
+      then obtain s and x where e1: "cs k ! (jj - 1) = (EvtSeq e es, s, x)" by auto
+      from a3 p3 p5 have "\<exists>e'. getspc_es (cs k ! jj) = EvtSeq e' es" 
+        using evtseq_all_es_in_cpts[of "cs k" e es "length (cs k) - 1" jj]
+        by (smt Suc_less_eq2 a2 cpts_of_es_def diff_Suc_1 diff_le_self dual_order.strict_trans
+          le_eq_less_or_eq mem_Collect_eq p1)
+      then have "\<exists>e' s' x'. cs k ! jj = (EvtSeq e' es, s', x')" by (metis esconf_trip)
+      then obtain e' and s' and x' where e2: "cs k ! jj = (EvtSeq e' es, s', x')" by auto
+      with a4 e1 have e3: "is_anonyevt e'"
+        by (metis a4 e1 esys.inject(1) evtseq_ne_es evtseq_tran_evtseq_anony)
+      from p3 have e4: "cs k \<in> cpts_es" by (simp add:  cpts_of_es_def)
+      from a2 p1 have e5: "jj < length (cs k)"  by linarith
+      with a0 e0 e2 e3 e4 p5 p1 have "\<nexists>e. cs k ! n -es-EvtEnt e\<sharp>k\<rightarrow> cs k ! Suc n"
+      using evtseq_all_es_in_cpts_anony2[of "cs k" jj e' es n k]
+      using  getspc_es_def by force
+    then have "jj \<le> n \<and>  n < i \<longrightarrow> (\<nexists>e. cs k ! n -es-EvtEnt e\<sharp>k\<rightarrow> cs k ! Suc n)"
+      by blast 
+  }
+  then show ?thesis by blast
+qed
+
+
+
+    with a4 a5 have "m = jj - 1"
+      by (metis One_nat_def Suc_pred a0 a3 less_Suc_eq not_le)
+    with a1 a2 a3 a4 have "e1 = e"
+      by (metis Suc_pred' entevt_ines_chg_selfx2 lessI)
+    with a0 a1 show ?thesis by simp
+  qed
+
+
 lemma cur_evt_in_specevts: 
     "\<lbrakk>pesl\<in>cpts_of_pes (paresys_spec pesf) s x; 
       \<forall>j. Suc j < length pesl \<longrightarrow> (\<exists>actk. pesl!j-pes-actk\<rightarrow>pesl!Suc j);
@@ -2014,7 +2121,7 @@ lemma act_cpts_evtsys_sat_e_sim[rule_format]:
            (\<forall>e\<in>all_evts_es esspc. the (evtrgfs (E\<^sub>e e)) = snd e) \<longrightarrow>
            (\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. c!j-pes-actk\<rightarrow>c!Suc j)) \<longrightarrow>
           (\<forall>i. Suc i < length (cs k) \<and> ((cs k)!i -es-((Cmd cmd)\<sharp>k)\<rightarrow> (cs k)!(Suc i)) 
-          \<longrightarrow>  (\<exists>el efa j. efa \<in> all_evts_es esspc \<and> getspc_e (el!0) = E\<^sub>e efa \<and> j < length el \<and> 
+          \<longrightarrow>  (\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and> 
                 el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
   apply(rule rghoare_es.induct[of esspc pre rely guar post]) 
      apply simp
@@ -2077,8 +2184,8 @@ proof-
         fix i
         assume a3: "Suc i < length (cs k)"
           and  a4: "cs k ! i -es-Cmd cmd\<sharp>k\<rightarrow> cs k ! Suc i"
-        have "\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSys esf) \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> j < length el 
-              \<and> el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
+        have "\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and> 
+                el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
           proof(cases "\<forall>i. Suc i \<le> length ?esl \<longrightarrow> getspc_es (?esl ! i) = EvtSys es")
               assume c0: "\<forall>i. Suc i \<le> length ?esl \<longrightarrow> getspc_es (?esl ! i) = EvtSys es"
               with a3 have "getspc_es (?esl ! i) = EvtSys es \<and> getspc_es (?esl ! Suc i) = EvtSys es"
@@ -2431,10 +2538,8 @@ proof-
                     let ?elstl1 = "(EvtSeq e1 (EvtSys es), ?ss1, ?xx1) # xs"
                     let ?el = "(BasicEvent ev, ?ss, ?xx) # rm_evtsys ?elstl1"
 
-                    from d9 c13 have "\<exists>ef. ef \<in> all_evts_es (rgf_EvtSys esf) \<and> E\<^sub>e ef = ente"
-                      by (simp add: Domain_iff E\<^sub>e_def)
-                    then obtain ef where "ef \<in> all_evts_es (rgf_EvtSys esf) \<and> E\<^sub>e ef = ente" by auto
-                    with d13 d14 have d19: "getspc_e (?el!0) = E\<^sub>e ef \<and> ef \<in> all_evts_es (rgf_EvtSys esf)"
+
+                    from d13 d14 have d19: "getspc_e (?el!0) = getx_es (cs k ! i) k"
                       by (simp add: getspc_e_def)
 
                     from c34 c35 d01 d17 have  "?elstl1!(j-1) = (cs k) ! i"
@@ -2469,13 +2574,12 @@ proof-
                     with d220 have d22 : "?el \<in> preserves_e"
                       using preserves_e_append[of ?el "[(BasicEvent ev, ?ss, ?xx)]" "rm_evtsys ?elstl1"]
                       by simp
-                    with d19 d20 d21  show ?thesis by blast
+                    with d19 d20 d21 show ?thesis by blast
                   qed
                 }
                 then have "\<forall>i. Suc i < length (cs k) \<and> cs k ! i -es-Cmd cmd\<sharp>k\<rightarrow> cs k ! Suc i \<longrightarrow>
-                          (\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSys esf) \<and> getspc_e (el ! 0) = E\<^sub>e efa 
-                          \<and> j < length el \<and> el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev 
-                          \<and> el \<in> preserves_e)" by auto
+                          (\<exists>el j. getspc_e (el ! 0) = getx_es (cs k ! i) k \<and> j < length el \<and> el ! j = 
+                          rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)" by auto
               }
               then show " \<forall>c pes s x cs pre1 rely1 Pre Rely Guar Post k cmd.
                           Pre k \<subseteq> prea \<and> Rely k \<subseteq> relya \<and> guara \<subseteq> Guar k \<and> posta \<subseteq> Post k \<longrightarrow>
@@ -2487,9 +2591,8 @@ proof-
                          (\<forall>e\<in>all_evts_es (rgf_EvtSys esf). the (evtrgfs (E\<^sub>e e)) = snd e) \<longrightarrow>
                          (\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. c ! j -pes-actk\<rightarrow> c ! Suc j)) \<longrightarrow> 
                          (\<forall>i. Suc i < length (cs k) \<and> cs k ! i -es-Cmd cmd\<sharp>k\<rightarrow> cs k ! Suc i \<longrightarrow> 
-                         (\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSys esf) \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> 
-                         j < length el \<and> el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> 
-                         el \<in> preserves_e))" by fastforce
+                         (\<exists>el j. getspc_e (el ! 0) = getx_es (cs k ! i) k \<and> j < length el \<and> el ! j = 
+                          rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))" by fastforce
             }
           next
             {
@@ -2513,8 +2616,8 @@ proof-
           (\<forall>e\<in>all_evts_es esys. the (evtrgfs (E\<^sub>e e)) = snd e) \<longrightarrow>
           (\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. c ! j -pes-actk\<rightarrow> c ! Suc j)) \<longrightarrow>
           (\<forall>i. Suc i < length (cs k) \<and> cs k ! i -es-Cmd cmd\<sharp>k\<rightarrow> cs k ! Suc i \<longrightarrow>
-          (\<exists>el efa j. efa \<in> all_evts_es esys \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> j < length el \<and> 
-          el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
+          (\<exists>el j. getspc_e (el ! 0) = getx_es (cs k ! i) k \<and> j < length el \<and> el ! j = rm_evtsys1 
+          (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
               {
                 fix c pes s x cs pre1 rely1 Pre Rely Guar Post k cmd
                 assume a0: "Pre k \<subseteq> prea \<and> Rely k \<subseteq> relya \<and> guara \<subseteq> Guar k \<and> posta \<subseteq> Post k"
@@ -2531,8 +2634,8 @@ proof-
                 from a0 p1 p2 p3 p4 have "Pre k \<subseteq> pre' \<and> Rely k \<subseteq> rely' \<and> guar' \<subseteq> Guar k \<and> post' \<subseteq> Post k" by auto
                 with a1 a2 a3 a5 a6 a7 a8 a9 a10 a11 p1 p2 p3 p4 p6[of Pre k Rely Guar Post c pes s x cs pre1 rely1]
                 have "\<forall>i. Suc i < length (cs k) \<and> cs k ! i -es-Cmd cmd\<sharp>k\<rightarrow> cs k ! Suc i \<longrightarrow>
-                      (\<exists>el efa j. efa \<in> all_evts_es esys \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> j < length el 
-                      \<and> el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)" by force
+                      (\<exists>el j. getspc_e (el ! 0) = getx_es (cs k ! i) k \<and> j < length el \<and> 
+                      el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)" by force
               }
               then show " \<forall>c pes s x cs pre1 rely1 Pre Rely Guar Post k cmd.
                           Pre k \<subseteq> prea \<and> Rely k \<subseteq> relya \<and> guara \<subseteq> Guar k \<and> posta \<subseteq> Post k \<longrightarrow>
@@ -2544,11 +2647,9 @@ proof-
                           (\<forall>e\<in>all_evts_es esys. the (evtrgfs (E\<^sub>e e)) = snd e) \<longrightarrow>
                           (\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. c ! j -pes-actk\<rightarrow> c ! Suc j)) \<longrightarrow>
                           (\<forall>i. Suc i < length (cs k) \<and> cs k ! i -es-Cmd cmd\<sharp>k\<rightarrow> cs k ! Suc i \<longrightarrow>
-                          (\<exists>el efa j. efa \<in> all_evts_es esys \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> 
-                          j < length el \<and> el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> 
-                          el \<in> preserves_e))" by fastforce
-            }
-          
+                          (\<exists>el j. getspc_e (el ! 0) = getx_es (cs k ! i) k \<and> j < length el \<and> el ! j 
+                          = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))" by fastforce
+            }       
           qed
 
 lemma act_cpts_evtseq_sat_e_sim_fstseg_curevt[rule_format]:
@@ -2579,7 +2680,7 @@ lemma act_cpts_evtseq_sat_e_sim_fstseg_curevt[rule_format]:
       and  a01: "\<forall>e\<in>all_evts_es (rgf_EvtSeq ef esf). the (evtrgfs (E\<^sub>e e)) = snd e"
       and  p6: "\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. ((c ! j) -pes-actk\<rightarrow> (c ! Suc j)))"
     shows "\<forall>i. Suc i < length (cs k) \<and> ((cs k ! i) -es-(Cmd cmd)\<sharp>k\<rightarrow> (cs k ! Suc i)) \<longrightarrow>
-               (\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSeq ef esf) \<and> getspc_e (el!0) = E\<^sub>e efa \<and> j < length el \<and> 
+               (\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and> 
                 el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)"
   proof -
     from p1 have p11[rule_format]: "\<forall>k. length (cs k) = length c" by (simp add:conjoin_def same_length_def)
@@ -2637,17 +2738,17 @@ lemma act_cpts_evtseq_sat_e_sim_fstseg_curevt[rule_format]:
       with a3 have c4: "i < length el \<and> el ! i = rm_evtsys1 (?esl!i)"
         by (simp add: rm_evtsys1_def getspc_e_def gets_e_def getx_e_def)
 
-      from a9 have "Suc 0 \<le> length ?esl" by simp
-      with c1 have "getspc_es (?esl!0) = EvtSeq (getspc_e (el!0)) es"
-        by (simp add: e_eqv_einevtseq_def) 
-      with a6 have "EvtSeq (getspc_e (el!0)) es = EvtSeq e es" by simp
-      with b17 have c5: "getspc_e (el!0) = E\<^sub>e ef" by auto
+      from a2 a5 a6 have "\<forall>e \<in> all_evts_esspec (EvtSeq e es). is_basicevt e"
+        by (metis DomainE E\<^sub>e_def all_evts_same fst_conv)
+      with p1 a3 a4 a8 c0 p6 have "getx_es ((cs k) ! i) k = e"
+        using evtseq_nchg_curevt[of c cs i k cmd e es s x]
+        by (simp add: cpts_of_es_def)
+      with c1 p11 p13 have "getspc_e (el!0) = getx_es ((cs k)!i) k"
+        by (metis (no_types, lifting) Suc_leI a6 e_eqv_einevtseq_def esys.inject(1))
 
-      with c1 c3 c4 b19 have "\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSeq ef esf) \<and> getspc_e (el!0) = E\<^sub>e efa 
-                          \<and> j < length el \<and> el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev 
-                          \<and> el \<in> preserves_e" 
+      with c1 c3 c4 have "\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and> 
+                el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e" 
         by (metis (no_types, lifting) cpts_of_ev_def mem_Collect_eq) 
-
     }
 
     then show ?thesis by auto
@@ -2682,7 +2783,7 @@ lemma act_cpts_evtseq_sat_e_sim_curevt_fstseg_withlst_pst [rule_format]:
       and  a01: "\<forall>e\<in>all_evts_es (rgf_EvtSeq ef esf). the (evtrgfs (E\<^sub>e e)) = snd e"
       and  p6: "\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. ((c ! j) -pes-actk\<rightarrow> (c ! Suc j)))"
     shows "(\<forall>i. Suc i < length (cs k) \<and> ((cs k ! i) -es-(Cmd cmd)\<sharp>k\<rightarrow> (cs k ! Suc i)) \<longrightarrow>
-               (\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSeq ef esf) \<and> getspc_e (el!0) = E\<^sub>e efa \<and> j < length el \<and> 
+               (\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and>  
                 el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)) \<and> gets_es (last (cs k))\<in>Post\<^sub>e ef"
   proof -
     from p1 have p11[rule_format]: "\<forall>k. length (cs k) = length c" by (simp add:conjoin_def same_length_def)
@@ -2850,6 +2951,7 @@ lemma act_cpts_evtseq_sat_e_sim_curevt_fstseg_withlst_pst [rule_format]:
     have "gets_e (last ?el1) = sn" using gets_e_def[of "last ?el1"] by simp
     ultimately have "sn\<in>Post\<^sub>e ef" using d10 by (simp add:commit_e_def)
     with d2 have d101: "gets_es (last (cs k)) \<in> Post\<^sub>e ef" by (simp add:gets_es_def)
+
     {
       fix i
 
@@ -2861,13 +2963,14 @@ lemma act_cpts_evtseq_sat_e_sim_curevt_fstseg_withlst_pst [rule_format]:
       from a3 c1 p11 have "getspc_es (?esl!i) = EvtSeq (getspc_e (el!i)) es \<and> gets_es (?esl ! i) = gets_e (el!i)
                      \<and> getx_es (?esl!i) = getx_e (el!i)"
         apply (simp add: e_eqv_einevtseq_def) by auto
+
       with a3 c1 have c3: "i < length el \<and> el!i = rm_evtsys1 (?esl!i)"
         apply (simp add: rm_evtsys1_def getspc_e_def gets_e_def getx_e_def) by auto
 
       from a83 have "Suc 0 \<le> length ?eslh" by simp
       with c1 have "getspc_es (?eslh!0) = EvtSeq (getspc_e (el!0)) es"
         by (simp add: e_eqv_einevtseq_def) 
-      with a82 have "EvtSeq (getspc_e (el!0)) es = EvtSeq e es" by (simp add: getspc_es_def)
+      with a82 have c40: "EvtSeq (getspc_e (el!0)) es = EvtSeq e es" by (simp add: getspc_es_def)
       with b17 have c4: "getspc_e (el!0) = E\<^sub>e ef" by auto
 
       from p14 have "?esl \<in> assume_es(Pre k, Rely k)" by simp
@@ -2883,9 +2986,17 @@ lemma act_cpts_evtseq_sat_e_sim_curevt_fstseg_withlst_pst [rule_format]:
       with b51 b17 c1 have c5: "el \<in> preserves_e" 
         by (meson Int_iff contra_subsetD evt_validity_def rgsound_e)
 
-      with c2 c3 c4 b19 have "\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSeq ef esf) \<and> getspc_e (el!0) = E\<^sub>e efa 
-                          \<and> j < length el \<and> el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev 
-                          \<and> el \<in> preserves_e" by blast
+
+      from a5 b18 have c6: "\<forall>i. Suc i < length ?esl \<longrightarrow> getspc_es (?esl ! i) \<noteq> es" by simp
+      from a2 a5 a6 have c7: "\<forall>e \<in> all_evts_esspec (EvtSeq e es). is_basicevt e"
+        by (metis DomainE E\<^sub>e_def all_evts_same fst_conv)
+
+      with p1 a3 a4 a8 c6 p6 have "getx_es ((cs k) ! i) k = e"
+        using evtseq_nchg_curevt[of c cs i k cmd e es s x]
+        by (simp add: cpts_of_es_def)
+
+      with c2 c3 c4 c5 b17 have "\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and>  
+                el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e" by auto
     }
     with d101 show ?thesis by auto
   qed
@@ -2931,10 +3042,10 @@ lemma act_cpts_evtseq_sat_e_sim_curevt:
           (\<forall>e\<in>all_evts_es (fst esf). the (evtrgfs (E\<^sub>e e)) = snd e) \<longrightarrow>
           (\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. ((c ! j) -pes-actk\<rightarrow> (c ! Suc j)))) \<longrightarrow>
           (\<forall>i. Suc i < length (cs k) \<and> ((cs k ! i) -es-(Cmd cmd)\<sharp>k\<rightarrow> (cs k ! Suc i)) \<longrightarrow>
-               (\<exists>el ef j. ef \<in> all_evts_es (fst esf) \<and> getspc_e (el!0) = E\<^sub>e ef \<and> j < length el \<and> 
+               (\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and>  
                 el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
     shows "\<forall>i. Suc i < length (cs k) \<and> ((cs k ! i) -es-(Cmd cmd)\<sharp>k\<rightarrow> (cs k ! Suc i)) \<longrightarrow>
-               (\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSeq ef esf) \<and> getspc_e (el!0) = E\<^sub>e efa \<and> j < length el \<and> 
+               (\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and>  
                 el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)"
 proof -
   from p1 have p11[rule_format]: "\<forall>k. length (cs k) = length c" by (simp add:conjoin_def same_length_def)
@@ -2968,7 +3079,7 @@ proof -
     fix i
     assume a3: "Suc i < length ?esl"
       and  a4: "(?esl!i -es-((Cmd cmd)\<sharp>k)\<rightarrow> ?esl!(Suc i))"
-    then have "\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSeq ef esf) \<and> getspc_e (el!0) = E\<^sub>e efa \<and> j < length el \<and> 
+    then have "\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and>  
                 el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
     proof(cases "\<forall>i. Suc i \<le> length ?esl \<longrightarrow> getspc_es (?esl ! i) \<noteq> es")
       assume c0: "\<forall>i. Suc i \<le> length ?esl \<longrightarrow> getspc_es (?esl ! i) \<noteq> es"
@@ -3058,7 +3169,7 @@ proof -
         by (metis Suc_leI p11 zero_less_Suc) 
       ultimately
       have r1[rule_format]: "(\<forall>i. Suc i < length (?cs12 k) \<and> ((?cs12 k ! i) -es-(Cmd cmd)\<sharp>k\<rightarrow> (?cs12 k ! Suc i)) \<longrightarrow>
-                     (\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSeq ef esf) \<and> getspc_e (el!0) = E\<^sub>e efa \<and> 
+                     (\<exists>el j. getspc_e (el!0) = getx_es ((?cs12 k)!i) k \<and> 
                      j < length el \<and> el!j = rm_evtsys1 ((?cs12 k)!i) \<and> el \<in> cpts_ev \<and> 
                      el \<in> preserves_e)) \<and> gets_es (last (?cs12 k))\<in>Post\<^sub>e ef"
         using act_cpts_evtseq_sat_e_sim_curevt_fstseg_withlst_pst[of ef esf prea  posta relya 
@@ -3067,7 +3178,7 @@ proof -
         b6 b7 b8 b9 b10 b11 b12 b51 b52 c0 b18 a6 c4 by auto
 
       then have r2: "\<forall>i. Suc i < length (?cs12 k) \<and> ((?cs12 k ! i) -es-(Cmd cmd)\<sharp>k\<rightarrow> (?cs12 k ! Suc i)) \<longrightarrow>
-                    (\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSeq ef esf) \<and> getspc_e (el!0) = E\<^sub>e efa \<and> 
+                    (\<exists>el j. getspc_e (el!0) = getx_es ((?cs12 k)!i) k \<and> 
                      j < length el \<and> el!j = rm_evtsys1 ((?cs12 k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)"
         by auto
 
@@ -3075,7 +3186,7 @@ proof -
       proof(cases "Suc i \<le> n")
         assume d0: "Suc i \<le> n"
         with r2[rule_format,of i] a3 a4
-        have "\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSeq ef esf) \<and> getspc_e (el!0) = E\<^sub>e efa \<and>  j < length el 
+        have "\<exists>el j. getspc_e (el!0) = getx_es ((?cs12 k)!i) k \<and>  j < length el 
               \<and> el!j = rm_evtsys1 ((?cs12 k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e" by auto
 
         then show ?thesis using d0 by auto
@@ -3190,12 +3301,12 @@ proof -
           from e2 e1 e3 e4 e8 e9 e10 p10 p4 e11 e12 b1 b2 b3 b4 b6 b7 b8 b9 b10 b11 b12 p9 p10 p4
                e13 e14 e15
           have "Suc ii < length (?cs2 k) \<and> ((?cs2 k)!ii -es-((Cmd cmd)\<sharp>k)\<rightarrow> (?cs2 k)!(Suc ii)) 
-              \<longrightarrow> (\<exists>el efa j. efa \<in> all_evts_es (fst esf) \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> 
+              \<longrightarrow> (\<exists>el j. getspc_e (el ! 0) = getx_es ((?cs2 k) ! ii) k \<and> 
                   j < length el \<and> el ! j = rm_evtsys1 ((?cs2 k) ! ii) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)"
                 using pp[of ?Pre k Rely Guar Post ?c2 ?pes ?s ?x ?cs2 ?pre1 rely1 ii cmd] by force
             }
             then have "\<forall>i. Suc i < length (?cs2 k) \<and> ((?cs2 k)!i -es-((Cmd cmd)\<sharp>k)\<rightarrow> (?cs2 k)!(Suc i)) 
-                      \<longrightarrow> (\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSeq ef esf) \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> 
+                      \<longrightarrow> (\<exists>el j. getspc_e (el ! 0) = getx_es ((?cs2 k) ! i) k \<and> 
                       j < length el \<and> el ! j = rm_evtsys1 ((?cs2 k) ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)"
               by fastforce
             moreover
@@ -3229,7 +3340,7 @@ lemma act_cpts_es_sat_e_sim_curevt[rule_format]:
            (\<forall>e\<in>all_evts_es esspc. the ((evtrgfs::('l,'k,'s) event \<Rightarrow> 's rgformula option) (E\<^sub>e e)) = snd e) \<longrightarrow>
            (\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. c!j-pes-actk\<rightarrow>c!Suc j)) \<longrightarrow>
           (\<forall>i. Suc i < length (cs k) \<and> ((cs k)!i -es-((Cmd cmd)\<sharp>k)\<rightarrow> (cs k)!(Suc i)) 
-                \<longrightarrow> (\<exists>el efa j. efa \<in> all_evts_es esspc \<and> getspc_e (el!0) = E\<^sub>e efa \<and> j < length el \<and> 
+                \<longrightarrow> (\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and>  
                 el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
   apply(rule rghoare_es.induct[of esspc pre rely guar post]) 
      apply simp
@@ -3253,8 +3364,8 @@ proof-
           (\<forall>e\<in>all_evts_es (fst esf). the (evtrgfs (E\<^sub>e e)) = snd e) \<longrightarrow>
           (\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. c ! j -pes-actk\<rightarrow> c ! Suc j)) \<longrightarrow>
           (\<forall>i. Suc i < length (cs k) \<and> cs k ! i -es-Cmd cmd\<sharp>k\<rightarrow> cs k ! Suc i \<longrightarrow>
-          (\<exists>el efa j. efa \<in> all_evts_es (fst esf) \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> 
-           j < length el \<and> el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
+          (\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and>  
+                el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
       and  p4: "prea = Pre\<^sub>e ef"
       and  p5: "posta = Post\<^sub>f (snd esf)"
       and  p6: "relya \<subseteq> Rely\<^sub>e ef"
@@ -3279,8 +3390,8 @@ proof-
         and  a9: "(\<forall>e\<in>all_evts_es (rgf_EvtSeq ef esf). the (evtrgfs (E\<^sub>e e)) = snd e)"
         and  a10: "(\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. c ! j -pes-actk\<rightarrow> c ! Suc j))"
       then have "\<forall>i. Suc i < length (cs k) \<and> cs k ! i -es-Cmd cmd\<sharp>k\<rightarrow> cs k ! Suc i \<longrightarrow>
-                (\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSeq ef esf) \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> 
-                j < length el \<and> el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)"
+                (\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and>  
+                el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)"
         using p0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 act_cpts_evtseq_sat_e_sim_curevt[of ef esf prea 
               posta relya guara Pre k Rely Guar Post c pes s x cs pre1 rely1 evtrgfs cmd] by blast
     }
@@ -3297,8 +3408,8 @@ proof-
           (\<forall>e\<in>all_evts_es (rgf_EvtSeq ef esf). the (evtrgfs (E\<^sub>e e)) = snd e) \<longrightarrow>
           (\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. c ! j -pes-actk\<rightarrow> c ! Suc j)) \<longrightarrow>
           (\<forall>i. Suc i < length (cs k) \<and> cs k ! i -es-Cmd cmd\<sharp>k\<rightarrow> cs k ! Suc i \<longrightarrow>
-          (\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSeq ef esf) \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> 
-          j < length el \<and> el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
+          (\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and>  
+                el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
       by fastforce
   
   }
@@ -3337,8 +3448,8 @@ next
 
       with a9 b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 b10
         have "\<forall>i. Suc i < length (cs k) \<and> cs k ! i -es-Cmd cmd\<sharp>k\<rightarrow> cs k ! Suc i \<longrightarrow>
-               (\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSys esf) \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> 
-                j < length el \<and> el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)"
+               (\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and>  
+                el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)"
           using act_cpts_evtsys_sat_e_sim[of "rgf_EvtSys esf" prea relya guara posta Pre k Rely 
                 Guar Post c pes s x cs pre1 rely1 es evtrgfs] by fastforce 
       }
@@ -3355,8 +3466,8 @@ next
           (\<forall>e\<in>all_evts_es (rgf_EvtSys esf). the (evtrgfs (E\<^sub>e e)) = snd e) \<longrightarrow>
           (\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. c ! j -pes-actk\<rightarrow> c ! Suc j)) \<longrightarrow>
           (\<forall>i. Suc i < length (cs k) \<and> cs k ! i -es-Cmd cmd\<sharp>k\<rightarrow> cs k ! Suc i \<longrightarrow>
-          (\<exists>el efa j. efa \<in> all_evts_es (rgf_EvtSys esf) \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> 
-           j < length el \<and> el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
+          (\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and>  
+                el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
         by fastforce
     }
   next
@@ -3381,8 +3492,8 @@ next
           (\<forall>e\<in>all_evts_es esys. the (evtrgfs (E\<^sub>e e)) = snd e) \<longrightarrow>
           (\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. c ! j -pes-actk\<rightarrow> c ! Suc j)) \<longrightarrow>
           (\<forall>i. Suc i < length (cs k) \<and> cs k ! i -es-Cmd cmd\<sharp>k\<rightarrow> cs k ! Suc i \<longrightarrow>
-          (\<exists>el efa j. efa \<in> all_evts_es esys \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> j < length el \<and> 
-           el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
+          (\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and>  
+                el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
     {
       fix c pes s x cs pre1 rely1 Pre Rely Guar Post k cmd
       assume b0: "Pre k \<subseteq> prea \<and> Rely k \<subseteq> relya \<and> guara \<subseteq> Guar k \<and> posta \<subseteq> Post k"
@@ -3399,8 +3510,8 @@ next
       from a1 a2 a3 a4 b0 have "Pre k \<subseteq> pre' \<and> Rely k \<subseteq> rely' \<and> guar' \<subseteq> Guar k \<and> post' \<subseteq> Post k" by auto
       with a1 a2 a3 a5 a6[of Pre k Rely Guar Post c pes s x cs pre1 rely1] b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 b10
         have "\<forall>i. Suc i < length (cs k) \<and> cs k ! i -es-Cmd cmd\<sharp>k\<rightarrow> cs k ! Suc i \<longrightarrow>
-             (\<exists>el efa j. efa \<in> all_evts_es  esys \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> j < length el \<and> 
-              el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)" by force
+             (\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and>  
+                el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)" by force
       }
       then show "\<forall>c pes s x cs pre1 rely1 Pre Rely Guar Post k cmd.
           Pre k \<subseteq> prea \<and> Rely k \<subseteq> relya \<and> guara \<subseteq> Guar k \<and> posta \<subseteq> Post k \<longrightarrow>
@@ -3415,8 +3526,8 @@ next
           (\<forall>e\<in>all_evts_es esys. the (evtrgfs (E\<^sub>e e)) = snd e) \<longrightarrow>
           (\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. c ! j -pes-actk\<rightarrow> c ! Suc j)) \<longrightarrow>
           (\<forall>i. Suc i < length (cs k) \<and> cs k ! i -es-Cmd cmd\<sharp>k\<rightarrow> cs k ! Suc i \<longrightarrow>
-          (\<exists>el efa j. efa \<in> all_evts_es esys \<and> getspc_e (el ! 0) = E\<^sub>e efa \<and> j < length el \<and> 
-           el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
+          (\<exists>el j. getspc_e (el!0) = getx_es ((cs k)!i) k \<and> j < length el \<and>  
+                el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
         by fastforce
     }
   qed
@@ -3430,7 +3541,7 @@ lemma act_cptpes_sat_e_sim:
       pesl\<in>cpts_of_pes (paresys_spec pesf) s0 x0 \<longrightarrow> 
       (\<forall>j. Suc j < length pesl \<longrightarrow> (\<exists>actk. pesl!j-pes-actk\<rightarrow>pesl!Suc j))  \<longrightarrow>
       (\<forall>k i. Suc i <length pesl \<longrightarrow> (\<exists>c. (pesl!i -pes-((Cmd c)\<sharp>k)\<rightarrow> pesl!(Suc i)))
-          \<longrightarrow> (\<exists>el ef j. ef \<in> all_evts pesf \<and> getspc_e (el!0) = E\<^sub>e ef \<and> j < length el \<and> 
+          \<longrightarrow> (\<exists>el j.  getspc_e (el!0) = getx (pesl!i) k \<and> j < length el \<and> 
               el!j = rm_evtsys1 ((getspc (pesl!i) k), gets(pesl!i), getx (pesl!i)) \<and> 
               el \<in> cpts_ev \<and> el \<in> preserves_e))"
   apply(rule rghoare_pes.induct[of pesf pre "{}" UNIV post]) 
@@ -3454,9 +3565,9 @@ lemma act_cptpes_sat_e_sim:
           pesl \<in> cpts_of_pes (paresys_spec pesfa) s0 x0 \<longrightarrow>
           (\<forall>j. Suc j < length pesl \<longrightarrow> (\<exists>actk. pesl ! j -pes-actk\<rightarrow> pesl ! Suc j)) \<longrightarrow>
           (\<forall>k i. Suc i < length pesl \<longrightarrow> (\<exists>c. pesl ! i -pes-Cmd c\<sharp>k\<rightarrow> pesl ! Suc i) \<longrightarrow>
-          (\<exists>el ef j. ef \<in> all_evts pesfa \<and> getspc_e (el ! 0) = E\<^sub>e ef \<and> j < length el \<and> 
-          el ! j = rm_evtsys1 (getspc (pesl ! i) k, gets (pesl ! i), getx (pesl ! i)) \<and> 
-          el \<in> cpts_ev \<and> el \<in> preserves_e)) "
+          (\<exists>el j.  getspc_e (el!0) = getx (pesl!i) k \<and> j < length el \<and> 
+              el!j = rm_evtsys1 ((getspc (pesl!i) k), gets(pesl!i), getx (pesl!i)) \<and> 
+              el \<in> cpts_ev \<and> el \<in> preserves_e)) "
 
       proof -
       {
@@ -3530,43 +3641,34 @@ lemma act_cptpes_sat_e_sim:
                 by (meson IntI b6 contra_subsetD cpts_of_es_def es_validity_def)
               then show ?thesis by simp
             qed
-            ultimately have "\<exists>el ef j. ef \<in> all_evts_es (fst (pesfa k))  \<and> getspc_e (el!0) = E\<^sub>e ef \<and> j < length el \<and> 
-                el!j = rm_evtsys1 ((cs k)!i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
+            ultimately have "\<exists>el j. getspc_e (el ! 0) = getx_es (cs k ! i) k \<and> j < length el \<and> 
+                             el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
               using act_cpts_es_sat_e_sim_curevt[of "fst (pesfa k)" "Pre\<^sub>e\<^sub>s (pesfa k)" 
                   "Rely\<^sub>e\<^sub>s (pesfa k)" "Guar\<^sub>e\<^sub>s (pesfa k)" "Post\<^sub>e\<^sub>s (pesfa k)" "Pre\<^sub>e\<^sub>s \<circ> pesfa" k "Rely\<^sub>e\<^sub>s \<circ> pesfa"
                   "Guar\<^sub>e\<^sub>s \<circ> pesfa" "Post\<^sub>e\<^sub>s \<circ> pesfa" pesl "paresys_spec pesfa" s0 x0 cs prea rely evtrgfs i c]
                   a5 a6 a7 a8 a9 b0 b1 b4 b6 b8 c4 c0 b7 by auto
 
-            with c50 have c9: "\<exists>el ef j. ef \<in> all_evts_es (fst (pesfa k))  \<and> getspc_e (el!0) = E\<^sub>e ef \<and> j < length el \<and> 
-                el!j = rm_evtsys1 (getspc (pesl ! i) k, gets (pesl ! i), getx (pesl ! i)) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
-              by auto
+            with c5 c50 have c9: "\<exists>el j. getspc_e (el ! 0) = getx (pesl ! i) k \<and> j < length el \<and> 
+                             el ! j = rm_evtsys1 (cs k ! i) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
+              by simp
 
             have "all_evts_es (fst (pesfa k)) \<subseteq> all_evts pesfa"
               using all_evts_def by auto
-            with c9 have "\<exists>el ef j. ef \<in> all_evts pesfa  \<and> getspc_e (el!0) = E\<^sub>e ef \<and> j < length el \<and> 
+            with c9 c50 have "\<exists>el j.  getspc_e (el!0) = getx (pesl ! i) k \<and> j < length el \<and> 
                 el!j = rm_evtsys1 (getspc (pesl ! i) k, gets (pesl ! i), getx (pesl ! i)) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
-              by auto
+              by simp
               
           }
 
-          then have "\<forall>k i. Suc i < length pesl \<longrightarrow>
-           (\<exists>c. pesl ! i -pes-Cmd c\<sharp>k\<rightarrow> pesl ! Suc i) \<longrightarrow>
-           (\<exists>el ef j.
-               ef \<in> all_evts pesfa \<and>
-               getspc_e (el ! 0) = E\<^sub>e ef \<and>
-               j < length el \<and> el ! j = rm_evtsys1 (getspc (pesl ! i) k, gets (pesl ! i), getx (pesl ! i)) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)"
-            by auto
+          then have "\<forall>k i. Suc i < length pesl \<longrightarrow> (\<exists>c. pesl ! i -pes-Cmd c\<sharp>k\<rightarrow> pesl ! Suc i) \<longrightarrow>
+           (\<exists>el j. getspc_e (el ! 0) = getx (pesl ! i) k \<and> j < length el \<and> 
+            el ! j = rm_evtsys1 (getspc (pesl ! i) k, gets (pesl ! i), getx (pesl ! i)) 
+            \<and> el \<in> cpts_ev \<and> el \<in> preserves_e)" by auto
         }
         then show ?thesis by auto
       qed
     }
   qed
-
-
-
-                  
-
-
 
 
 end

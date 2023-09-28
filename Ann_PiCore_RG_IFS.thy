@@ -68,7 +68,7 @@ lemma consistent_next_state : "\<lbrakk>e \<in> \<S> \<and> step_consistent_even
   apply (simp add: step_consistent_events_def, clarify)
   by blast
 
-lemma step_consistent_forall : "\<lbrakk>e \<in> \<S> ; step_consistent_events \<S> ev; el \<in> cpts_of_ev e s x; el \<in> preserves_e;
+lemma step_consistent_forall : "\<lbrakk>e \<in> \<S> ; step_consistent_events \<S> ev; el \<in> cpts_ev; getspc_e (el!0) = e; el \<in> preserves_e;
         i < length el\<rbrakk> \<Longrightarrow> getspc_e (el ! i) \<in> \<S>"
   apply (induct i, simp add: cpts_of_ev_def getspc_e_def)
   apply (case_tac "getspc_e (el ! i) = getspc_e (el ! Suc i)", simp)
@@ -411,7 +411,8 @@ proof-
                 using f2 f1 by (metis c52 c1 c5 diff_Suc_1 length_append_singleton lessI)
             qed
 
-            then obtain ef where c12: "ef\<in>all_evts pesf \<and> getx C1 k = fst ef" by auto
+            then obtain ef where c12: "ef\<in>all_evts pesf \<and> getx C1 k = E\<^sub>e ef" 
+              by (metis E\<^sub>e_def)
             from c0 have c12_1: "\<not>(\<exists>e k. act_k = EvtEnt e\<sharp>k)"
               by (simp add: get_actk_def) 
             with b3 b4 c0 have c13: "\<exists>x k. act_k = Cmd c\<sharp>k \<and> eventof a = getx C1 k \<and> dome (gets C1) k (eventof a) = domain a"
@@ -433,124 +434,33 @@ proof-
             have "\<exists>\<S>. AnonyEvent c \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)"
             proof-
               {
-                have "\<exists>el ef j. ef \<in> all_evts pesf \<and> getspc_e (el!0) = E\<^sub>e ef \<and> j < length el \<and>
-                      el!j = rm_evtsys1 ((getspc C1 k), gets C1, getx C1) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
+                have "\<exists>el j.  getspc_e (el!0) = getx C1 k \<and> j < length el \<and> 
+                     el!j = rm_evtsys1 ((getspc C1 k), gets C1, getx C1) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
                   using act_cptpes_sat_e_sim[rule_format, of pesf "{s0}" UNIV s0 evtrgfs "c1 @ [C1']"
                         x0 ?i k] parsys_sat_rg all_evts_are_basic evt_in_parsys_in_evtrgfs c1 c3 c4 c5 c50 c52
                   by (smt One_nat_def Suc_1 Suc_diff_Suc Suc_less_eq diff_less insertI1 
                       length_append_singleton zero_less_Suc)
-                then obtain el and ef and j where e0: "ef \<in> all_evts pesf \<and> getspc_e (el!0) = E\<^sub>e ef \<and> j < length el \<and>
-                      el!j = rm_evtsys1 ((getspc C1 k), gets C1, getx C1) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
+                then obtain el and j where e0: "getspc_e (el!0) = getx C1 k \<and> j < length el \<and> 
+                     el!j = rm_evtsys1 ((getspc C1 k), gets C1, getx C1) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
                   by auto
-                with p1 have "\<exists>\<S>. (E\<^sub>e ef) \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)" by blast
+                with c12 have c120: "getspc_e (el!0) = E\<^sub>e ef \<and> j < length el \<and> el!j = rm_evtsys1 ((getspc C1 k), gets C1, getx C1) 
+                               \<and> el \<in> cpts_ev \<and> el \<in> preserves_e" by simp
+                with c12 p1 have "\<exists>\<S>. (E\<^sub>e ef) \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)" by blast
                 then obtain \<S> where e1: "(E\<^sub>e ef) \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)" by auto
 
                 from b5 b8 b12 c0 have "\<exists>es. getspc C1 k = EvtSeq (AnonyEvent c) es"
                   by (metis evtseq_cmd_tran_anonyevt fst_conv getspc_def)
                 then obtain es where "getspc C1 k = EvtSeq (AnonyEvent c) es" by auto
                 with e0 b8 have e2: "el!j = (AnonyEvent c, s1, x1)" 
-                  using rm_evtsys1_def rm_evtsys0_def
-                  by (metis EvtSeqrm esconf_trip pesconf_trip prod.inject) 
-                  
-                  
-    
-
-
+                  using rm_evtsys1_def 
+                  by (metis EvtSeqrm esconf_trip fst_conv gets_def getx_def snd_conv)
+                with e0 e1 e2 c120 have "AnonyEvent c \<in> \<S>"
+                  using step_consistent_forall[of "E\<^sub>e ef" \<S> "E\<^sub>e ef" el j]
+                  by (metis getspc_e_def fstI)
+                with e1 show ?thesis by auto
               }
-
-(*
-            have "\<exists>\<S>. AnonyEvent c \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)"
-            proof-
-              {
-                from c3 have "\<exists>cs. (\<forall>k. (cs k) \<in> cpts_of_es (?pes k) s0 x0) \<and> c1 @ [C1'] \<propto> cs"
-                  by (simp add: cpt_imp_exist_conjoin_cs)
-                then obtain cs where d0: "(\<forall>k. (cs k) \<in> cpts_of_es (?pes k) s0 x0) \<and> c1 @ [C1'] \<propto> cs" by auto
-                then have e0: "\<forall>k. length (cs k) = length (c1 @ [C1'])"
-                  by (simp add: conjoin_def same_length_def)
- 
-                then have e1 : "(cs k)!?i -es-Cmd c\<sharp>k\<rightarrow> (cs k)! Suc ?i"
-                proof-
-                  have f0 : "?i < length (c1 @ [C1'])" by auto
-                  from c4 c5 c52 have f1 : "(c1 @ [C1'])!?i -pes-Cmd c\<sharp>k\<rightarrow> (c1 @ [C1'])! (Suc ?i)"
-                    by (metis Suc_1 c1 diff_Suc_1 diff_Suc_Suc length_append_singleton)
-                  from d0 have f2 : "compat_tran (c1 @ [C1']) cs" using conjoin_def by auto
-                  with e0 and f1 show ?thesis
-                    apply (simp add: compat_tran_def)
-                    apply (erule_tac x = "?i" in allE, simp)
-                    by (metis One_nat_def c1 diff_Suc_1 lessI pes_tran_not_etran1)
-                      qed
-
-                then have  "\<exists>es. getspc_es ((cs k)!?i) = EvtSeq (AnonyEvent c) es"
-                proof-
-                  have "\<exists>es1 s1 x1. (cs k)!?i = (es1, s1, x1)"  by (metis old.prod.exhaust)
-                  then obtain es1 and s1 and x1 where e0 : "(cs k)!?i = (es1, s1, x1)" by auto
-                  have "\<exists>es2 s2 x2. (cs k)!Suc ?i = (es2, s2, x2)"  by (metis old.prod.exhaust)
-                  then obtain es2 and s2 and x2 where f1 : "(cs k)!Suc ?i = (es2, s2, x2)" by auto
-                  with e0 e1 have "(es1, s1, x1) -es-Cmd c\<sharp>k\<rightarrow> (es2, s2, x2)" by simp
-                  then have "\<exists>es. es1 = EvtSeq (AnonyEvent c) es" by (meson evtseq_cmd_tran_anonyevt)
-                  with e0 show ?thesis by (simp add: getspc_es_def)
-                qed
-                then obtain es where e2: "getspc_es ((cs k)!?i) = EvtSeq (AnonyEvent c) es" by auto 
-
-
-                have " \<exists>el s x j. j < ?i \<and> el = ((getx C1 k), s, x) 
-              # rm_evtsys (drop j (take (Suc ?i) (cs k))) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
-                  using  act_cptpes_sat_e_sim[rule_format, of pesf "{s0}" UNIV s0 evtrgfs "c1 @ [C1']" x0 cs ?i k]
-                     parsys_sat_rg all_evts_are_basic evt_in_parsys_in_evtrgfs c1 c3 c4 c5 c50 c52
-                  by (smt Suc_1 d0 diff_Suc_1 diff_Suc_Suc insertI1 length_append_singleton lessI)
-                then obtain el and s and  x and j where e3 : "j < ?i \<and> el = ((getx C1 k), s, x) 
-              # rm_evtsys (drop j (take (Suc ?i) (cs k))) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e" by auto
-
-                let ?esl = "drop j (take (Suc ?i) (cs k))"
-
-                have e4 : "last ?esl = (cs k) ! ?i"
-                proof-
-                  from e0 have "?i < length (cs k)" by simp
-                  then have f0 : "last (take (Suc ?i) (cs k)) = (cs k) ! ?i" 
-                    by (simp add: take_Suc_conv_app_nth)
-                  from e0 e3 have "j < length (take (Suc ?i) (cs k))" by auto
-                  with f0 show ?thesis by simp
-                qed
-
-                from p1 e3 c12 have  "\<exists>\<S>. E\<^sub>e ef \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)" by blast
-                then obtain \<S> where e5: "E\<^sub>e ef \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)" by auto
-
-                then have "(AnonyEvent c) \<in> \<S>"
-                proof-
-                  from e3 c12 have f0: "el \<in> cpts_of_ev (E\<^sub>e ef) s x"
-                    by (simp add: e3 E\<^sub>e_def cpts_of_ev_def)
-                  from e3 c1 d0 have "?esl \<noteq> []"
-                    by (metis (no_types, lifting) Suc_1 append_eq_conv_conj conjoin_def diff_Suc_1 diff_Suc_Suc 
-                   length_append_singleton length_drop length_greater_0_conv length_take less_Suc_eq 
-                   list.size(3) same_length_def zero_less_diff)
-                  with e4 have "\<exists>ii. ii < length ?esl \<and> ?esl ! ii = last ?esl"
-                    by (metis One_nat_def diff_less last_conv_nth length_greater_0_conv lessI)
-                  then obtain ii where "ii < length ?esl \<and> ?esl ! ii = last ?esl" by auto
-                  with e2 e4 have f1 : "ii < length ?esl \<and> getspc_es (?esl ! ii) = EvtSeq (AnonyEvent c) es"  by auto
-
-                  then have "\<exists> ss xx. ?esl ! ii = (EvtSeq (AnonyEvent c) es, ss, xx)"
-                    by (metis fst_conv getspc_es_def prod.exhaust)
-                  then obtain ss and xx where "?esl ! ii = (EvtSeq (AnonyEvent c) es, ss, xx)" by auto
-                  then have "rm_evtsys1 (?esl ! ii) = ((AnonyEvent c), ss, xx)"
-                    by (simp add: rm_evtsys1_def rm_evtsys0_def getspc_es_def gets_es_def getx_es_def)
-                  with f1 have "(rm_evtsys ?esl)!ii = ((AnonyEvent c), ss, xx)"
-                    by (simp add: rm_evtsys_def)
-                  with e3 have f2 : "getspc_e (el ! (Suc ii)) = AnonyEvent c"
-                    by (simp add: getspc_e_def)
-
-                  have "length (rm_evtsys ?esl) = length ?esl" by (simp add: rm_evtsys_def)
-                  with e3 have "length el = Suc (length ?esl)" by simp
-                  with f1 have "Suc ii < length el"  by linarith
-
-                  with e3 e5 f0 f2 show ?thesis
-                    by (metis step_consistent_forall) 
-                qed
-
-                with e5 have  "\<exists>\<S>. AnonyEvent c \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)" by auto
-              }
-              then show ?thesis by auto
             qed
-*)
+      
         then obtain \<S> where d0: "AnonyEvent c \<in> \<S> \<and> step_consistent_events \<S> (E\<^sub>e ef)" by auto
 
         have d1: "ann_preserves_e (AnonyEvent c) s1"
