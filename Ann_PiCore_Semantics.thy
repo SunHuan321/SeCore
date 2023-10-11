@@ -294,7 +294,6 @@ lemma evtseq_tran_0_exist_etran:
   "(EvtSeq e1 es, s1, x1) -es-et\<rightarrow> (es, t1, y1) \<Longrightarrow> \<exists>t. (e1, s1, x1) -et-t\<rightarrow> (AnonyEvent (None), t1, y1)"
   apply(rule estran.cases)
      apply(simp)+
-  apply (simp add: evtseq_ne_es)
   by blast
   
 
@@ -306,7 +305,7 @@ lemma notrans_to_basicevt_insameesys:
   apply (simp add: get_actk_def)+
   apply(rule etran.cases)
      apply (simp add: get_actk_def)+
-  by (metis evtseq_ne_es)
+  done
   
 lemma evtseq_tran_sys_or_seq:
   "(EvtSeq e1 es, s1, x1) -es-et\<rightarrow> (es2, t1, y1) \<Longrightarrow> es2 = es \<or> (\<exists>e. es2 = EvtSeq e es)"

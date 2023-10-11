@@ -1,5 +1,5 @@
-theory Ann_PiCore_RG_IFS
-  imports Ann_PiCore_IFS Ann_PiCore_RG_Prop
+theory Ann_PiCore_RG_IFS 
+  imports Ann_PiCore_IFS Ann_PiCore_RG_Prop Ann_PiCore_Hoare
 begin
 
 (*declare [[show_types]]*)
@@ -26,23 +26,63 @@ begin
 lemma K1: "l \<in> cpts_of_pes (paresys_spec pesf) s0 x0 \<Longrightarrow> l \<in> preserves_pes"
   sorry
 
+
+definition seteq :: "'s set \<Rightarrow> 'd \<Rightarrow> 's set \<Rightarrow> bool" ("(_ \<approx>_\<approx> _)" [70,71] 60)
+   where "seteq P u Q \<equiv> \<forall>s t. s \<in> P \<and> t \<in> Q \<longrightarrow> s \<sim>u\<sim> t"
+
+inductive sc_p :: "'s ann_prog \<Rightarrow> ('l, 'k, 's) event \<Rightarrow> bool"
+    ("\<turnstile>\<^sub>s\<^sub>c _ sat\<^sub>p _" [60] 45)
+where
+  Basic: "\<lbrakk>\<forall>s1 s2 k u. s1 \<in> r \<and> s2 \<in> r \<and> s1 \<sim>u\<sim> s2 \<and> (dome s1 k ev) \<leadsto> u \<and> s1 \<sim>(dome s1 k ev)\<sim> s2 
+           \<longrightarrow> f s1 \<sim>u\<sim> f s2\<rbrakk>
+           \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnBasic r f sat\<^sub>p ev"
+| Seq: "\<lbrakk> \<turnstile>\<^sub>s\<^sub>c P sat\<^sub>p ev;  \<turnstile>\<^sub>s\<^sub>c Q sat\<^sub>p ev\<rbrakk>
+           \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnSeq P Q sat\<^sub>p ev"
+| Cond: "\<lbrakk> \<turnstile>\<^sub>s\<^sub>c P1 sat\<^sub>p ev;  \<turnstile>\<^sub>s\<^sub>c P2 sat\<^sub>p ev \<rbrakk>
+          \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnCond r b P1 P2 sat\<^sub>p ev"
+| While: "\<lbrakk> \<turnstile>\<^sub>s\<^sub>c P sat\<^sub>p ev \<rbrakk>
+          \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnWhile r b P sat\<^sub>p ev"
+| Await: "\<lbrakk>\<forall>s1 s2 k u. s1 \<in> r \<and> s2 \<in> r \<and> s1 \<sim>u\<sim> s2 \<and> (dome s1 k ev) \<leadsto> u \<and> s1 \<sim>(dome s1 k ev)\<sim> s2 \<and>
+           \<turnstile> P sat\<^sub>p [{s1}, {}, UNIV, Q1] \<and>  \<turnstile> P sat\<^sub>p [{s2}, {}, UNIV, Q2] \<longrightarrow> 
+           (\<forall>t1 t2. t1 \<in> Q1 \<and> t2 \<in> Q2 \<longrightarrow> t1 \<sim>u\<sim> t2)\<rbrakk>
+          \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnAwait r b P sat\<^sub>p ev"
+| Nondt: "\<lbrakk>\<forall>s1 s2 k u.  s1 \<in> r \<and> s2 \<in> r \<and> s1 \<sim>u\<sim> s2 \<and> (dome s1 k ev) \<leadsto> u \<and> s1 \<sim>(dome s1 k ev)\<sim> s2 \<longrightarrow>
+           (\<forall>t1 t2. (s1, t1) \<in> f \<and> (s2, t2) \<in> f \<longrightarrow> t1 \<sim>u\<sim> t2) \<rbrakk>
+           \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnNondt r f sat\<^sub>p ev"
+
+lemma "(None, s) -c\<rightarrow> (P, t) \<Longrightarrow> False"
+  apply (erule ptran.cases, simp_all)
+  done
+
+definition step_consistent_p :: "'s ann_prog option set \<Rightarrow> ('l, 'k, 's) event \<Rightarrow> bool"
+  where "step_consistent_p \<S> ev \<equiv> \<forall>P P1' P2' s1 s2  s1' s2' k u. P \<in> \<S> \<longrightarrow> 
+          (ann_preserves_p P s1 \<and> ann_preserves_p P s2 \<and> s1 \<sim>u\<sim> s2 \<and> ((dome s1 k ev) \<leadsto> u 
+          \<longrightarrow> s1 \<sim>(dome s1 k ev)\<sim> s2) \<and> (P, s1) -c\<rightarrow> (P1', s1') \<and> (P, s2) -c\<rightarrow> (P2', s2') 
+          \<longrightarrow> s1' \<sim>u\<sim> s2') \<and> (ann_preserves_p P s1 \<and> (P, s1) -c\<rightarrow> (P1', s1') \<longrightarrow> P1' \<in> \<S>)"
+
+lemma " \<forall>s1 s2 k u. s1 \<in> r \<and> s2 \<in> r \<and> s1 \<sim>u\<sim> s2 \<and> dome s1 k ev \<leadsto> u \<and> s1 \<sim>dome s1 k ev\<sim> s2 \<longrightarrow> f s1 \<sim>u\<sim> f s2 \<Longrightarrow> \<exists>\<S>. Some (AnnBasic r f) \<in> \<S> \<and> step_consistent_p \<S> ev"
+  sorry
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+lemma sc_p_sound : " \<turnstile>\<^sub>s\<^sub>c P sat\<^sub>p ev \<Longrightarrow> \<exists>\<S>. Some P \<in> \<S> \<and> step_consistent_p \<S> ev"
+  sorry
+
 definition locally_respect_event :: "bool" where
   "locally_respect_event \<equiv> \<forall>ef u s1 s2 k. ef\<in>all_evts pesf \<and> (s1,s2) \<in> Guar\<^sub>e ef \<longrightarrow> 
                                     ((dome s1 k (E\<^sub>e ef)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
-
-(*
-definition step_consistent_event :: "bool" where
-  "step_consistent_event \<equiv> \<forall>ef u s1 s1' s2 s2' k. ef\<in>all_evts pesf \<and> (s1,s2) \<in> Guar\<^sub>e ef \<and> (s1',s2') \<in> Guar\<^sub>e ef
-                              \<longrightarrow> s1 \<sim>u\<sim> s2 \<and> ((dome s1 k (E\<^sub>e ef)) \<leadsto> u \<longrightarrow> s1 \<sim>(dome s1 k (E\<^sub>e ef))\<sim> s2)
-                              \<longrightarrow> s1' \<sim>u\<sim> s2'"
-*)
-
-(*
-definition step_consistent_event :: "bool" where
-  "step_consistent_event \<equiv> \<forall>ef u s1 s2 k. ef\<in>all_evts pesf  
-                              \<longrightarrow> s1 \<sim>u\<sim> s2 \<and> ((dome s1 k (E\<^sub>e ef)) \<leadsto> u \<longrightarrow> s1 \<sim>(dome s1 k (E\<^sub>e ef))\<sim> s2)
-                              \<longrightarrow> (\<forall>s1' s2'. (s1,s1') \<in> Guar\<^sub>e ef \<and> (s2,s2') \<in> Guar\<^sub>e ef \<longrightarrow> s1' \<sim>u\<sim> s2')"
-*)
 
 
 definition step_consistent_events :: "('l, 'k, 's) event set \<Rightarrow> ('l, 'k, 's) event \<Rightarrow> bool" where
@@ -75,6 +115,13 @@ lemma step_consistent_forall : "\<lbrakk>e \<in> \<S> ; step_consistent_events \
   apply (rule_tac c = "el ! i" in consistent_next_event, simp_all)
   apply (simp add: preserves_e_def)
   using cpts_of_ev_def notran_confeqi by fastforce
+
+
+
+
+lemma K3: "\<lbrakk>ev = BasicEvent e;  \<turnstile>\<^sub>s\<^sub>c body e sat\<^sub>p ev\<rbrakk> \<Longrightarrow> \<exists>\<S>. ev \<in> \<S> \<and> step_consistent_events \<S> ev"
+  sorry
+
 
 
 (*
@@ -347,8 +394,9 @@ proof-
               by (smt cpts_pes_not_empty length_greater_0_conv mem_Collect_eq nth_append)
             moreover
             from c1 have c4: "(c1 @ [C1']) ! (length (c1 @ [C1']) - 2) = C1"
-              by (metis (no_types, hide_lams) Suc_1 cpts_pes_not_empty diff_Suc_Suc hd_Cons_tl 
-                  last_conv_nth length_Cons length_append_singleton length_tl lessI nth_append)
+              by (metis Suc_1 diff_Suc_1 diff_Suc_Suc last_conv_nth length_0_conv length_append_singleton 
+                  lessI nat.distinct(1) nth_append)
+              
             moreover
             have c5: "(c1 @ [C1']) ! (length (c1 @ [C1']) - 1) = C1'" by simp
             moreover
@@ -371,8 +419,8 @@ proof-
               by (smt cpts_pes_not_empty length_greater_0_conv mem_Collect_eq nth_append) 
             moreover
             from c7 have c10: "(c2 @ [C2']) ! (length (c2 @ [C2']) - 2) = C2"
-              by (metis (no_types, hide_lams) Suc_1 cpts_pes_not_empty diff_Suc_Suc hd_Cons_tl 
-                  last_conv_nth length_Cons length_append_singleton length_tl lessI nth_append)
+              by (metis Suc_1 diff_Suc_1 diff_Suc_Suc last_conv_nth length_0_conv length_append_singleton 
+                  lessI nat.distinct(1) nth_append)
             moreover
             have c11: "(c2 @ [C2']) ! (length (c2 @ [C2']) - 1) = C2'" by simp
             moreover

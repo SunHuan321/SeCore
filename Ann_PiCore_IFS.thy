@@ -85,7 +85,7 @@ definition stepable :: "('l,'k,'s) pesconf \<Rightarrow> bool" where
       
 
 primrec run :: "('l,'k,'s,'d) action list \<Rightarrow> (('l,'k,'s) pesconf \<times> ('l,'k,'s) pesconf) set" where
-  run_Nil:  "run [] = Id (*{(P,P). True}*) " |
+  run_Nil:  "run [] = Id " |
   run_Cons: "run (a#as) = {(P,Q). (\<exists>R. (P,R) \<in> step a \<and> (R,Q) \<in> run as)}"
 
 
@@ -208,8 +208,7 @@ lemma reachable0_reach : "\<lbrakk>reachable0 C; reachable C C'\<rbrakk> \<Longr
   
 primrec sources :: "('l,'k,'s,'d) action list \<Rightarrow> 'd \<Rightarrow> 'd set" where
   sources_Nil:  "sources [] u = {u}" |
-  sources_Cons: "sources (a#as) u = (sources as u) \<union> (*(\<Union>c\<in>nextc P a. sources as c u) \<union>*)
-                                       {w. w = domain a \<and> (\<exists>v. (w \<leadsto> v) \<and> v \<in> sources as u)}"
+  sources_Cons: "sources (a#as) u = (sources as u) \<union> {w. w = domain a \<and> (\<exists>v. (w \<leadsto> v) \<and> v \<in> sources as u)}"
 declare sources_Nil [simp del]     
 declare sources_Cons [simp del]
 

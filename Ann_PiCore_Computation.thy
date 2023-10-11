@@ -524,7 +524,8 @@ lemma cpts_es_dropi: "\<lbrakk>el \<in> cpts_es; Suc i < length el\<rbrakk> \<Lo
 
 
 lemma cpts_es_dropi2: "\<lbrakk>el \<in> cpts_es; i < length el\<rbrakk> \<Longrightarrow> drop i el \<in> cpts_es"
-  using cpts_es_dropi by (metis (no_types, hide_lams) drop_0 lessI less_Suc_eq_0_disj) 
+  using cpts_es_dropi 
+  by (metis (no_types, lifting) drop0 lessI less_Suc_eq_0_disj)  
 
 lemma cpts_es_take0: "\<lbrakk>el \<in> cpts_es; i < length el; el1 = take (Suc i) el; j < length el1\<rbrakk> 
                         \<Longrightarrow> drop (length el1 - Suc j) el1 \<in> cpts_es"
@@ -713,9 +714,8 @@ lemma evtseq_next_in_cpts:
         assume a0: "Suc i < length esl"
           and  a1: "getspc_es (esl!i) = EvtSeq e esys"
         let ?esl1 = "drop i esl"
-        from p0 a0 have a2: "?esl1\<in>cpts_es" by (metis (no_types, hide_lams) Suc_diff_1 Suc_lessD 
-              cpts_es_dropi diff_diff_cancel drop_0 length_drop length_greater_0_conv 
-              less_or_eq_imp_le list.size(3)) 
+        from p0 a0 have a2: "?esl1\<in>cpts_es" 
+          by (simp add: cpts_es_dropi2)
         from a0 a1 have "getspc_es (?esl1!0) = EvtSeq e esys" by auto 
         then obtain s1 and x1 where a3: "?esl1!0 = (EvtSeq e esys,s1,x1)" 
           using getspc_es_def by (metis fst_conv old.prod.exhaust)
@@ -767,9 +767,8 @@ lemma evtseq_next_in_cpts_anony:
         assume a0: "Suc i < length esl"
           and  a1: "getspc_es (esl!i) = EvtSeq e esys \<and> is_anonyevt e"
         let ?esl1 = "drop i esl"
-        from p0 a0 have a2: "?esl1\<in>cpts_es" by (metis (no_types, hide_lams) Suc_diff_1 Suc_lessD 
-              cpts_es_dropi diff_diff_cancel drop_0 length_drop length_greater_0_conv 
-              less_or_eq_imp_le list.size(3)) 
+        from p0 a0 have a2: "?esl1\<in>cpts_es" 
+          by (simp add: cpts_es_dropi2) 
         from a0 a1 have "getspc_es (?esl1!0) = EvtSeq e esys" by auto 
         then obtain s1 and x1 where a3: "?esl1!0 = (EvtSeq e esys,s1,x1)" 
           using getspc_es_def by (metis fst_conv old.prod.exhaust)
@@ -824,9 +823,8 @@ lemma evtsys_next_in_cpts:
         assume a0: "Suc i < length esl"
           and  a1: "getspc_es (esl!i) = EvtSys es"
         let ?esl1 = "drop i esl"
-        from p0 a0 have a2: "?esl1\<in>cpts_es" by (metis (no_types, hide_lams) Suc_diff_1 Suc_lessD 
-              cpts_es_dropi diff_diff_cancel drop_0 length_drop length_greater_0_conv 
-              less_or_eq_imp_le list.size(3)) 
+        from p0 a0 have a2: "?esl1\<in>cpts_es" 
+          by (simp add: cpts_es_dropi2)
         from a0 a1 have "getspc_es (?esl1!0) = EvtSys es" by auto 
         then obtain s1 and x1 where a3: "?esl1!0 = (EvtSys es,s1,x1)" 
           using getspc_es_def by (metis fst_conv old.prod.exhaust)
@@ -878,9 +876,8 @@ lemma evtsys_next_in_cpts_anony:
         assume a0: "Suc i < length esl"
           and  a1: "getspc_es (esl!i) = EvtSys es"
         let ?esl1 = "drop i esl"
-        from p0 a0 have a2: "?esl1\<in>cpts_es" by (metis (no_types, hide_lams) Suc_diff_1 Suc_lessD 
-              cpts_es_dropi diff_diff_cancel drop_0 length_drop length_greater_0_conv 
-              less_or_eq_imp_le list.size(3)) 
+        from p0 a0 have a2: "?esl1\<in>cpts_es" 
+          by (simp add: cpts_es_dropi2) 
         from a0 a1 have "getspc_es (?esl1!0) = EvtSys es" by auto 
         then obtain s1 and x1 where a3: "?esl1!0 = (EvtSys es,s1,x1)" 
           using getspc_es_def by (metis fst_conv old.prod.exhaust)
@@ -1040,59 +1037,20 @@ proof-
     by (metis evtseq_all_es_in_cpts_anony evtseq_no_evtent2)
 qed
 
-lemma no_chg_x_in_evtseq: "\<lbrakk>esl\<in>cpts_es;  getspc_es (esl!0) = EvtSeq e esys; \<forall>i. Suc i < length esl 
-      \<longrightarrow> getspc_es (esl!i) \<noteq> esys; i < length esl\<rbrakk> \<Longrightarrow>  getx_es (esl!i) = getx_es (esl!0)"
-proof-
-  assume a0: "esl\<in>cpts_es"
-    and  a1: "getspc_es (esl!0) = EvtSeq e esys"
-    and  a2: "\<forall>i. Suc i < length esl \<longrightarrow> getspc_es (esl!i) \<noteq> esys"
-    and  a3: "i < length esl"
-  then show ?thesis
-  proof(induct i)
-    case 0
-    then show ?case by blast
-  next
-    case (Suc i)
-    assume b0: "esl \<in> cpts_es \<Longrightarrow> getspc_es (esl ! 0) = EvtSeq e esys \<Longrightarrow> \<forall>i. Suc i < length esl \<longrightarrow> 
-                getspc_es (esl ! i) \<noteq> esys \<Longrightarrow> i < length esl \<Longrightarrow> getx_es (esl ! i) = getx_es (esl ! 0)"
-    and    b1: "esl \<in> cpts_es"
-    and    b2: "getspc_es (esl ! 0) = EvtSeq e esys"
-    and    b3: "\<forall>i. Suc i < length esl \<longrightarrow> getspc_es (esl ! i) \<noteq> esys"
-    and    b4: "Suc i < length esl"
-    from b4 have "i < length esl" by auto
-    with b0 b1 b2 b3 have b5: "getx_es (esl ! i) = getx_es (esl ! 0)" by auto
-    from b1 b2 b3 b4 have "\<forall>i. Suc i < length esl \<longrightarrow> (\<exists>ei. getspc_es (esl!i) = EvtSeq ei esys)"
-      using evtseq_all_es_in_cpts[of esl e esys "length esl - 1"] by auto
-    with b4 have "\<exists>ei. getspc_es (esl!i) = EvtSeq ei esys" by auto
-    then have "\<exists>s x ei. esl!i = (EvtSeq ei esys, s, x)" by (metis esconf_trip)
-    then obtain s and x and ei where "esl!i = (EvtSeq ei esys, s, x)" by auto
-    with b4 have "getx_es (esl!(Suc i)) = getx_es (esl ! i)" sorry
-    with b5 show ?case by auto
-  qed
-qed
 
 
 lemma not_anonyevt_none_in_evtseq:
     "\<lbrakk>esl\<in>cpts_es; esl = (EvtSeq e es,s1,x1)#(es,s2,x2)#xs \<rbrakk> \<Longrightarrow> e \<noteq> AnonyEvent None"
   apply(rule cpts_es.cases)
-  apply(simp)+
-  apply (metis Suc_eq_plus1 add.commute add.right_neutral esys.size(3) le_add1 lessI not_le) 
-  apply(rule estran.cases)
-  apply(simp)+
-  apply (metis Suc_eq_plus1 add.commute add.right_neutral esys.size(3) le_add1 lessI not_le)
-  apply(rule etran.cases)
-  apply(simp)+
-  prefer 2
-  apply(simp)
-  apply(rule ptran.cases)
-  apply(simp)+
-  done
+     apply(simp)+
+  by (meson evt_not_eq_in_tran_aux evtseq_tran_0_exist_etran)
 
 lemma not_anonyevt_none_in_evtseq1:
     "\<lbrakk>esl\<in>cpts_es; length esl > 1; getspc_es (esl!0) = EvtSeq e es;
       getspc_es (esl!1) = es \<rbrakk> \<Longrightarrow> e \<noteq> AnonyEvent None"
-  using getspc_es_def not_anonyevt_none_in_evtseq
-    by (metis (no_types, hide_lams) Cons_nth_drop_Suc drop_0 eq_fst_iff less_Suc_eq less_Suc_eq_0_disj less_one)
+  using  not_anonyevt_none_in_evtseq
+  by (metis Cons_nth_drop_Suc One_nat_def Suc_lessD drop0 esconf_trip)
+    
 
 lemma fst_esys_snd_eseq_exist_evtent:
     "\<lbrakk>esl\<in>cpts_es; esl = (EvtSys es, s, x) # (EvtSeq ev (EvtSys es), s1,x1) # xs\<rbrakk> \<Longrightarrow>
@@ -1100,16 +1058,14 @@ lemma fst_esys_snd_eseq_exist_evtent:
   apply(rule cpts_es.cases)
   apply(simp)+
   apply blast
-  by blast
+  done
 
 lemma fst_esys_snd_eseq_exist_evtent2:
     "\<lbrakk>esl\<in>cpts_es; esl = (EvtSys es, s, x) # (EvtSeq ev (EvtSys es), s1,x1) # xs\<rbrakk> \<Longrightarrow>
           \<exists>e k. (EvtSys es, s, x) -es-(EvtEnt (BasicEvent e))\<sharp>k\<rightarrow> (EvtSeq ev (EvtSys es), s1,x1)"
   apply(rule cpts_es.cases)
-  apply(simp)+
-  apply blast
-  by (metis (no_types, hide_lams) cmd_enable_impl_notesys2 estran_impl_evtentorcmd 
-    evtent_is_basicevt fst_conv getspc_es_def nth_Cons_0 nth_Cons_Suc)
+     apply(simp)+
+  by (metis cmd_enable_impl_notesys estran_impl_evtentorcmd evtent_is_basicevt prod_cases3)
 
   
 lemma fst_esys_snd_eseq_exist: 
@@ -1119,8 +1075,7 @@ lemma fst_esys_snd_eseq_exist:
     assume a0: "length esl \<ge> 2 \<and> getspc_es (esl!0) = EvtSys es \<and> getspc_es (esl!1) \<noteq> EvtSys es"
       and  c1: "esl\<in>cpts_es"
     from a0 have b0: "getspc_es (esl!0) = EvtSys es \<and> getspc_es (esl!1) \<noteq> EvtSys es"
-      by (metis (no_types, lifting))
-    
+      by blast   
     from a0 have b1: "2 \<le> length esl" by fastforce 
     moreover from b0 b1 have "\<exists>s x. esl!0 = (EvtSys es, s, x)" using getspc_es_def
       by (metis eq_fst_iff) 
@@ -1130,9 +1085,8 @@ lemma fst_esys_snd_eseq_exist:
            by (metis One_nat_def Suc_1 Suc_le_lessD evtsys_next_in_cpts) 
         then show ?thesis using getspc_es_def by (metis fst_conv surj_pair) 
       qed
-    ultimately show ?thesis by (metis (no_types, hide_lams) One_nat_def Suc_1 
-      Suc_n_not_le_n diff_is_0_eq hd_Cons_tl hd_conv_nth length_tl 
-      list.size(3) not_numeral_le_zero nth_Cons_Suc order_trans) 
+    ultimately show ?thesis
+      by (metis Cons_nth_drop_Suc One_nat_def Suc_1 Suc_le_lessD Suc_lessD drop0) 
   qed
 
   
@@ -1159,9 +1113,8 @@ lemma only_envtran_to_basicevt:
           and  a1: "getspc_es (esl!Suc i) = EvtSeq (BasicEvent e) esys"
           and  a00: "\<exists>e. getspc_es (esl!i) = EvtSeq e esys"
         let ?esl1 = "drop i esl"
-        from p0 a0 have a2: "?esl1\<in>cpts_es" by (metis (no_types, hide_lams) Suc_diff_1 Suc_lessD 
-              cpts_es_dropi diff_diff_cancel drop_0 length_drop length_greater_0_conv 
-              less_or_eq_imp_le list.size(3)) 
+        from p0 a0 have a2: "?esl1\<in>cpts_es" 
+          by (simp add: cpts_es_dropi2)
         from a0 a1 have "getspc_es (?esl1!1) = EvtSeq (BasicEvent e) esys" by auto 
         then obtain s1 and x1 where a3: "?esl1!1 = (EvtSeq (BasicEvent e) esys,s1,x1)" 
           using getspc_es_def by (metis fst_conv old.prod.exhaust)
@@ -1238,9 +1191,8 @@ lemma incpts_es_eseq_not_evtent:
       and  a0: "Suc i < length esl"
       and  a1: "\<exists>e esys. getspc_es (esl!i) = EvtSeq e esys \<and> is_anonyevt e"
     let ?esl1 = "drop i esl"
-    from p0 a0 have a2: "?esl1\<in>cpts_es" by (metis (no_types, hide_lams) Suc_diff_1 Suc_lessD 
-          cpts_es_dropi diff_diff_cancel drop_0 length_drop length_greater_0_conv 
-          less_or_eq_imp_le list.size(3)) 
+    from p0 a0 have a2: "?esl1\<in>cpts_es" 
+      by (simp add: cpts_es_dropi2)
     from a0 a1 obtain e and esys where a3: "getspc_es (?esl1!0) = EvtSeq e esys" by auto 
     then obtain s1 and x1 where a4: "?esl1!0 = (EvtSeq e esys,s1,x1)" 
       using getspc_es_def by (metis fst_conv old.prod.exhaust)
@@ -1730,14 +1682,14 @@ apply(rule CptPModNone,rule Basic,simp)
 apply clarify
 apply(erule ptran.cases,simp_all)
 (*Seq1*)
-apply(rule_tac xs="[(None,ta)]" in CptPModSeq2)
+apply(rule_tac xs="[(None,t)]" in CptPModSeq2)
   apply(erule CptPModNone)
   apply(rule CptPModOne)
  apply simp
 apply simp
 apply(simp add:lift_def)
 (*Seq2*)
-apply(erule_tac x=sa in allE)
+apply(erule_tac x=s in allE)
 apply(erule_tac x="Some P2" in allE)
 apply(erule allE,erule impE, assumption)
 apply(drule div_seq,simp)

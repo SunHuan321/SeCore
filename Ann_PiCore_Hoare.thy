@@ -289,7 +289,7 @@ lemma notran_p_confeqi1: "\<lbrakk>l \<in> cpts_p; \<forall>i. Suc i < length l 
 lemma notran_p_seg_aux : "\<lbrakk>take (n - m + 1) (drop m l) \<in> cpts_p; m < n; n < length l; \<forall>i. i \<ge> m \<and> i < n \<longrightarrow> 
         \<not> (l ! i -c\<rightarrow> l ! Suc i)\<rbrakk> \<Longrightarrow>  getspc_p (l ! m) = getspc_p (l ! n)"
   apply (drule_tac j = "n - m" in notran_p_confeqi1, simp_all)
-  by (simp add: less_diff_conv)
+  done
 
 lemma notran_seg_take: "\<lbrakk>l \<in> cpts_p; m < n; n < length l; \<forall>i. i \<ge> m \<and> i < n \<longrightarrow> 
                           \<not> (l ! i -c\<rightarrow> l ! Suc i)\<rbrakk> \<Longrightarrow> getspc_p (l ! m) = getspc_p (l ! n)"
@@ -324,7 +324,7 @@ apply(erule cpts_p.cases,simp)
  apply simp
  apply(erule_tac x="m - 1" in allE)
  apply(case_tac m,simp,simp)
- apply(subgoal_tac "(\<forall>i. Suc i < nata \<longrightarrow> (((P, t) # xs) ! i, xs ! i) \<notin> ptran)")
+ apply(subgoal_tac "(\<forall>i. Suc i < nata \<longrightarrow> (((a, t) # xs) ! i, xs ! i) \<notin> ptran)")
   apply force
  apply clarify
  apply(erule_tac x="Suc ia" in allE,simp)
@@ -418,14 +418,14 @@ apply(erule cpts_p.cases,simp)
   apply(erule_tac x=0 in allE)
   apply(erule_tac x="nat" and P="\<lambda>j. (0\<le>j) \<longrightarrow> (J j)" for J in allE,simp)
   apply(subgoal_tac "t\<in>p")
-   apply(subgoal_tac "(\<forall>i. i < length xs \<longrightarrow> ((P, t) # xs) ! i -pe\<rightarrow> xs ! i \<longrightarrow> (snd (((P, t) # xs) ! i), snd (xs ! i)) \<in> rely)")
+   apply(subgoal_tac "(\<forall>i. i < length xs \<longrightarrow> ((a, t) # xs) ! i -pe\<rightarrow> xs ! i \<longrightarrow> (snd (((a, t) # xs) ! i), snd (xs ! i)) \<in> rely)")
     apply clarify
     apply(erule_tac x="Suc i" and P="\<lambda>j. (H j) \<longrightarrow> (J j)\<in>petran" for H J in allE,simp)
    apply clarify
    apply(erule_tac x="Suc i" and P="\<lambda>j. (H j) \<longrightarrow> (J j) \<longrightarrow> (T j)\<in>rely" for H J T in allE,simp)
   apply(erule_tac x=0 and P="\<lambda>j. (H j) \<longrightarrow> (J j)\<in>petran \<longrightarrow> T j" for H J T in allE,simp)
   apply(simp(no_asm_use) only:stable_def)
-  apply(erule_tac x=s in allE)
+  apply(erule_tac x=b in allE)
   apply(erule_tac x=t in allE)
   apply simp
   apply(erule mp)
@@ -434,7 +434,7 @@ apply(erule cpts_p.cases,simp)
  apply simp
  apply(erule_tac x="nata" in allE)
  apply(erule_tac x="nat" and P="\<lambda>j. (s\<le>j) \<longrightarrow> (J j)" for s J in allE,simp)
- apply(subgoal_tac "(\<forall>i. i < length xs \<longrightarrow> ((P, t) # xs) ! i -pe\<rightarrow> xs ! i \<longrightarrow> (snd (((P, t) # xs) ! i), snd (xs ! i)) \<in> rely)")
+ apply(subgoal_tac "(\<forall>i. i < length xs \<longrightarrow> ((a, t) # xs) ! i -pe\<rightarrow> xs ! i \<longrightarrow> (snd (((a, t) # xs) ! i), snd (xs ! i)) \<in> rely)")
   apply clarify
   apply(erule_tac x="Suc i" and P="\<lambda>j. (H j) \<longrightarrow> (J j)\<in>petran" for H J in allE,simp)
  apply clarify
@@ -1528,7 +1528,7 @@ lemma Basic_sound:
    apply(case_tac "x!Suc j",simp)
    apply(rule ptran.cases,simp)
            apply(simp_all)
-   apply(drule_tac c=sa in subsetD,simp)
+   apply(drule_tac c= b in subsetD,simp)
    apply clarify
    apply(frule_tac j="Suc j" and k="length x - 1" and p=post in stability,simp_all)
      apply(case_tac x,simp+)
@@ -1545,7 +1545,7 @@ lemma Basic_sound:
       apply blast
   using unique_ctran_Basic apply fastforce
     apply (case_tac "x!ia")
-    apply (simp add: getspc_p_def, clarsimp)
+    apply (simp add: getspc_p_def)
    apply(frule_tac j=0 and k=i and p= r in stability, simp_all)
      apply blast
     apply(erule_tac i=i and f=f in unique_ctran_Basic,simp_all)
@@ -1559,7 +1559,7 @@ lemma Basic_sound:
     apply blast
    apply (drule_tac m = "length x" and i = "ia" in etran_or_ctran, simp_all)
   apply (case_tac "x!i")
-  apply (simp add: getspc_p_def, clarsimp)
+  apply (simp add: getspc_p_def)
   done
  
 subsubsection\<open>Soundness of the Await rule\<close>
@@ -1709,7 +1709,7 @@ lemma Await_sound:
       apply blast
   using unique_ctran_Await apply fastforce
     apply (case_tac "x!ia")
-    apply (simp add: getspc_p_def, clarsimp)
+    apply (simp add: getspc_p_def)
    apply(frule_tac j=0 and k=i and p= r in stability, simp_all)
      apply blast
     apply(erule_tac i=i in unique_ctran_Await,simp_all)
@@ -1723,7 +1723,7 @@ lemma Await_sound:
     apply blast
    apply (drule_tac m = "length x" and i = "ia" in etran_or_ctran, simp_all)
   apply (case_tac "x!i")
-  apply (simp add: getspc_p_def, clarsimp)
+  apply (simp add: getspc_p_def)
   done
 
 
@@ -1791,7 +1791,7 @@ lemma Cond_sound:
     apply(drule le_imp_less_or_eq)
     apply(erule disjE)
      apply(erule_tac x=i in allE, erule impE, assumption)
-     apply (metis (no_types, hide_lams) le_neq_implies_less snd_conv)
+     apply (metis (no_types, lifting) order_le_less snd_eqD)
     apply (metis (no_types, lifting) le_neq_implies_less snd_conv)
    apply(erule_tac x="i - (Suc m)" and P="\<lambda>j. H j \<longrightarrow> J j \<longrightarrow> (I j)\<in>guar" for H J I in allE)
    apply(subgoal_tac "(Suc m)+(i - Suc m) \<le> length x")
@@ -1809,7 +1809,7 @@ lemma Cond_sound:
      apply(simp add:assume_p_def gets_p_def)
     apply(erule_tac m="length x" in etran_or_ctran,simp+)
    apply (case_tac "x!i")
-   apply (simp add: getspc_p_def, clarsimp)
+   apply (simp add: getspc_p_def)
   apply(erule exE, simp add: assume_p_def gets_p_def)
   apply(drule_tac n=i and P="\<lambda>i. H i \<and> (J i, I i) \<in> ptran" for H J I in Ex_first_occurrence)
   apply clarify
@@ -1817,7 +1817,7 @@ lemma Cond_sound:
    apply(frule_tac j="0" and k= "ia" and p= r in stability,simp+)
     apply (drule_tac m = "m" and i = "ib" in etran_or_ctran, simp_all)
    apply (case_tac "x!ia")
-   apply (simp add: gets_p_def, clarsimp)
+   apply (simp add: gets_p_def)
   apply(frule_tac j="0" and k= "m" and p= r in stability,simp+)
    apply(erule_tac m="Suc m" in etran_or_ctran,simp+)
   apply (case_tac "ia = m")
@@ -1871,22 +1871,22 @@ apply(unfold cpts_of_p_def)
 apply safe
 apply simp_all
     apply(simp add:lift_def)
-    apply(rule_tac x="[(Some Pa, sa)]" in exI,simp add:CptsPOne)
+    apply(rule_tac x="[(Some Pa, s)]" in exI,simp add:CptsPOne)
    apply(subgoal_tac "(\<forall>i < Suc (length xs). fst (((Some (AnnSeq Pa Q), t) # xs) ! i) \<noteq> Some Q)")
     apply clarify
-    apply(rule_tac x="(Some Pa, sa) #(Some Pa, t) # zs" in exI,simp)
+    apply(rule_tac x="(Some Pa, s) #(Some Pa, t) # zs" in exI,simp)
     apply(rule conjI,erule CptsPEnv)
     apply(simp (no_asm_use) add:lift_def)
    apply clarify
    apply(erule_tac x="Suc i" in allE, simp)
- apply(rule_tac x="(Some P, sa) # xs" in exI, simp add:cpts_iff_cpt_p_mod lift_def)
+ apply(rule_tac x="(Some P0, s) # xs" in exI, simp add:cpts_iff_cpt_p_mod lift_def)
 apply(erule_tac x="length xs" in allE, simp)
 apply(simp only:Cons_lift_append)
-apply(subgoal_tac "length xs < length ((Some P, sa) # xs)")
+apply(subgoal_tac "length xs < length ((Some P0, s) # xs)")
  apply(simp only :nth_append length_map last_length nth_map)
- apply(case_tac "last((Some P, sa) # xs)")
+ apply(case_tac "last((Some P0, s) # xs)")
  apply(simp add:lift_def)
-apply simp
+  apply simp
   done
 
 lemma Seq_sound2 [rule_format]:
@@ -1907,36 +1907,36 @@ apply simp_all
   apply force
  apply(case_tac xsa,simp,simp)
  apply(rename_tac list)
- apply(rule_tac x="(Some Pa, sa) #(Some Pa, t) # list" in exI,simp)
+ apply(rule_tac x="(Some Pa, s) #(Some Pa, t) # list" in exI,simp)
  apply(rule conjI,erule CptsPEnv)
  apply(simp (no_asm_use) add:lift_def)
  apply(rule_tac x=ys in exI,simp)
 apply(ind_cases "((Some (AnnSeq Pa Q), sa), t) \<in> ptran" for Pa sa t)
  apply simp
- apply(rule_tac x="(Some Pa, sa)#[(None, ta)]" in exI,simp)
+ apply(rule_tac x="(Some Pa, s)#[(None, t)]" in exI,simp)
  apply(rule conjI)
   apply(drule_tac xs="[]" in CptsPComp,force simp add:CptsPOne,simp)
  apply(case_tac i, simp+)
  apply(case_tac nat,simp+)
- apply(rule_tac x="(Some Q,ta)#xs" in exI,simp add:lift_def)
+ apply(rule_tac x="(Some Q,t)#xs" in exI,simp add:lift_def)
    apply(case_tac nat,simp+)
   using nth_Cons_Suc apply auto[1]
 apply(case_tac i, simp+)
 apply(case_tac nat,simp+)
 apply(erule_tac x="Suc nata" in allE,simp)
 apply clarify
-apply(subgoal_tac "(\<forall>j<Suc nata. fst (((Some (AnnSeq P2 Q), ta) # xs) ! j) \<noteq> Some Q)",clarify)
+apply(subgoal_tac "(\<forall>j<Suc nata. fst (((Some (AnnSeq P2 Q), t) # xs) ! j) \<noteq> Some Q)",clarify)
  prefer 2
    apply clarify
   apply (metis (full_types) Suc_less_eq nth_Cons_Suc)
-apply(rule_tac x="(Some Pa, sa)#(Some P2, ta)#(tl xsa)" in exI,simp)
+apply(rule_tac x="(Some Pa, s)#(Some P2, t)#(tl xsa)" in exI,simp)
 apply(rule conjI,erule CptsPComp)
 apply(rule nth_tl_if,force,simp+)
 apply(rule_tac x=ys in exI,simp)
   apply(rule conjI)
   apply (simp add: List.nth_tl)
 apply(rule conjI,simp add:lift_def)
-apply(subgoal_tac "lift Q (Some P2, ta) =(Some (AnnSeq P2 Q), ta)")
+apply(subgoal_tac "lift Q (Some P2, t) =(Some (AnnSeq P2 Q), t)")
  apply(simp add:Cons_lift del:list.map)
  apply(rule nth_tl_if)
    apply force
@@ -2305,7 +2305,6 @@ lemma While_sound_aux [rule_format]:
     apply clarify
     apply (simp add:last_length)
 (*WhileOne*)
-   apply(thin_tac "P = AnnWhile r b P \<longrightarrow> Q" for Q)
    apply(rule ctran_in_comm, simp)
     apply(simp add: assume_p_def gets_p_def)
    apply(simp add:Cons_lift del:list.map)
@@ -2346,7 +2345,6 @@ lemma While_sound_aux [rule_format]:
     apply (metis last.simps last_length last_lift_not_None)
    apply simp
 (*WhileMore*)                                                              
-  apply(thin_tac "P = AnnWhile r b P \<longrightarrow> Q" for Q)
   apply(rule ctran_in_comm,simp del:last.simps)
 (*metiendo la hipotesis antes de dividir la conclusion.*)
    apply(subgoal_tac "(Some (AnnWhile r b P), snd (last ((Some P, sa) # xs))) # ys \<in> assume_p (r, rely)")
@@ -2466,7 +2464,6 @@ lemma While_sound_aux1 [rule_format]:
   using cpts_if_cpt_p_mod apply blast
     apply (simp add: getspc_p_def)
 (*WhileOne*)
-   apply(thin_tac "P = AnnWhile r b P \<longrightarrow> Q" for Q)
    apply(simp add:Cons_lift del:list.map)
   apply (rule_tac xs = "[(Some (AnnWhile r b P), sa)]" and ys = "map (lift (AnnWhile r b P)) ((Some P, sa) # xs)"
           in preserves_p_append, simp)
@@ -2505,7 +2502,6 @@ lemma While_sound_aux1 [rule_format]:
    apply (erule_tac x = "Suc i" in allE, erule impE, simp)
    apply (erule impE, simp, simp)
 (*WhileMore*)
-  apply(thin_tac "P = AnnWhile r b P \<longrightarrow> Q" for Q)
   apply(subgoal_tac "(Some (AnnWhile r b P), snd (last ((Some P, sa) # xs))) # ys \<in> assume_p (r, rely)")
    apply (simp del:last.simps)
    prefer 2
@@ -2573,7 +2569,6 @@ lemma While_sound:
     apply(rule nth_equalityI)
      apply simp_all
      apply(case_tac x,simp+)
-    apply clarify
     apply(case_tac i,simp+)
     apply(case_tac x,simp+)
    apply (simp add: assume_p_def)
@@ -2588,7 +2583,6 @@ lemma While_sound:
     apply(rule nth_equalityI)
      apply simp_all
      apply(case_tac x,simp+)
-    apply clarify
     apply(case_tac i,simp+)
     apply(case_tac x,simp+)
    apply (simp add: assume_p_def)
@@ -2697,7 +2691,7 @@ lemma Nondt_sound:
       apply blast
   using unique_ctran_Nondt apply fastforce
     apply (case_tac "x!ia")
-    apply (simp add: getspc_p_def, clarsimp)
+    apply (simp add: getspc_p_def)
    apply(frule_tac j=0 and k=i and p= r in stability, simp_all)
      apply blast
     apply(erule_tac i=i and f=f in unique_ctran_Nondt,simp_all)
@@ -2711,7 +2705,7 @@ lemma Nondt_sound:
     apply blast
    apply (drule_tac m = "length x" and i = "ia" in etran_or_ctran, simp_all)
   apply (case_tac "x!i")
-  apply (simp add: getspc_p_def, clarsimp)
+  apply (simp add: getspc_p_def)
   done
 
 
@@ -2750,8 +2744,8 @@ lemma anony_cfgs0 : "\<lbrakk>\<exists>P. getspc_e (es ! 0) = AnonyEvent P; es \
         then have b4: "e' = AnonyEvent P1" by (simp add: getspc_e_def)
         with b1 have "\<forall>i<length ((e', t', x') # xs'). \<exists>Q. getspc_e (((e', t', x') # xs') ! i) = AnonyEvent Q"  
           by (simp add: getspc_e_def)
-        with b4 show ?case by (metis (no_types, hide_lams) Ex_list_of_length b3 gr0_conv_Suc 
-                        length_Cons length_tl list.sel(3) not_less_eq nth_non_equal_first_eq)
+        with b3 b4 show ?case 
+          using less_Suc_eq_0_disj by auto
       next
         case (CptsEvComp e1 s1 x1 et e2 t1 y1 xs1)
         assume b0: "(e1, s1, x1) -et-et\<rightarrow> (e2, t1, y1)" and
@@ -2768,8 +2762,8 @@ lemma anony_cfgs0 : "\<lbrakk>\<exists>P. getspc_e (es ! 0) = AnonyEvent P; es \
               done
         then have "\<exists>P. getspc_e (((e2, t1, y1) # xs1) ! 0) = AnonyEvent P" by (simp add:getspc_e_def)
         with b2 have b6: "\<forall>i<length ((e2, t1, y1) # xs1). \<exists>Q. getspc_e (((e2, t1, y1) # xs1) ! i) = AnonyEvent Q" by auto
-        with b5 show ?case by (metis (no_types, hide_lams) Ex_list_of_length b3 gr0_conv_Suc 
-                        length_Cons length_tl list.sel(3) not_less_eq nth_non_equal_first_eq)
+        with b4 b5 show ?case 
+          using less_Suc_eq_0_disj by auto
       qed
     qed
 
@@ -3610,8 +3604,8 @@ lemma EventSeq_sound :
                       using evtseq_fst_finish by blast
                     then obtain n where b3: "(n \<le> m \<and> getspc_es (esl ! n) = es) \<and> (\<forall>j. j < n \<longrightarrow> getspc_es (esl ! j) \<noteq> es)"
                       by auto
-                    with b00 have b41: "n \<noteq> 0" by (metis (no_types, hide_lams) add.commute add.right_neutral 
-                                   add_Suc dual_order.irrefl esys.size(3) le_add1 le_imp_less_Suc)
+                    with b00 have b41: "n \<noteq> 0" 
+                      by (metis evtseq_ne_es)
 
                     then have b4: "n > 0" by auto
                     then obtain esl0 where b5: "esl0 = take n esl" by simp
@@ -3729,8 +3723,7 @@ lemma EventSeq_sound :
                         by (metis b3 b5_1 b7 cancel_comm_monoid_add_class.diff_cancel nth_append)
 
                       from a01_2 b1 b3 have d5: "drop (n-1) esl \<in> cpts_es" using cpts_es_dropi
-                        by (metis (no_types, hide_lams) Suc_diff_1 Suc_le_lessD b5 b5_1 
-                              drop_0 less_or_eq_imp_le neq0_conv not_le take_all zero_less_diff) 
+                        by (simp add: cpts_es_dropi2 less_imp_diff_less) 
                       with d2 d4 have d6: "\<exists>est. esl ! (n-1) -es-est\<rightarrow> esl ! n" 
                         by (metis (no_types, lifting) One_nat_def Suc_le_lessD Suc_pred a01_2 
                             b3 b4 b6 b9 cpts_es_not_empty d1_1 diff_less esetran.cases
@@ -3883,8 +3876,7 @@ lemma EventSeq_sound :
                           from b13 have d4: "esl ! n = (es, sn, xn)" using b6 c0 d0 by auto 
 
                           from a01_2 b1 b3 have d5: "drop (n-1) esl \<in> cpts_es" using cpts_es_dropi
-                            by (metis (no_types, hide_lams) Suc_diff_1 Suc_le_lessD b5 b5_1 
-                              drop_0 less_or_eq_imp_le neq0_conv not_le take_all zero_less_diff)
+                            by (simp add: cpts_es_dropi2 less_imp_diff_less)
                           with d2 d4 have d6: "\<exists>est. esl ! (n-1) -es-est\<rightarrow> esl ! n" 
                             by (metis (no_types, lifting) One_nat_def Suc_le_lessD Suc_pred a01_2 
                             b3 b4 b6 b9 cpts_es_not_empty d1_1 diff_less esetran.cases 
@@ -4892,9 +4884,8 @@ lemma parse_es_cpts_i2_noent_mid0:
                                     \<and> getspc_es (esl1 ! 0) \<noteq> EvtSys es)" by auto
                         moreover from b2 b3 have "\<not> (\<exists>j>0. Suc j < length (l@[esc]) \<and> getspc_es ((l@[esc]) ! j) = EvtSys es \<and> 
                                 getspc_es ((l@[esc]) ! Suc j) \<noteq> EvtSys es)"
-                          by (metis (no_types, hide_lams) Suc_neq_Zero diff_Suc_1 last_conv_nth 
-                            length_append_singleton less_antisym list.size(3) not_gr0 not_less_eq 
-                            nth_Cons_0 nth_append zero_less_diff)
+                          by (metis (no_types, lifting) One_nat_def last_snoc length_Suc_conv_rev 
+                              less_Suc_eq not_less_eq nth_Cons_0 nth_append nth_append_length)
                         ultimately show ?thesis using a0 d1 c1 by blast
                       qed
                   qed
@@ -6284,9 +6275,10 @@ lemma EventSys_sound_seg_aux0_forall:
                                         (getspc_es (esl!i) = EvtSys es \<and> getspc_e (?el!i) = AnonyEvent None) 
                                           \<or> (getspc_es (esl!i) = EvtSeq (getspc_e (?el!i)) (EvtSys es))"
                   by (simp add: e_sim_es_def) 
-                with a0 e1 have "(getspc_es (last esl) = EvtSys es \<and> getspc_e (last ?el) = AnonyEvent None) 
+                with a0 c3 e1 have "(getspc_es (last esl) = EvtSys es \<and> getspc_e (last ?el) = AnonyEvent None) 
                                           \<or> (getspc_es (last esl) = EvtSeq (getspc_e (last ?el)) (EvtSys es))"
-                  by (metis (no_types, hide_lams) c3 last_length length_Cons length_tl lessI list.sel(3) zero_less_Suc)
+                  by (metis One_nat_def Suc_1 Suc_le_lessD Suc_less_eq diff_Suc_1 last_conv_nth 
+                      length_Cons lessI list.simps(3))
                 with p6 show ?thesis by simp
               qed
             with d1 have "gets_e (last ?el) \<in> Post ei" by (simp add: commit_e_def)
@@ -6297,8 +6289,8 @@ lemma EventSys_sound_seg_aux0_forall:
                 with d2 have "\<forall>i. i < length ?el \<longrightarrow> gets_e (?el ! i) = gets_es (esl ! i) \<and>
                                                             getx_e (?el ! i) = getx_es (esl ! i)"
                   by (simp add: e_sim_es_def) 
-                with a0 e1 show ?thesis by (metis (no_types, hide_lams) c3 last_length 
-                        length_Cons length_tl lessI list.sel(3)) 
+                with a0 c3 e1 show ?thesis 
+                  by (metis diff_Suc_1 last_conv_nth length_Cons lessI list.simps(3)) 
               qed
             ultimately show "gets_es (last esl) \<in> Post ei" by simp
           qed
@@ -6397,9 +6389,9 @@ lemma EventSys_sound_aux_i_forall:
                     with a1 show ?thesis by (metis (no_types, lifting) Suc_leI Suc_lessD 
                       Suc_lessE c0 diff_Suc_1 diff_is_0_eq' length_append_singleton nth_Cons_0 nth_append) 
                   qed
-                from a0 have c4: "2 \<le> length ?els \<and> getspc_es (?els ! 0) = EvtSys es \<and> getspc_es (?els ! 1) \<noteq> EvtSys es"
-                  by (metis (no_types, hide_lams) Suc_1 Suc_eq_plus1_left Suc_le_lessD 
-                      Suc_lessD add.right_neutral c0 length_append_singleton not_less nth_append)
+                from c0 a0 have c4: "2 \<le> length ?els \<and> getspc_es (?els ! 0) = EvtSys es \<and> getspc_es (?els ! 1) \<noteq> EvtSys es"
+                  by (metis (no_types, lifting) One_nat_def Suc_1 Suc_leI Suc_le_lessD Suc_lessD 
+                      length_append_singleton less_Suc_eq nth_append)
                 with p0 c1 c2 c3 have c5: "\<forall>ei\<in>es. (\<exists>k. ?els!0-es-(EvtEnt ei)\<sharp>k\<rightarrow>?els!1) 
                               \<longrightarrow> (?els\<in>assume_es(Pre ei,Rely ei) \<longrightarrow> ?els\<in>commit_es(Guar ei,Post ei)
                                     \<and> gets_es (last ?els) \<in> Post ei)"
@@ -6480,9 +6472,9 @@ lemma EventSys_sound_aux_i_forall:
                         with a1 show ?thesis by (metis (no_types, lifting) Suc_leI Suc_lessD 
                           Suc_lessE c02 diff_Suc_1 diff_is_0_eq' length_append_singleton nth_Cons_0 nth_append) 
                       qed
-                    from a0 have c4: "2 \<le> length ?els \<and> getspc_es (?els ! 0) = EvtSys es \<and> getspc_es (?els ! 1) \<noteq> EvtSys es"
-                      by (metis (no_types, hide_lams) Suc_1 Suc_eq_plus1_left Suc_le_lessD 
-                          Suc_lessD add.right_neutral c02 length_append_singleton not_less nth_append)
+                    from a0 c02 have c4: "2 \<le> length ?els \<and> getspc_es (?els ! 0) = EvtSys es \<and> getspc_es (?els ! 1) \<noteq> EvtSys es"
+                      by (metis (no_types, lifting) One_nat_def Suc_1 Suc_less_eq length_append_singleton 
+                          less_eq_Suc_le less_imp_le_nat nth_append)
         
                     with p0 c1 c2 c3 d0 d1 have c5: "(?els\<in>assume_es(Pre ei,Rely ei) \<longrightarrow> ?els\<in>commit_es(Guar ei,Post ei)
                                 \<and> gets_es (last ?els) \<in> Post ei)" 
@@ -7050,14 +7042,15 @@ lemma EventSys_sound_0:
                 with b2 have d1: "drop i esl = concat (drop (Suc k) ?elst)" by auto
                 from b3 c0 have d2: "length (?elst ! (Suc k)) \<ge> 2" by auto
                 from c0 have "concat (drop (Suc k) ?elst) = ?elst ! (Suc k) @ concat (drop (Suc (Suc k)) ?elst)"
-                  by (metis (no_types, hide_lams) Cons_nth_drop_Suc List.nth_tl concat.simps(2) drop_Suc length_tl)
+                  by (metis (no_types, opaque_lifting) Cons_nth_drop_Suc List.nth_tl concat.simps(2) drop_Suc length_tl)                 
                 with d1 have d3: "drop i esl = ?elst ! (Suc k) @ concat (drop (Suc (Suc k)) ?elst)" by simp
                 with b0 c0 d2 have d4: "esl ! i = ?elst ! (Suc k) ! 0"
-                  by (metis (no_types, hide_lams) Cons_nth_drop_Suc One_nat_def Suc_1 
-                      less_or_eq_imp_le not_less not_less_eq_eq nth_Cons_0 nth_append)
+                  sledgehammer
+                  by (metis (no_types, lifting) Cons_nth_drop_Suc One_nat_def Suc_1 Suc_le_lessD 
+                      Suc_lessD nth_Cons_0 nth_append)
                   
                 from b0 c0 d2 d3 have d5: "esl ! Suc i = ?elst ! (Suc k) ! 1"
-                  by (metis (no_types, hide_lams) Cons_nth_drop_Suc One_nat_def 
+                  by (metis (no_types, opaque_lifting) Cons_nth_drop_Suc One_nat_def 
                     Suc_1 Suc_le_lessD Suc_lessD nth_Cons_0 nth_Cons_Suc nth_append) 
                 from c0 have "Suc k < length ?elst" by auto
                 show ?thesis

@@ -955,10 +955,8 @@ lemma allentev_isin_basicevts:
                           apply(rule estran.cases)
                           apply(simp add:get_actk_def)
                           apply(rule etran.cases)
-                          apply(simp add:get_actk_def)+
-                          apply (metis f3 ent_spec2' event.inject(1) evtseq_tran_0_exist_etran 
-                            noevtent_notran option.distinct(1))
-                          by (metis f2 f4 f1 ent_spec2' event.inject(1) evtent_is_basicevt_inevtseq f0 option.simps(3))
+                             apply(simp add:get_actk_def)+
+                          by (metis ent_spec2' event.simps(1) evtent_is_basicevt f3 get_actk_def option.simps(3))
                       } then show ?thesis by auto   
                       qed
                     
@@ -980,8 +978,8 @@ lemma allentev_isin_basicevts:
                       length_tl less_SucI list.sel(3) by fastforce 
                     moreover
                     from d1 d3 obtain s' and x' and esl1 where "?esl0 = (esys,s',x')#esl1"
-                      by (metis (no_types, hide_lams) Cons_nth_drop_Suc getspc_es_def 
-                        less_le_trans not_less_eq old.prod.exhaust prod.sel(1)) 
+                      by (metis (mono_tags, lifting) Cons_nth_drop_Suc Suc_le_lessD Suc_le_mono 
+                          esconf_trip order_subst2)
                     moreover
                     from d1 d3 d0 c0 e0 have "m - n <length ?esl0 - 1" by auto 
                     moreover
@@ -1141,7 +1139,7 @@ lemma cur_evt_in_cpts_es:
         and  a1: "\<exists>cmd. (cs k)!i -es-((Cmd cmd)\<sharp>k)\<rightarrow> (cs k)!(Suc i)"
       from p4 have a2: "\<forall>ef\<in>all_evts_esspec (evtsys_spec (fst (pesrgf k))). is_basicevt ef"
         using allevts_es_blto_allevts[of pesrgf]
-        by (metis (no_types, hide_lams) DomainE E\<^sub>e_def prod.sel(1) subsetCE) 
+        by (metis Domain.cases E\<^sub>e_def fst_conv in_mono) 
       from p2 have a3: "cs k \<in> cpts_of_es (evtsys_spec (fst (pesrgf k))) s x" by simp
       with p1 a0 a1 a2 a3 have "(\<exists>m. m < i \<and> (\<exists>e. cs k!m -es-(EvtEnt e\<sharp>k)\<rightarrow> cs k!(Suc m))
                     \<and> (\<forall>j. j > m \<and> j < i \<longrightarrow> \<not>(\<exists>e. cs k!j -es-(EvtEnt e\<sharp>k)\<rightarrow> cs k!(Suc j))))"
@@ -1158,7 +1156,8 @@ lemma cur_evt_in_cpts_es:
         using allentev_isin_basicevts by (smt Suc_lessE diff_Suc_1 le_less_trans less_imp_le_nat) 
       with a6 have "\<exists>ef\<in>all_evts_es (fst (pesrgf k)). getx_es ((cs k)!i) k = E\<^sub>e ef"
         using allbasicevts_es_blto_allevts[of "evtsys_spec (fst (pesrgf k))"] 
-          by (metis (no_types, hide_lams) DomainE E\<^sub>e_def all_evts_same fst_conv set_mp) 
+        by (metis (no_types, lifting) Domain.cases E\<^sub>e_def all_evts_same in_mono prod.sel(1))
+           
     }
     then show ?thesis by auto
   qed
@@ -1644,7 +1643,7 @@ lemma act_cpts_evtsys_sat_guar_curevt_gen0_new2[rule_format]:
                       assume e0: "j = 0"
                       with len_start_elst[of kk] have e1: "getspc_es (?elstk!j) = EvtSys es 
                             \<and> getspc_es (?elstk!Suc j) \<noteq> EvtSys es"
-                         by (metis (no_types, hide_lams) One_nat_def Suc_1 Suc_le_lessD c34 d0 less_imp_le_nat nth_append)
+                        by (metis (no_types, lifting) One_nat_def Suc_1 Suc_le_lessD Suc_lessD d0 nth_append)
                       moreover
                       from a4 have "\<not>(\<exists>ess. getspc_es (?esl ! i) = EvtSys ess)" 
                         using cmd_enable_impl_notesys2[of "?esl ! i" cmd k "?esl ! Suc i"] by simp
@@ -1688,8 +1687,9 @@ lemma act_cpts_evtsys_sat_guar_curevt_gen0_new2[rule_format]:
                     qed
 
                   have d2: "getspc_es (?elstk!0) = EvtSys es \<and> getspc_es (?elstk!1) \<noteq> EvtSys es"
-                    using len_start_elst[of 0] by (metis (no_types, hide_lams) One_nat_def 
-                      Suc_1 Suc_le_lessD Suc_lessD d0 len_start_elst nth_append) 
+                    using d0 len_start_elst[of 0] 
+                    by (metis (no_types, lifting) One_nat_def Suc_1 Suc_le_lessD Suc_lessD d0 
+                       len_start_elst nth_append)
 
                   from c9 d0 len_start_elst 
                     have "\<exists>si ti. si = length (concat (take kk ?elst)) \<and> ti = Suc (length (concat (take (Suc kk) ?elst))) \<and>
@@ -2969,7 +2969,7 @@ lemma act_cpts_evtseq_sat_e_sim_curevt_fstseg_withlst_pst [rule_format]:
 
       from a83 have "Suc 0 \<le> length ?eslh" by simp
       with c1 have "getspc_es (?eslh!0) = EvtSeq (getspc_e (el!0)) es"
-        by (simp add: e_eqv_einevtseq_def) 
+        by (metis e_eqv_einevtseq_def) 
       with a82 have c40: "EvtSeq (getspc_e (el!0)) es = EvtSeq e es" by (simp add: getspc_es_def)
       with b17 have c4: "getspc_e (el!0) = E\<^sub>e ef" by auto
 
@@ -3098,9 +3098,8 @@ proof -
       then obtain n where c3: "(n \<le> m \<and> getspc_es (?esl ! n) = es) 
                                 \<and> (\<forall>j. j < n \<longrightarrow> getspc_es (?esl ! j) \<noteq> es)"
         by auto
-      with a8 have c4: "n \<noteq> 0" using getspc_es_def[of "cs k ! 0"]
-        by (metis (no_types, hide_lams) add.commute add.right_neutral fst_conv add_Suc 
-            dual_order.irrefl esys.size(3) le_add1 le_imp_less_Suc)
+      with a6 a8 have c4: "n \<noteq> 0" using getspc_es_def[of "cs k ! 0"]
+        by (metis evtseq_ne_es)
       from c1 c3 have c5: "n < length ?esl" by simp
       let ?c1 = "take n c"
       let ?cs1 = "\<lambda>k. take n (cs k)"
@@ -3672,37 +3671,3 @@ lemma act_cptpes_sat_e_sim:
 
 
 end
-
-
-(*
-lemma act_cpts_evtsys_sat_e_sim[rule_format]:
-  "\<lbrakk>\<turnstile> (esspc::('l,'k,'s) rgformula_ess) sat\<^sub>s [pre, rely, guar, post]\<rbrakk>
-      \<Longrightarrow> \<forall>c pes s x cs pre1 rely1 Pre Rely Guar Post k cmd. 
-            Pre k \<subseteq> pre \<and> Rely k \<subseteq> rely \<and> guar \<subseteq> Guar k \<and> post \<subseteq> Post k \<longrightarrow>
-            c\<in>cpts_of_pes pes s x \<and> c \<propto> cs \<and> c\<in>assume_pes(pre1, rely1) \<longrightarrow>
-           (\<forall>k. (cs k) \<in> cpts_of_es (pes k) s x)  \<longrightarrow> 
-           (\<forall>k. (cs k)\<in> commit_es(Guar k, Post k)) \<longrightarrow>
-           (\<forall>k. pre1 \<subseteq> Pre k) \<longrightarrow>
-           (\<forall>k. rely1 \<subseteq> Rely k) \<longrightarrow>
-           (\<forall>k j. j \<noteq> k \<longrightarrow> Guar j \<subseteq> Rely k) \<longrightarrow>
-           evtsys_spec esspc = EvtSys es \<and>  EvtSys es = getspc_es (cs k!0) \<longrightarrow>
-           (\<forall>e\<in>all_evts_es esspc. is_basicevt (E\<^sub>e e)) \<longrightarrow>
-           (\<forall>e\<in>all_evts_es esspc. the (evtrgfs (E\<^sub>e e)) = snd e) \<longrightarrow>
-           (\<forall>j. Suc j < length c \<longrightarrow> (\<exists>actk. c!j-pes-actk\<rightarrow>c!Suc j)) \<longrightarrow>
-          (\<forall>i. Suc i < length (cs k) \<and> ((cs k)!i -es-((Cmd cmd)\<sharp>k)\<rightarrow> (cs k)!(Suc i)) 
-          \<longrightarrow>  (\<exists>el s x j.  j < i \<and> el = ((getx_es ((cs k)!i) k), s, x) 
-              # rm_evtsys (drop j (take (Suc i) (cs k))) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
-*)
-(*
-lemma act_cptpes_sat_e_sim: 
-  "\<lbrakk>\<turnstile> (pesf::('l,'k,'s) rgformula_par) SAT [pre, {}, UNIV, post]\<rbrakk> \<Longrightarrow> 
-      s0\<in>pre \<longrightarrow>
-      (\<forall>ef\<in>all_evts pesf. is_basicevt (E\<^sub>e ef)) \<longrightarrow>
-      (\<forall>erg\<in>all_evts pesf. the (evtrgfs (E\<^sub>e erg)) = snd erg) \<longrightarrow>
-      pesl\<in>cpts_of_pes (paresys_spec pesf) s0 x0 \<longrightarrow> 
-      (\<forall>j. Suc j < length pesl \<longrightarrow> (\<exists>actk. pesl!j-pes-actk\<rightarrow>pesl!Suc j)) \<longrightarrow> pesl \<propto> cs \<longrightarrow>
-      (\<forall>k i. Suc i <length pesl \<longrightarrow> (\<exists>c. (pesl!i -pes-((Cmd c)\<sharp>k)\<rightarrow> pesl!(Suc i)))
-          \<longrightarrow> (\<exists>el ef s x j. ef \<in> all_evts pesf \<and> j < i \<and> el = ((E\<^sub>e ef), s, x) 
-              # rm_evtsys (drop j (take (Suc i) (cs k))) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e))"
-  sorry
-*) 
