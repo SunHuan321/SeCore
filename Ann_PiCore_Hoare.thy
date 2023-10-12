@@ -1966,6 +1966,7 @@ lemma ann_preserves_pre : "\<forall>s. cpts_of_p (Some P) s \<inter> assume_p (p
 lemma preserves_p_append : "\<lbrakk> l = xs @ ys; xs \<in> preserves_p; ys \<in> preserves_p \<rbrakk> \<Longrightarrow> l \<in> preserves_p"
   by (simp add: preserves_p_def nth_append)
 
+(*
 lemma lift_step : "lift Q (xs ! i) -c\<rightarrow> lift Q (xs ! Suc i) \<Longrightarrow> fst (xs ! i) \<noteq> None \<Longrightarrow> xs ! i -c\<rightarrow> xs ! Suc i"
 proof-
   assume a1: "lift Q (xs ! i) -c\<rightarrow> lift Q (xs ! Suc i)"
@@ -1993,6 +1994,21 @@ proof-
         by (erule ptran.cases, simp_all)
     qed
   qed
+*)
+
+lemma lift_step : "lift Q P -c\<rightarrow> lift Q P' \<Longrightarrow> fst P \<noteq> None \<Longrightarrow> P -c\<rightarrow> P'"
+  apply (case_tac "fst P")
+   apply force
+  apply (case_tac "fst P'")
+   apply (case_tac "P", case_tac "P'")
+   apply (simp add: lift_def)
+   apply (erule ptran.cases, simp_all)
+   apply (case_tac "P", case_tac "P'")
+  apply (simp add: lift_def)
+  apply (erule ptran.cases, simp_all)
+  done
+
+
 
 lemma Seq_sound:
   "\<lbrakk>\<Turnstile> P sat\<^sub>p [pre, rely, guar, mid]; \<Turnstile> Q sat\<^sub>p [mid, rely, guar, post]\<rbrakk>
@@ -7045,7 +7061,6 @@ lemma EventSys_sound_0:
                   by (metis (no_types, opaque_lifting) Cons_nth_drop_Suc List.nth_tl concat.simps(2) drop_Suc length_tl)                 
                 with d1 have d3: "drop i esl = ?elst ! (Suc k) @ concat (drop (Suc (Suc k)) ?elst)" by simp
                 with b0 c0 d2 have d4: "esl ! i = ?elst ! (Suc k) ! 0"
-                  sledgehammer
                   by (metis (no_types, lifting) Cons_nth_drop_Suc One_nat_def Suc_1 Suc_le_lessD 
                       Suc_lessD nth_Cons_0 nth_append)
                   
