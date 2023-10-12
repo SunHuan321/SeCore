@@ -29,13 +29,267 @@ lemma allD: "\<lbrakk> \<forall>a. P a\<rbrakk>\<Longrightarrow> P a"
 lemma all2D: "\<lbrakk>\<forall>a b. P a b\<rbrakk> \<Longrightarrow> P a b"
   by blast
 
+lemma all2_impD: "\<lbrakk> \<forall>a b . P a b  \<longrightarrow> Q a b  ; P a b  \<rbrakk>\<Longrightarrow> Q a b"  
+  by blast
+
+lemma all5_impD: "\<lbrakk> \<forall>a b c d e. P a b c d e \<longrightarrow> Q a b c d e ; P a b c d e \<rbrakk>\<Longrightarrow> Q a b c d e"  
+  by blast
+
 lemma all8_impD: "\<lbrakk> \<forall>a b c d e f g h. P a b c d e f g h\<longrightarrow> Q a b c d e f g h; P a b c d e f g h\<rbrakk>\<Longrightarrow> Q a b c d e f g h"  
   by blast
 
+subsection \<open>local respect program\<close>
+inductive lr_p :: "'s ann_prog \<Rightarrow> ('l, 'k, 's) event \<Rightarrow> bool"
+    ("\<turnstile>\<^sub>l\<^sub>r _ sat\<^sub>p _" [60] 45)
+where
+  Basic: "\<lbrakk>\<forall>s k u. s \<in> r \<and> (dome s k ev) \<setminus>\<leadsto> u \<longrightarrow> s  \<sim>u\<sim> f s\<rbrakk>
+           \<Longrightarrow> \<turnstile>\<^sub>l\<^sub>r AnnBasic r f sat\<^sub>p ev"
+| Seq: "\<lbrakk> \<turnstile>\<^sub>l\<^sub>r P sat\<^sub>p ev;  \<turnstile>\<^sub>l\<^sub>r Q sat\<^sub>p ev\<rbrakk>
+           \<Longrightarrow> \<turnstile>\<^sub>l\<^sub>r AnnSeq P Q sat\<^sub>p ev"
+| Cond: "\<lbrakk> \<turnstile>\<^sub>l\<^sub>r P1 sat\<^sub>p ev;  \<turnstile>\<^sub>l\<^sub>r P2 sat\<^sub>p ev \<rbrakk>
+          \<Longrightarrow> \<turnstile>\<^sub>l\<^sub>r AnnCond r b P1 P2 sat\<^sub>p ev"
+| While: "\<lbrakk> \<turnstile>\<^sub>l\<^sub>r P sat\<^sub>p ev; ann_pre P \<subseteq> r \<inter> b \<rbrakk>
+          \<Longrightarrow> \<turnstile>\<^sub>l\<^sub>r AnnWhile r b P sat\<^sub>p ev"
+| Await: "\<lbrakk> \<turnstile> P sat\<^sub>p [pre, {}, UNIV, post]; \<forall>s t u. s \<in> r \<and> t \<in> post \<longrightarrow> s \<sim>u\<sim> t; 
+            \<forall>s k u. s \<in> r  \<and> (dome s k ev) \<setminus>\<leadsto> u \<longrightarrow> s \<in> pre\<rbrakk>
+          \<Longrightarrow> \<turnstile>\<^sub>l\<^sub>r AnnAwait r b P sat\<^sub>p ev"
+| Nondt: "\<lbrakk>\<forall>s k u.  s \<in> r \<and> (dome s k ev) \<setminus>\<leadsto> u \<longrightarrow> (\<forall>t. (s, t) \<in> f \<longrightarrow> s \<sim>u\<sim> t)\<rbrakk>
+           \<Longrightarrow> \<turnstile>\<^sub>l\<^sub>r AnnNondt r f sat\<^sub>p ev"
+
+definition locally_respect_p1 :: "'s ann_prog \<Rightarrow> ('l, 'k, 's) event \<Rightarrow> bool"
+  where "locally_respect_p1 P ev \<equiv> \<forall> s P' s' k u.  ann_preserves_p (Some P) s 
+  \<and> (dome s k ev) \<setminus>\<leadsto> u \<and> (Some P, s) -c\<rightarrow> (P', s') \<longrightarrow> s \<sim>u\<sim> s'"
+
+definition locally_respect_p2 :: "'s ann_prog \<Rightarrow> 's ann_prog set \<Rightarrow> bool"
+  where "locally_respect_p2 P \<S> \<equiv>  (\<forall> s P' s'. ann_preserves_p (Some P) s 
+         \<and> (Some P, s) -c\<rightarrow> (Some P', s') \<longrightarrow> P' \<in> \<S>)"
+
+definition locally_respect_p :: "'s ann_prog set \<Rightarrow> ('l, 'k, 's) event \<Rightarrow> bool"
+  where "locally_respect_p \<S> ev \<equiv> \<forall>P \<in> \<S>. locally_respect_p1 P ev \<and> locally_respect_p2 P \<S>"
+
+lemma locally_respect_p_union: "\<lbrakk> locally_respect_p \<S> ev; locally_respect_p \<S>' ev \<rbrakk> \<Longrightarrow> locally_respect_p (\<S> \<union> \<S>') ev"
+  apply (simp add: locally_respect_p_def, clarify)
+  apply (case_tac "P \<in> \<S>", simp)
+   apply (meson UnI1 locally_respect_p2_def)
+  by (metis UnE UnI2 locally_respect_p2_def)
+
+lemma locally_respect_p_insert: "\<lbrakk>locally_respect_p \<S> ev; locally_respect_p1 P ev; 
+                                  locally_respect_p2 P (\<S> \<union> {P})\<rbrakk> \<Longrightarrow>  locally_respect_p (\<S> \<union> {P}) ev"
+  apply (simp add: locally_respect_p_def)
+  apply (case_tac "P \<in> \<S>")
+   apply (simp add: insert_absorb)
+  by (meson insertCI locally_respect_p2_def)
+
+lemma lr_p_Basic_Sound: "\<forall>s k u. s \<in> r \<and> dome s k ev \<setminus>\<leadsto> u \<longrightarrow> s \<sim>u\<sim> f s \<Longrightarrow>
+                          \<exists>\<S>. AnnBasic r f \<in> \<S> \<and> locally_respect_p \<S> ev"
+  apply (rule_tac x = "{AnnBasic r f}" in exI, simp)
+  apply (simp add: locally_respect_p_def)
+  apply (rule conjI, simp add: locally_respect_p1_def, clarify)
+   apply auto
+  apply (simp add: locally_respect_p2_def)
+  by fastforce
+
+definition lift_prog_set :: "'s ann_prog \<Rightarrow> 's ann_prog set \<Rightarrow> 's ann_prog set"
+  where "lift_prog_set Q \<S> \<equiv> {prog. \<exists>P \<in> \<S>. prog = AnnSeq P Q} \<union> {Q}"
+
+
+lemma lift_prog_set_respect1 : "locally_respect_p1 P ev \<Longrightarrow> locally_respect_p1 (AnnSeq P Q) ev"
+  apply (simp add: locally_respect_p1_def, clarify)
+  by (erule_tac ptran.cases, simp_all)
+
+lemma lr_p_Seq_Sound: "\<lbrakk>\<exists>\<S>. P \<in> \<S> \<and> locally_respect_p \<S> ev; \<exists>\<S>. Q \<in> \<S> \<and> locally_respect_p \<S> ev\<rbrakk>
+                      \<Longrightarrow> \<exists>\<S>. AnnSeq P Q \<in> \<S> \<and> locally_respect_p \<S> ev"
+  apply (erule exE, erule exE)
+  apply (rule_tac x = "lift_prog_set Q \<S> \<union> \<S>'" in exI)
+  apply (rule conjI, simp add: lift_prog_set_def)
+  apply (simp add: locally_respect_p_def, clarify)
+  apply (rule conjI)
+   apply (case_tac "Pa \<in> \<S>'", simp)
+   apply (simp add: lift_prog_set_def)
+   apply (case_tac "Pa = Q", simp, clarsimp)
+  using lift_prog_set_respect1 apply blast
+  apply (case_tac "Pa \<in> \<S>'", simp add: locally_respect_p2_def)
+  apply (simp add: lift_prog_set_def)
+  apply (case_tac "Pa = Q")
+   apply force
+  apply (simp add: locally_respect_p2_def, clarify)
+  apply (erule ptran.cases, simp_all)
+  by blast
+
+lemma lr_p_Cond_Sound: "\<lbrakk>\<exists>\<S>. P1 \<in> \<S> \<and> locally_respect_p \<S> ev; \<exists>\<S>. P2 \<in> \<S> \<and> locally_respect_p \<S> ev\<rbrakk>
+                        \<Longrightarrow> \<exists>\<S>. AnnCond r b P1 P2 \<in> \<S> \<and> locally_respect_p \<S> ev"
+  apply (clarsimp, rule_tac x = "\<S> \<union> \<S>' \<union> {AnnCond r b P1 P2}" in exI)
+  apply (rule conjI, simp)
+  apply (rule locally_respect_p_insert)
+    apply (simp add: locally_respect_p_union)
+  using locally_respect_p1_def vpeq_reflexive apply fastforce
+  using UnI1 locally_respect_p2_def by fastforce
+
+lemma lr_p_While_Sound: "\<lbrakk>\<exists>\<S>. P \<in> \<S> \<and> locally_respect_p \<S> ev;  ann_pre P \<subseteq> r \<inter> b \<rbrakk> 
+                      \<Longrightarrow> \<exists>\<S>. AnnWhile r b P \<in> \<S> \<and> locally_respect_p \<S> ev"
+  apply (erule exE)
+  apply (rule_tac x = "lift_prog_set (AnnWhile r b P) \<S>" in exI)
+  apply (rule conjI, simp add: lift_prog_set_def)
+  apply (simp add: locally_respect_p_def, clarify)
+  apply (rule conjI)
+   apply (simp add: lift_prog_set_def)
+   apply (case_tac "Pa = AnnWhile r b P")
+    apply (drule_tac x = P in Set.bspec, simp, clarify)
+  using locally_respect_p1_def vpeq_reflexive apply auto[1]
+  using lift_prog_set_respect1 apply blast
+  apply (simp add: lift_prog_set_def)
+  apply (case_tac "Pa = AnnWhile r b P", simp add: locally_respect_p2_def)
+   apply blast
+  apply (clarify, drule_tac x = Paa in Set.bspec, simp, drule conjunct2)
+  apply (simp add: locally_respect_p2_def, clarify)
+  apply (erule ptran.cases, simp_all)
+  by blast
+
+lemma Await_post: "\<lbrakk>\<turnstile> P sat\<^sub>p [pre, {}, UNIV, post]; (Some (AnnAwait r b P), s) -c\<rightarrow> (P', s'); s \<in> pre\<rbrakk> \<Longrightarrow> s' \<in> post"
+  apply (drule rgsound_p, simp add: prog_validity_def)
+  apply (erule ptran.cases, simp_all, clarify)
+  apply (drule_tac a = s in allD)
+  apply (drule Star_imp_cptn, clarify)
+  apply (drule_tac c = l in subsetD, simp)
+   apply (simp add: assume_p_def gets_p_def)
+   apply (metis (mono_tags, lifting) cpts_of_p_def etran_or_ctran2 mem_Collect_eq snd_conv)
+  apply (simp add: commit_p_def gets_p_def getspc_p_def)
+  done
+
+lemma lr_p_Await_Sound: "\<lbrakk>\<turnstile> P sat\<^sub>p [pre, {}, UNIV, post]; \<forall>s t u. s \<in> r \<and> t \<in> post \<longrightarrow> s \<sim>u\<sim> t;  
+                          \<forall>s k u. s \<in> r \<and> dome s k ev \<setminus>\<leadsto> u \<longrightarrow> s \<in> pre\<rbrakk> \<Longrightarrow> 
+                          \<exists>\<S>. AnnAwait r b P \<in> \<S> \<and> locally_respect_p \<S> ev"
+  apply (rule_tac x = "{AnnAwait r b P}" in exI, simp add: locally_respect_p_def)
+  apply (rule conjI, simp add: locally_respect_p1_def, clarify)
+   apply (drule_tac a = s in all_impD)
+    apply blast
+   apply (meson Await_post)
+  using locally_respect_p2_def by force
+
+lemma lr_p_Nondt_Sound: " \<forall>s k u. s \<in> r \<and> dome s k ev \<setminus>\<leadsto> u \<longrightarrow> (\<forall>t. (s, t) \<in> f \<longrightarrow> s \<sim>u\<sim> t) 
+                          \<Longrightarrow> \<exists>\<S>. AnnNondt r f \<in> \<S> \<and> locally_respect_p \<S> ev"
+  apply (rule_tac x = "{AnnNondt r f}" in exI, simp)
+  apply (simp add: locally_respect_p_def)
+  apply (rule conjI, simp add: locally_respect_p1_def, clarify)
+   apply auto
+  apply (simp add: locally_respect_p2_def)
+  by fastforce
+
+lemma lr_p_sound : " \<turnstile>\<^sub>l\<^sub>r P sat\<^sub>p ev \<Longrightarrow> \<exists>\<S>.  P \<in> \<S> \<and> locally_respect_p \<S> ev"
+  apply (erule lr_p.induct)
+  using lr_p_Basic_Sound apply force
+  using lr_p_Seq_Sound apply auto[1]
+     apply (simp add: lr_p_Cond_Sound)
+    apply (simp add: lr_p_While_Sound)
+   apply (simp add: lr_p_Await_Sound)
+  by (simp add: lr_p_Nondt_Sound)
+
 subsection \<open>local respect event\<close>
 
+definition locally_respect_e1 :: "('l, 'k, 's) event \<Rightarrow> ('l, 'k, 's) event \<Rightarrow> bool"
+  where "locally_respect_e1 e ev \<equiv> \<forall> s x e' s' x' k u t.  ann_preserves_e e s 
+  \<and> (dome s k ev) \<setminus>\<leadsto> u \<and> (e, s, x) -et-t\<rightarrow> (e', s', x') \<longrightarrow> s \<sim>u\<sim> s'"
 
-subsection \<open>step consistent  event\<close>
+definition locally_respect_e2 :: "('l, 'k, 's) event \<Rightarrow> ('l, 'k, 's) event set \<Rightarrow> bool"
+  where "locally_respect_e2 e \<S> \<equiv> AnonyEvent None \<in> \<S> \<and> (\<forall>x s t e' s' x'. 
+        ann_preserves_e e s \<and> (e, s, x) -et-t\<rightarrow> (e', s', x') \<longrightarrow> e' \<in> \<S>)"
+
+definition locally_respect_e :: "('l, 'k, 's) event set \<Rightarrow> ('l, 'k, 's) event \<Rightarrow> bool" where
+  "locally_respect_e \<S> ev \<equiv> \<forall>e \<in> \<S>. locally_respect_e1 e ev \<and> locally_respect_e2 e \<S>"
+
+lemma locally_respect_e_union: "\<lbrakk> locally_respect_e \<S> ev; locally_respect_e \<S>' ev \<rbrakk> \<Longrightarrow> 
+                                 locally_respect_e (\<S> \<union> \<S>') ev"
+  apply (simp add: locally_respect_e_def, clarify)
+  apply (case_tac "e \<in> \<S>")
+  using locally_respect_e2_def apply fastforce
+  using locally_respect_e2_def by fastforce
+
+
+lemma locally_respect_e_insert: "\<lbrakk>locally_respect_e \<S> ev; locally_respect_e1 e ev; 
+                                 locally_respect_e2 e (\<S> \<union> {e})\<rbrakk>  \<Longrightarrow> locally_respect_e (\<S> \<union> {e}) ev"
+  apply (simp add: locally_respect_e_def, clarify)
+  using locally_respect_e2_def by fastforce
+
+definition Prog_Trans_Anony :: "'s ann_prog set \<Rightarrow> ('l, 'k, 's) event set"
+  where "Prog_Trans_Anony \<S> \<equiv> {ev. \<exists>P. P \<in> \<S> \<and> ev = AnonyEvent (Some P)} \<union> {AnonyEvent None}"
+
+
+lemma Prog_Trans_Anony_Respect_aux1 : "  locally_respect_p1 P ev  \<Longrightarrow> 
+                                          locally_respect_e1 (AnonyEvent (Some P)) ev"
+  apply  (simp add: locally_respect_p1_def locally_respect_e1_def, clarify)
+  apply (case_tac e', clarify)
+    apply (drule_tac a = s and b = x1 and c = s' and d = k and e = u  in all5_impD)
+     apply (simp add: etran.simps, simp)
+  by (meson no_tran2basic)
+  
+lemma Prog_Trans_Anony_Respect_aux2 : "locally_respect_p2 P \<S> \<Longrightarrow> 
+                                          locally_respect_e2 (AnonyEvent (Some P)) (Prog_Trans_Anony \<S>)"
+  apply (simp add: locally_respect_p2_def locally_respect_e2_def)
+  apply (rule conjI, simp add: Prog_Trans_Anony_def, clarify)
+  apply (case_tac "e'", simp add: Prog_Trans_Anony_def)
+   apply (case_tac x1, simp, simp)
+   apply (erule etran.cases, simp_all)
+  apply blast
+  by (simp add: etran.simps)
+
+lemma Prog_Trans_Anony_Respect: "\<lbrakk> P \<in> \<S>; locally_respect_p \<S> ev \<rbrakk> \<Longrightarrow> 
+                         locally_respect_e (Prog_Trans_Anony \<S>) ev"
+  apply (simp add: locally_respect_p_def)
+  apply (simp add: locally_respect_e_def)
+  apply (simp add: Prog_Trans_Anony_def)
+  apply (rule conjI, simp add: locally_respect_e1_def, clarify)
+   apply (erule etran.cases, clarify)
+    apply (erule ptran.cases, simp_all)
+  apply (rule conjI, simp add: locally_respect_e2_def locally_respect_p2_def, clarify)
+   apply (erule etran.cases, clarify)
+    apply (erule ptran.cases, simp_all, clarify)
+  apply (rule conjI)
+  using Prog_Trans_Anony_Respect_aux1 apply blast
+  using Prog_Trans_Anony_Respect_aux2 Prog_Trans_Anony_def by auto
+
+
+lemma lr_e_Anony: "\<lbrakk> \<turnstile>\<^sub>l\<^sub>r P sat\<^sub>p ev\<rbrakk> \<Longrightarrow> \<exists>\<S>. (AnonyEvent (Some P)) \<in> \<S> \<and> locally_respect_e \<S> ev"
+  apply (drule lr_p_sound, erule exE)
+  apply (rule_tac x = "(Prog_Trans_Anony \<S>)" in exI)
+  apply (rule conjI, simp add: Prog_Trans_Anony_def)
+  using Prog_Trans_Anony_Respect by blast
+
+
+lemma lr_e_Basic: "\<lbrakk>ev = BasicEvent e;  \<turnstile>\<^sub>l\<^sub>r body e sat\<^sub>p ev\<rbrakk> \<Longrightarrow> \<exists>\<S>. ev \<in> \<S> \<and> locally_respect_e \<S> ev"
+  apply (drule lr_e_Anony, erule exE)
+  apply (rule_tac x = "\<S> \<union> {ev}" in exI)
+  apply (rule conjI, simp)
+  apply (rule locally_respect_e_insert, simp)
+   apply (simp add: locally_respect_e1_def)
+  apply (simp add: etran.simps vpeq_reflexive)
+  apply (simp add: locally_respect_e2_def)
+  apply (rule conjI, simp add: locally_respect_e_def locally_respect_e2_def)
+   apply blast
+  by (metis ent_spec2' noevtent_notran)
+
+
+lemma locally_respect_event : "\<lbrakk>getspc_e c \<in> \<S> ; locally_respect_e \<S> ev; ann_preserves_e (getspc_e c) (gets_e c); 
+                               \<exists>t. c -et-t\<rightarrow> c'\<rbrakk>  \<Longrightarrow> getspc_e c' \<in> \<S>"
+  apply (case_tac "c", case_tac c', simp add: locally_respect_def getspc_e_def gets_e_def)
+  by (meson locally_respect_e2_def locally_respect_e_def)
+
+lemma locally_next_state : "\<lbrakk>e \<in> \<S> \<and> locally_respect_e \<S> ev; ann_preserves_e e s;
+                             (dome s k ev) \<setminus>\<leadsto> u; (e, s, x) -et-t\<rightarrow> (e', s', x')\<rbrakk> 
+                              \<Longrightarrow> s \<sim>u\<sim> s'"
+  apply (simp add: locally_respect_e_def, clarify)
+  using locally_respect_e1_def by blast
+
+lemma locally_respect_forall : "\<lbrakk>e \<in> \<S> ; locally_respect_e \<S> ev; el \<in> cpts_ev; getspc_e (el!0) = e; el \<in> preserves_e;
+        i < length el\<rbrakk> \<Longrightarrow> getspc_e (el ! i) \<in> \<S>"
+  apply (induct i, simp add: cpts_of_ev_def getspc_e_def)
+  apply (case_tac "getspc_e (el ! i) = getspc_e (el ! Suc i)", simp)
+  apply (simp add: preserves_e_def)
+  by (meson Suc_lessD locally_respect_event notran_confeqi)
+
+
+
+
+subsection \<open>step consistent program\<close>
 
 inductive sc_p :: "'s ann_prog \<Rightarrow> ('l, 'k, 's) event \<Rightarrow> bool"
     ("\<turnstile>\<^sub>s\<^sub>c _ sat\<^sub>p _" [60] 45)
@@ -100,10 +354,6 @@ lemma sc_p_Basic_Sound: " \<forall>s1 s2 k u. s1 \<in> r \<and> s2 \<in> r \<and
   apply (simp add: step_consistent_p2_def)
   by fastforce
 
-definition lift_prog_set :: "'s ann_prog \<Rightarrow> 's ann_prog set \<Rightarrow> 's ann_prog set"
-  where "lift_prog_set Q \<S> \<equiv> {prog. \<exists>P \<in> \<S>. prog = AnnSeq P Q} \<union> {Q}"
-
-
 lemma lift_prog_set_consistent1 : "step_consistent_p1 P ev \<Longrightarrow> step_consistent_p1 (AnnSeq P Q) ev"
   apply (rule step_consistent_p1_eq, clarify)
   apply (erule_tac ptran.cases, simp_all, clarify)
@@ -139,6 +389,15 @@ lemma sc_p_Seq_Sound: "\<lbrakk> \<exists>\<S>. P \<in> \<S> \<and> step_consist
   apply (simp add: step_consistent_p2_def, clarify)
   apply (erule ptran.cases, simp_all)
   by blast
+
+lemma sc_p_Cond_Sound: "\<lbrakk>\<exists>\<S>. P1 \<in> \<S> \<and> step_consistent_p \<S> ev; \<exists>\<S>. P2 \<in> \<S> \<and> step_consistent_p \<S> ev\<rbrakk>
+                \<Longrightarrow> \<exists>\<S>. AnnCond r b P1 P2 \<in> \<S> \<and> step_consistent_p \<S> ev"
+  apply (clarsimp, rule_tac x = "\<S> \<union> \<S>' \<union> {AnnCond r b P1 P2}" in exI)
+  apply (rule conjI, simp)
+  apply (rule step_consistent_p_insert)
+    apply (simp add: step_consistent_p_union)
+  using step_consistent_p1_def apply auto[1]
+  using step_consistent_p2_def by auto
 
 lemma sc_p_While_Sound: "\<lbrakk> \<exists>\<S>. P \<in> \<S> \<and> step_consistent_p \<S> ev; ann_pre P \<subseteq> r \<inter> b\<rbrakk>
                       \<Longrightarrow> \<exists>\<S>. AnnWhile r b P \<in> \<S> \<and> step_consistent_p \<S> ev"
@@ -178,25 +437,6 @@ lemma sc_p_While_Sound: "\<lbrakk> \<exists>\<S>. P \<in> \<S> \<and> step_consi
   apply (erule ptran.cases, simp_all)
   by blast
 
-lemma sc_p_Cond_Sound: "\<lbrakk>\<exists>\<S>. P1 \<in> \<S> \<and> step_consistent_p \<S> ev; \<exists>\<S>. P2 \<in> \<S> \<and> step_consistent_p \<S> ev\<rbrakk>
-                \<Longrightarrow> \<exists>\<S>. AnnCond r b P1 P2 \<in> \<S> \<and> step_consistent_p \<S> ev"
-  apply (clarsimp, rule_tac x = "\<S> \<union> \<S>' \<union> {AnnCond r b P1 P2}" in exI)
-  apply (rule conjI, simp)
-  apply (rule step_consistent_p_insert)
-    apply (simp add: step_consistent_p_union)
-  using step_consistent_p1_def apply auto[1]
-  using step_consistent_p2_def by auto
-
-lemma Await_post: "\<lbrakk>\<turnstile> P sat\<^sub>p [pre, {}, UNIV, post]; (Some (AnnAwait r b P), s) -c\<rightarrow> (P', s'); s \<in> pre\<rbrakk> \<Longrightarrow> s' \<in> post"
-  apply (drule rgsound_p, simp add: prog_validity_def)
-  apply (erule ptran.cases, simp_all, clarify)
-  apply (drule_tac a = s in allD)
-  apply (drule Star_imp_cptn, clarify)
-  apply (drule_tac c = l in subsetD, simp)
-   apply (simp add: assume_p_def gets_p_def)
-   apply (metis (mono_tags, lifting) cpts_of_p_def etran_or_ctran2 mem_Collect_eq snd_conv)
-  apply (simp add: commit_p_def gets_p_def getspc_p_def)
-  done
 
 lemma sc_p_Await_Sound: "\<lbrakk> \<turnstile> P sat\<^sub>p [pre, {}, UNIV, post]; \<forall>t1 t2 u. t1 \<in> post \<and> t2 \<in> post \<longrightarrow> t1 \<sim>u\<sim> t2;
           \<forall>s1 s2 k u. s1 \<in> r \<and> s2 \<in> r \<and> s1 \<sim>u\<sim> s2 \<and> (dome s1 k ev \<leadsto> u \<longrightarrow> s1 \<sim>dome s1 k ev\<sim> s2) \<longrightarrow>
@@ -228,6 +468,7 @@ lemma sc_p_sound : " \<turnstile>\<^sub>s\<^sub>c P sat\<^sub>p ev \<Longrightar
   using sc_p_Await_Sound apply auto[1]
   by (smt (verit, best) sc_p_Nondt_Sound)
 
+subsection \<open>step consistent program\<close>
 
 definition step_consistent_e1 :: "('l, 'k, 's) event \<Rightarrow> ('l, 'k, 's) event \<Rightarrow> bool"
   where "step_consistent_e1 e ev \<equiv> \<forall>e1' e2' s1 s2 x1 x2 s1' s2' x1' x2' k u t. 
@@ -262,10 +503,6 @@ lemma step_consistent_e_insert: "\<lbrakk>step_consistent_e \<S> ev; step_consis
                                  step_consistent_e2 e (\<S> \<union> {e})\<rbrakk>  \<Longrightarrow> step_consistent_e (\<S> \<union> {e}) ev"
   apply (simp add: step_consistent_e_def, clarify)
   using step_consistent_e2_def by fastforce
-
-
-definition Prog_Trans_Anony :: "'s ann_prog set \<Rightarrow> ('l, 'k, 's) event set"
-  where "Prog_Trans_Anony \<S> \<equiv> {ev. \<exists>P. P \<in> \<S> \<and> ev = AnonyEvent (Some P)} \<union> {AnonyEvent None}"
 
 
 lemma Prog_Trans_Anony_Consistent_aux1 : " step_consistent_p1 P ev  \<Longrightarrow> 
@@ -343,8 +580,8 @@ lemma step_consistent_forall : "\<lbrakk>e \<in> \<S> ; step_consistent_e \<S> e
   apply (induct i, simp add: cpts_of_ev_def getspc_e_def)
   apply (case_tac "getspc_e (el ! i) = getspc_e (el ! Suc i)", simp)
   apply (rule_tac c = "el ! i" in consistent_next_event, simp_all)
-  apply (simp add: preserves_e_def)
-  using cpts_of_ev_def notran_confeqi by fastforce
+   apply (simp add: preserves_e_def)
+  using notran_confeqi by blast
 
 subsection \<open>Proof Rules of Events For Unwinding Lemma \<close>
 
@@ -541,9 +778,194 @@ lemma reachable_impl_cpts: "reachable C1 C2 \<Longrightarrow> \<exists>c. c\<in>
 lemma reachable0_impl_cpts: "reachable0 C \<Longrightarrow> \<exists>c. c\<in>cpts_pes \<and> c!0 = C0 \<and> last c = C"
   using reachable_impl_cpts reachable0_def by simp
 
+definition locally_respect_events :: "bool" where
+  "locally_respect_events \<equiv> \<forall>ef. ef\<in>all_evts pesf  \<longrightarrow> (\<exists>\<S>. (E\<^sub>e ef) \<in> \<S> \<and> locally_respect_e \<S> (E\<^sub>e ef))"
+
+definition locally_respect_event_guar :: "bool" where
+  "locally_respect_event_guar \<equiv> \<forall>ef u s1 s2 k. ef\<in>all_evts pesf \<and> (s1,s2) \<in> Guar\<^sub>e ef \<longrightarrow> 
+                                    ((dome s1 k (E\<^sub>e ef)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
 
 definition step_consistent_events :: "bool" where
   "step_consistent_events \<equiv> \<forall>ef. ef\<in>all_evts pesf  \<longrightarrow> (\<exists>\<S>. (E\<^sub>e ef) \<in> \<S> \<and> step_consistent_e \<S> (E\<^sub>e ef))"
+
+lemma lr_guar_imp_lr : "locally_respect_event_guar \<Longrightarrow> locally_respect_events"
+  sorry
+
+lemma rg_lr_imp_lr: "locally_respect_events \<Longrightarrow> locally_respect"
+proof-
+  assume p0: "locally_respect_events"
+  then have p1: "\<forall>ef. ef\<in>all_evts pesf  \<longrightarrow> (\<exists>\<S>. (E\<^sub>e ef) \<in> \<S> \<and> locally_respect_e \<S> (E\<^sub>e ef))"
+    by (simp add: locally_respect_events_def)
+  show ?thesis
+  proof-
+    {
+      fix a u C
+      assume a0: "reachable0 C"
+        and  a1: "(domain (a::('l,'k,'s,'d) action)) \<setminus>\<leadsto> u"
+      have "\<forall> C'. (C'\<in>nextc C a) \<longrightarrow> (C \<sim>.u.\<sim> C')"
+      proof-
+        {
+          fix C'
+          assume b0: "C'\<in>nextc C a"
+          then have b1: "(C,C')\<in>step a" by (simp add:nextc_def)
+          then have b2: "(C -pes-(actk a)\<rightarrow> C') \<and> ((\<exists>e k. actk a = ((EvtEnt e)\<sharp>k) \<and> eventof a = e 
+                          \<and> dome (gets C) k e = domain a) \<or> (\<exists>c k. actk a = ((Cmd c)\<sharp>k) \<and> 
+                          eventof a = (getx C) k \<and> dome (gets C) k (eventof a) = domain a))"
+              by (simp add:step_def)
+            obtain act_k and e and d where b3: "a = \<lparr>actk = act_k,eventof = e, domain=d\<rparr>"
+              using action.cases by blast 
+            with b2 have b4: "(C -pes-act_k\<rightarrow> C') \<and> ((\<exists>e k. act_k = ((EvtEnt e)\<sharp>k) \<and> eventof a = e 
+                              \<and> dome (gets C) k e = domain a) \<or> (\<exists>c k. act_k = ((Cmd c)\<sharp>k) \<and> 
+                              eventof a = (getx C) k \<and> dome (gets C) k (eventof a) = domain a))"
+              by simp
+            obtain act and k where b5: "act_k = act\<sharp>k"
+              by (metis actk.cases get_actk_def)
+            obtain pes1 and s1 and x1 where b6: "C = (pes1,s1,x1)" using prod_cases3 by blast 
+            obtain pes2 and s2 and x2 where b7: "C' = (pes2,s2,x2)" using prod_cases3 by blast
+            from b4 b5 b6 b7 have "\<exists>es'. ((pes1 k, s1, x1) -es-(act\<sharp>k)\<rightarrow> (es', s2, x2)) \<and> pes2 = pes1(k:=es')"
+              using pestran_estran by force
+            then obtain es' where b8: "((pes1 k, s1, x1) -es-(act\<sharp>k)\<rightarrow> (es', s2, x2)) \<and> pes2 = pes1(k:=es')" by auto
+            from b5 have "C \<sim>.u.\<sim> C'"
+            proof(induct act)
+              case (Cmd x)
+              assume c0: "act_k = Cmd x\<sharp>k"
+              from a0 have "\<exists>as. (C0,C) \<in> run as" by (simp add:reachable0_def reachable_def)
+              then obtain as where "(C0,C) \<in> run as" by auto
+              then have "(\<exists>c. c\<in>cpts_pes \<and> c!0 = C0 \<and> last c = C \<and> Suc (length as) = length c \<and>
+                              (\<forall>j. Suc j < length c \<longrightarrow> (c!j-pes-(actk (as!j))\<rightarrow>c!Suc j)) )"
+                using run_is_cpt by blast
+              then obtain c where c1: "c\<in>cpts_pes \<and> c!0 = C0 \<and> last c = C \<and> Suc (length as) = length c \<and>
+                              (\<forall>j. Suc j < length c \<longrightarrow> (c!j-pes-(actk (as!j))\<rightarrow>c!Suc j))" by auto
+              with b1 have c2: "c@[C']\<in>cpts_pes" using cpts_pes_onemore step_def
+                by (metis (no_types, lifting) b4 cpts_pes_not_empty last_conv_nth)
+              with c1 have c3: "c @ [C'] \<in> cpts_of_pes (paresys_spec pesf) s0 x0" 
+                using cpts_of_pes_def[of "paresys_spec pesf" s0 x0] C0_ParSys
+                by (smt cpts_pes_not_empty length_greater_0_conv mem_Collect_eq nth_append)
+              moreover
+              from c1 have c4: "(c @ [C']) ! (length (c @ [C']) - 2) = C"
+                by (metis Suc_1 diff_Suc_1 diff_Suc_Suc last_conv_nth length_0_conv length_append_singleton
+                    lessI nat.simps(3) nth_append)
+              moreover
+              have c5: "(c @ [C']) ! (length (c @ [C']) - 1) = C'" by simp
+              moreover
+              from b1 c1 have c50: "\<forall>j. Suc j < length (c @ [C']) \<longrightarrow> 
+                   ((c @ [C'])!j-pes-(actk ((as@[a])!j))\<rightarrow>(c @ [C'])!Suc j)"
+                by (smt Suc_1 Suc_lessI Suc_less_eq action.simps(1) b3 b4 c4 diff_Suc_1 diff_Suc_Suc 
+                    length_append_singleton nth_append nth_append_length) 
+
+            from c3 c50 have c51: "\<forall>k i. Suc i < length (c @ [C']) \<longrightarrow>
+                      (\<exists>ca. (c @ [C']) ! i -pes-Cmd ca\<sharp>k\<rightarrow> (c @ [C']) ! Suc i) \<longrightarrow>
+                      (\<exists>ef\<in>all_evts pesf. getx ((c @ [C']) ! i) k = fst ef) " 
+              using all_evts_are_basic cur_evt_in_specevts [of "c@[C']" pesf] by (metis E\<^sub>e_def)
+            moreover
+            from b1 b3 c0 have c52: "C-pes-Cmd x\<sharp>k\<rightarrow>C'" using step_def by simp
+
+
+            ultimately have "(\<exists>ef\<in>all_evts pesf. getx C k = fst ef)"
+              using c1 c4 c5
+            proof-
+              have f1: "\<forall>k n. \<not> Suc n < length (c @ [C']) \<or>
+                         (\<forall>ca. ((c @ [C']) ! n, Cmd ca\<sharp>k, (c @ [C']) ! Suc n) \<notin> pestran) \<or> 
+                        (\<exists>p. p \<in> all_evts pesf \<and> fst p = getx ((c @ [C']) ! n) k)"
+                by (metis c51)
+              from c1 have f2: "\<forall>ps. c ! length as = (c @ ps) ! length as" 
+                by (metis (no_types) c1 lessI nth_append)
+              have "c ! length as = C"
+                by (metis (no_types) append_Nil c1 diff_Suc_1 id_take_nth_drop last_length 
+                    length_Cons take_0 zero_less_Suc)
+              then show ?thesis
+                using f2 f1 by (metis c52 c1 c5 diff_Suc_1 length_append_singleton lessI)
+            qed
+
+            then obtain ef where c12: "ef\<in>all_evts pesf \<and> getx C k = E\<^sub>e ef"
+              by (metis E\<^sub>e_def)
+            from c0 have c12_1: "\<not>(\<exists>e k. act_k = EvtEnt e\<sharp>k)"
+              by (simp add: get_actk_def) 
+            with b3 b4 c0 have c13: "\<exists>x k. act_k = Cmd x\<sharp>k \<and> eventof a = getx C k \<and> dome (gets C) k (eventof a) = domain a"
+              by (metis actk.iffs get_actk_def)
+            with a1 b3 c0 have c14: "eventof a = getx C k \<and> dome (gets C) k (eventof a) = domain a"
+              by (metis actk.ext_inject get_actk_def)
+
+            let ?pes = "paresys_spec pesf"
+            let ?i = "length (c @ [C']) - 2"
+            have "\<exists>\<S>. AnonyEvent x \<in> \<S> \<and> locally_respect_e \<S> (E\<^sub>e ef)"
+            proof-
+              {
+                have "\<exists>el j.  getspc_e (el!0) = getx C k \<and> j < length el \<and> 
+                     el!j = rm_evtsys1 ((getspc C k), gets C, getx C) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
+                  using act_cptpes_sat_e_sim[rule_format, of pesf "{s0}" UNIV s0 evtrgfs "c @ [C']"
+                        x0 ?i k] parsys_sat_rg all_evts_are_basic evt_in_parsys_in_evtrgfs c1 c3 c4 c5 c50 c52
+                  by (smt One_nat_def Suc_1 Suc_diff_Suc Suc_less_eq diff_less insertI1 
+                      length_append_singleton zero_less_Suc)
+                then obtain el and j where e0: "getspc_e (el!0) = getx C k \<and> j < length el \<and> 
+                     el!j = rm_evtsys1 ((getspc C k), gets C, getx C) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
+                  by auto
+                with c12 have c120: "getspc_e (el!0) = E\<^sub>e ef \<and> j < length el \<and> 
+                               el!j = rm_evtsys1 ((getspc C k), gets C, getx C) 
+                               \<and> el \<in> cpts_ev \<and> el \<in> preserves_e" by simp
+                with c12 p1 have "\<exists>\<S>. (E\<^sub>e ef) \<in> \<S> \<and> locally_respect_e \<S> (E\<^sub>e ef)" by blast
+                then obtain \<S> where e1: "(E\<^sub>e ef) \<in> \<S> \<and> locally_respect_e \<S> (E\<^sub>e ef)" by auto
+
+                from b5 b8 b4 c0 have "\<exists>es. getspc C k = EvtSeq (AnonyEvent x) es"
+                  by (metis  pes_cmd_tran_anonyevt pesconf_trip)
+                then obtain es where "getspc C k = EvtSeq (AnonyEvent x) es" by auto
+                with e0 b8 have e2: "el!j = (AnonyEvent x, s1, x1)" 
+                  using rm_evtsys1_def 
+                  by (metis EvtSeqrm Pair_inject b6 esconf_trip pesconf_trip)
+                with e0 e1 e2 c120 have "AnonyEvent x \<in> \<S>"
+                  using locally_respect_forall[of "E\<^sub>e ef" \<S> "E\<^sub>e ef" el j]
+                  by (metis getspc_e_def fstI)
+                with e1 show ?thesis by auto
+              }
+            qed
+
+            then obtain \<S> where d0: "AnonyEvent x \<in> \<S> \<and> locally_respect_e \<S> (E\<^sub>e ef)" by auto
+
+            have d1: "ann_preserves_e (AnonyEvent x) s1"
+            proof- 
+              {
+                from c3 c50 have "c @ [C'] \<in> preserves_pes" 
+                  using run_cpt_preserves pes_tran_not_etran1 by blast
+                with c4 b6 have "ann_preserves_pes pes1 s1"
+                  apply (simp add: preserves_pes_def)
+                  apply (erule_tac x = "?i" in allE)
+                  by (simp add: getspc_def gets_def)
+                then have f0 : "ann_preserves_es (pes1 k) s1"
+                  by (simp add: ann_preserves_pes_def)
+            from b5 b8 c52 c0 have "\<exists>es. pes1 k = EvtSeq (AnonyEvent x) es"
+              by (metis  evtseq_cmd_tran_anonyevt)
+            then obtain es where "pes1 k = EvtSeq (AnonyEvent x) es" by auto
+            with f0 have "ann_preserves_e (AnonyEvent x) s1"
+              by (simp add: ann_preserves_es_def)
+          }
+          then show ?thesis by auto
+        qed
+
+        from b6 b7 c52 have "\<exists>e2. (AnonyEvent x, s1, x1) -et-Cmd x\<sharp>k\<rightarrow> (e2, s2, x2)"
+          by (meson pes_cmd_tran_anonyevt1)
+        then obtain e2 where d2 : "(AnonyEvent x, s1, x1) -et-Cmd x\<sharp>k\<rightarrow> (e2, s2, x2)"
+          by auto
+        from a1 b6 c12 c14 have d3: "(dome s1 k (E\<^sub>e ef)) \<setminus>\<leadsto> u"
+          by (metis  fst_conv gets_def prod.sel(2))
+
+        with d0 d1 d2 d3 have "s1 \<sim>u\<sim> s2"
+          by (drule_tac k = k in locally_next_state, simp_all)
+
+        with b6 b7 show ?case by (simp add: gets_def vpeqc_def)
+
+      next
+        case (EvtEnt x) 
+        from b5 b8 have "s1 = s2" 
+          using entevt_notchgstate by (metis EvtEnt.prems evtent_is_basicevt)
+        with b6 b7 show ?case by (simp add: gets_def vpeqc_def vpeq_reflexive)
+      qed
+    }
+    then show ?thesis by auto
+  qed
+}
+  then show ?thesis using locally_respect_def by simp
+qed
+qed
 
 lemma rg_sc_imp_sc: "step_consistent_events \<Longrightarrow> step_consistent"
 proof-
@@ -689,15 +1111,6 @@ proof-
               by (metis actk.iffs get_actk_def)
             with a1 b3 c0 have c14: "eventof a = getx C1 k \<and> dome (gets C1) k (eventof a) = domain a"
               by (metis actk.ext_inject get_actk_def)
-
-            have c15: "eventof a = (getx C2) k \<and> dome (gets C2) k (eventof a) = domain a"
-            proof -
-              from b7 c12_1 have "\<exists>c k. act_k = Cmd c\<sharp>k \<and> eventof a = getx C2 k 
-                    \<and> dome (gets C2) k (eventof a) = domain a" by auto
-              then obtain c' and k' where "act_k = Cmd c'\<sharp>k' \<and> eventof a = getx C2 k' 
-                    \<and> dome (gets C2) k' (eventof a) = domain a" by auto
-              with c0 c14 show ?thesis by (metis actk.iffs get_actk_def)
-            qed
 
             let ?pes = "paresys_spec pesf"
             let ?i = "length (c1 @ [C1']) - 2"
