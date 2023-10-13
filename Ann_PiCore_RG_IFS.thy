@@ -781,15 +781,13 @@ lemma reachable0_impl_cpts: "reachable0 C \<Longrightarrow> \<exists>c. c\<in>cp
 definition locally_respect_events :: "bool" where
   "locally_respect_events \<equiv> \<forall>ef. ef\<in>all_evts pesf  \<longrightarrow> (\<exists>\<S>. (E\<^sub>e ef) \<in> \<S> \<and> locally_respect_e \<S> (E\<^sub>e ef))"
 
-definition locally_respect_event_guar :: "bool" where
-  "locally_respect_event_guar \<equiv> \<forall>ef u s1 s2 k. ef\<in>all_evts pesf \<and> (s1,s2) \<in> Guar\<^sub>e ef \<longrightarrow> 
+definition locally_respect_events_guar :: "bool" where
+  "locally_respect_events_guar \<equiv> \<forall>ef u s1 s2 k. ef\<in>all_evts pesf \<and> (s1,s2) \<in> Guar\<^sub>e ef \<longrightarrow> 
                                     ((dome s1 k (E\<^sub>e ef)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
 
 definition step_consistent_events :: "bool" where
   "step_consistent_events \<equiv> \<forall>ef. ef\<in>all_evts pesf  \<longrightarrow> (\<exists>\<S>. (E\<^sub>e ef) \<in> \<S> \<and> step_consistent_e \<S> (E\<^sub>e ef))"
 
-lemma lr_guar_imp_lr : "locally_respect_event_guar \<Longrightarrow> locally_respect_events"
-  sorry
 
 lemma rg_lr_imp_lr: "locally_respect_events \<Longrightarrow> locally_respect"
 proof-
@@ -966,6 +964,125 @@ proof-
   then show ?thesis using locally_respect_def by simp
 qed
 qed
+
+lemma rg_lr_guar_imp_lr: "locally_respect_events_guar \<Longrightarrow> locally_respect"
+  proof -
+    assume p0: "locally_respect_events_guar"
+    then have p1: " \<forall>ef u s1 s2 k. ef\<in>all_evts pesf \<and> (s1,s2) \<in> Guar\<^sub>e ef \<longrightarrow> 
+                                    ((dome s1 k (E\<^sub>e ef)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
+      by (simp add:locally_respect_events_guar_def)
+    show ?thesis
+      proof -
+      {
+        fix a u C
+        assume a0: "reachable0 C"
+          and  a1: "(domain (a::('l,'k,'s,'d) action)) \<setminus>\<leadsto> u"
+        have "\<forall> C'. (C'\<in>nextc C a) \<longrightarrow> (C \<sim>.u.\<sim> C')"
+          proof -
+          {
+            fix C'
+            assume b0: "C'\<in>nextc C a"
+            then have b1: "(C,C')\<in>step a" by (simp add:nextc_def)
+            then have b2: "(C -pes-(actk a)\<rightarrow> C') \<and>
+                            ((\<exists>e k. actk a = ((EvtEnt e)\<sharp>k) \<and> eventof a = e \<and> dome (gets C) k e = domain a) \<or>
+                             (\<exists>c k. actk a = ((Cmd c)\<sharp>k) \<and> eventof a = (getx C) k \<and> dome (gets C) k (eventof a) = domain a))"
+              by (simp add:step_def)
+            obtain act_k and e and d where b3: "a = \<lparr>actk = act_k,eventof = e, domain=d\<rparr>"
+              using action.cases by blast 
+            with b2 have b4: "(C -pes-act_k\<rightarrow> C') \<and> 
+                              ((\<exists>e k. act_k = ((EvtEnt e)\<sharp>k) \<and> eventof a = e \<and> dome (gets C) k e = domain a) \<or>
+                             (\<exists>c k. act_k = ((Cmd c)\<sharp>k) \<and> eventof a = (getx C) k \<and> dome (gets C) k (eventof a) = domain a))"
+              by simp
+            obtain act and k where b5: "act_k = act\<sharp>k"
+              by (metis actk.cases get_actk_def) 
+            obtain pes1 and s1 and x1 where b6: "C = (pes1,s1,x1)" using prod_cases3 by blast 
+            obtain pes2 and s2 and x2 where b7: "C' = (pes2,s2,x2)" using prod_cases3 by blast
+            from b4 b5 b6 b7 have "\<exists>es'. ((pes1 k, s1, x1) -es-(act\<sharp>k)\<rightarrow> (es', s2, x2)) \<and> pes2 = pes1(k:=es')" 
+              using pestran_estran by force
+            then obtain es' where b8: "((pes1 k, s1, x1) -es-(act\<sharp>k)\<rightarrow> (es', s2, x2)) \<and> pes2 = pes1(k:=es')" by auto
+
+            from b5 have "C \<sim>.u.\<sim> C'"
+              proof(induct act)
+                case (Cmd x) 
+                assume c0: "act_k = Cmd x\<sharp>k"
+                from a0 have "\<exists>as. (C0,C) \<in> run as" by (simp add:reachable0_def reachable_def)
+                then obtain as where "(C0,C) \<in> run as" by auto
+                then have "(\<exists>c. c\<in>cpts_pes \<and> c!0 = C0 \<and> last c = C \<and> Suc (length as) = length c \<and>
+                              (\<forall>j. Suc j < length c \<longrightarrow> (c!j-pes-(actk (as!j))\<rightarrow>c!Suc j)) )"
+                  using run_is_cpt by blast
+                then obtain c where c1: "c\<in>cpts_pes \<and> c!0 = C0 \<and> last c = C \<and> Suc (length as) = length c \<and>
+                              (\<forall>j. Suc j < length c \<longrightarrow> (c!j-pes-(actk (as!j))\<rightarrow>c!Suc j))" by auto
+                with b1 have c2: "c@[C']\<in>cpts_pes" using cpts_pes_onemore step_def
+                  by (metis (no_types, lifting) b4 cpts_pes_not_empty last_conv_nth)
+                with c1 have c3: "c @ [C'] \<in> cpts_of_pes (paresys_spec pesf) s0 x0" 
+                  using cpts_of_pes_def[of "paresys_spec pesf" s0 x0] C0_ParSys
+                  by (smt cpts_pes_not_empty length_greater_0_conv mem_Collect_eq nth_append) 
+                moreover
+                from c1 have c4: "(c @ [C']) ! (length (c @ [C']) - 2) = C"
+                  by (metis Suc_1 diff_Suc_1 diff_Suc_eq_diff_pred last_conv_nth length_0_conv 
+                      length_append_singleton lessI nat.discI nth_append)
+                moreover
+                have c5: "(c @ [C']) ! (length (c @ [C']) - 1) = C'" by simp
+                moreover
+                from b1 c1 have c50: "\<forall>j. Suc j < length (c @ [C']) \<longrightarrow> 
+                        ((c @ [C'])!j-pes-(actk ((as@[a])!j))\<rightarrow>(c @ [C'])!Suc j)"
+                   by (smt Suc_1 Suc_lessI Suc_less_eq action.simps(1) b3 b4 c4 
+                     diff_Suc_1 diff_Suc_Suc length_append_singleton nth_append nth_append_length) 
+                ultimately have r1: "(gets C, gets C')\<in>Guar\<^sub>f (the (evtrgfs (getx C k)))" 
+                  using b1 b3 b4 c0 c1 act_cptpes_sat_guar_curevt_new2 [rule_format, of pesf "{s0}" UNIV s0 evtrgfs "c@[C']"]
+                     step_def[of a] parsys_sat_rg all_evts_are_basic evt_in_parsys_in_evtrgfs
+                     by (smt One_nat_def Suc_1 append_is_Nil_conv butlast_snoc diff_Suc_1 
+                       diff_Suc_eq_diff_pred diff_Suc_less insertI1 length_butlast 
+                       length_greater_0_conv not_Cons_self2)
+                
+                from c3 c50 have c51: "\<forall>k i. Suc i < length (c @ [C']) \<longrightarrow>
+                          (\<exists>ca. (c @ [C']) ! i -pes-Cmd ca\<sharp>k\<rightarrow> (c @ [C']) ! Suc i) \<longrightarrow>
+                          (\<exists>ef\<in>all_evts pesf. getx ((c @ [C']) ! i) k = fst ef) " 
+                    using all_evts_are_basic cur_evt_in_specevts [of "c@[C']" pesf] by (metis E\<^sub>e_def) 
+                moreover
+                from b1 b3 c0 have c52: "C-pes-Cmd x\<sharp>k\<rightarrow>C'" using step_def by simp
+                ultimately have "(\<exists>ef\<in>all_evts pesf. getx C k = fst ef)"
+                  using c1 c4 c5
+                  proof -
+                    have f1: "\<forall>k n. \<not> Suc n < length (c @ [C']) \<or>
+                        (\<forall>ca. ((c @ [C']) ! n, Cmd ca\<sharp>k, (c @ [C']) ! Suc n) \<notin> pestran) \<or> 
+                        (\<exists>p. p \<in> all_evts pesf \<and> fst p = getx ((c @ [C']) ! n) k)"
+                      by (metis c51)
+                    have f2: "\<forall>ps. c ! length as = (c @ ps) ! length as"
+                      by (metis (no_types) c1 lessI nth_append)
+                    have "c ! length as = C"
+                      by (metis (no_types) append_Nil c1 diff_Suc_1 id_take_nth_drop 
+                          last_length length_Cons take_0 zero_less_Suc)
+                    then show ?thesis
+                      using f2 f1 by (metis c52 c1 c5 diff_Suc_1 length_append_singleton lessI)
+                  qed
+                then obtain ef where c7: "ef\<in>all_evts pesf \<and> getx C k = fst ef" by auto
+                from c0 have "\<not>(\<exists>e k. act_k = EvtEnt e\<sharp>k)"
+                  by (simp add: get_actk_def) 
+                with b3 b4 c0 have c70: "\<exists>x k. act_k = Cmd x\<sharp>k \<and> eventof a = getx C k \<and> dome (gets C) k (eventof a) = domain a"
+                  by simp
+                with a1 b3 c0 have c8: "eventof a = getx C k \<and> dome (gets C) k (eventof a) = domain a" 
+                  using get_actk_def[of "Cmd x" k]
+                  by (smt (verit) actk.ext_inject get_actk_def)
+                with a1 b3 b6 c7 have "(dome s1 k (E\<^sub>e ef)) \<setminus>\<leadsto> u" 
+                  using gets_def E\<^sub>e_def by (metis fst_conv snd_conv) 
+                moreover
+                with p1 b6 b7 c7 r1 have "(gets C, gets C')\<in>Guar\<^sub>e ef" 
+                  using evt_in_parsys_in_evtrgfs Guar\<^sub>f_def E\<^sub>e_def Guar\<^sub>e_def by metis
+                ultimately show ?case using p1 b6 b7 c7 vpeqc_def E\<^sub>e_def c8 a1 by metis
+              next
+                case (EvtEnt x) 
+                from b5 b8 have "s1 = s2" 
+                  using entevt_notchgstate by (metis EvtEnt.prems evtent_is_basicevt)  
+                with b6 b7 show ?case by (simp add: gets_def vpeqc_def vpeq_reflexive)
+              qed
+          }
+          then show ?thesis by auto
+          qed
+      }
+      then show ?thesis using locally_respect_def by simp
+      qed
+    qed
 
 lemma rg_sc_imp_sc: "step_consistent_events \<Longrightarrow> step_consistent"
 proof-
@@ -1223,6 +1340,36 @@ proof-
     then show ?thesis using step_consistent_def by blast
   qed
 qed
+
+theorem UnwindingTheoremE_noninfluence0: 
+    assumes p1: observed_consistent
+    and     p2: locally_respect_events
+    and     p3: step_consistent_events
+  shows     noninfluence0
+  by (simp add: UnwindingTheorem_noninfluence0 p1 p2 p3 rg_lr_imp_lr rg_sc_imp_sc)
+
+theorem UnwindingTheoremE_nonleakage:
+    assumes p1: observed_consistent
+    and     p2: locally_respect_events
+    and     p3: step_consistent_events
+  shows nonleakage
+  by (simp add: UnwindingTheorem_nonleakage p1 p2 p3 rg_lr_imp_lr rg_sc_imp_sc)
+
+theorem UnwindingTheoremE_noninfluence0_guar:
+    assumes p1: observed_consistent
+    and     p2: locally_respect_events_guar
+    and     p3: step_consistent_events
+  shows     noninfluence0
+  by (simp add: UnwindingTheorem_noninfluence0 p1 p2 p3 rg_lr_guar_imp_lr rg_sc_imp_sc)
+
+theorem UnwindingTheoremE_nonleakage_guar:
+    assumes p1: observed_consistent
+    and     p2: locally_respect_events
+    and     p3: step_consistent_events
+  shows nonleakage
+  by (simp add: UnwindingTheorem_nonleakage p1 p2 p3 rg_lr_imp_lr rg_sc_imp_sc)
+
+end
 
 
 

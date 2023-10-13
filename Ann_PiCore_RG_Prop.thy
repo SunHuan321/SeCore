@@ -5023,7 +5023,7 @@ lemma act_cptpes_sat_guar_curevt_new2:
                 using conjoin_es_sat_assume[of "paresys_spec pesfa" "Pre\<^sub>e\<^sub>s \<circ> pesfa" "Rely\<^sub>e\<^sub>s \<circ> pesfa"
                    "Guar\<^sub>e\<^sub>s \<circ> pesfa" "Post\<^sub>e\<^sub>s \<circ> pesfa" prea rely pesl s0 x0 cs] c7 a5 a6 a7 b0 b6 b8 by auto
               with c7 c8 show ?thesis using paresys_spec_def[of pesfa]
-                sorry
+                by (meson Int_iff b6 es_validity_def subsetD)
             qed
           ultimately
             have "(gets_es ((cs k)!i), gets_es ((cs k)!(Suc i)))\<in>Guar\<^sub>f (the (evtrgfs (getx_es ((cs k)!i) k)))"
