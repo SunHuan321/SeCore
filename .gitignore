@@ -4,3 +4,4 @@
 ARINC653_MultiCore_Spec.thy
 ARINC653_MultiCore_Spec_Invar.thy
 ARINC653_MultiCore_Spec_Invar_Await.thy
+Ann_PiCore_Syntax

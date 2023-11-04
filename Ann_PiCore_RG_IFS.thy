@@ -50,7 +50,7 @@ where
           \<Longrightarrow> \<turnstile>\<^sub>l\<^sub>r AnnCond r b P1 P2 sat\<^sub>p ev"
 | While: "\<lbrakk> \<turnstile>\<^sub>l\<^sub>r P sat\<^sub>p ev; ann_pre P \<subseteq> r \<inter> b \<rbrakk>
           \<Longrightarrow> \<turnstile>\<^sub>l\<^sub>r AnnWhile r b P sat\<^sub>p ev"
-| Await: "\<lbrakk> \<turnstile> P sat\<^sub>p [pre, {}, UNIV, post]; \<forall>s t u. s \<in> r \<and> t \<in> post \<longrightarrow> s \<sim>u\<sim> t; 
+| Await: "\<lbrakk> \<turnstile> P sat\<^sub>p [pre, {(s, t). s = t}, UNIV, post]; \<forall>s t u. s \<in> r \<and> t \<in> post \<longrightarrow> s \<sim>u\<sim> t; 
             \<forall>s k u. s \<in> r  \<and> (dome s k ev) \<setminus>\<leadsto> u \<longrightarrow> s \<in> pre\<rbrakk>
           \<Longrightarrow> \<turnstile>\<^sub>l\<^sub>r AnnAwait r b P sat\<^sub>p ev"
 | Nondt: "\<lbrakk>\<forall>s k u.  s \<in> r \<and> (dome s k ev) \<setminus>\<leadsto> u \<longrightarrow> (\<forall>t. (s, t) \<in> f \<longrightarrow> s \<sim>u\<sim> t)\<rbrakk>
@@ -145,7 +145,8 @@ lemma lr_p_While_Sound: "\<lbrakk>\<exists>\<S>. P \<in> \<S> \<and> locally_res
   apply (erule ptran.cases, simp_all)
   by blast
 
-lemma Await_post: "\<lbrakk>\<turnstile> P sat\<^sub>p [pre, {}, UNIV, post]; (Some (AnnAwait r b P), s) -c\<rightarrow> (P', s'); s \<in> pre\<rbrakk> \<Longrightarrow> s' \<in> post"
+
+lemma Await_post: "\<lbrakk>\<turnstile> P sat\<^sub>p [pre, {(s, t). s = t}, UNIV, post]; (Some (AnnAwait r b P), s) -c\<rightarrow> (P', s'); s \<in> pre\<rbrakk> \<Longrightarrow> s' \<in> post"
   apply (drule rgsound_p, simp add: prog_validity_def)
   apply (erule ptran.cases, simp_all, clarify)
   apply (drule_tac a = s in allD)
@@ -156,7 +157,7 @@ lemma Await_post: "\<lbrakk>\<turnstile> P sat\<^sub>p [pre, {}, UNIV, post]; (S
   apply (simp add: commit_p_def gets_p_def getspc_p_def)
   done
 
-lemma lr_p_Await_Sound: "\<lbrakk>\<turnstile> P sat\<^sub>p [pre, {}, UNIV, post]; \<forall>s t u. s \<in> r \<and> t \<in> post \<longrightarrow> s \<sim>u\<sim> t;  
+lemma lr_p_Await_Sound: "\<lbrakk>\<turnstile> P sat\<^sub>p [pre, {(s, t). s = t}, UNIV, post]; \<forall>s t u. s \<in> r \<and> t \<in> post \<longrightarrow> s \<sim>u\<sim> t;  
                           \<forall>s k u. s \<in> r \<and> dome s k ev \<setminus>\<leadsto> u \<longrightarrow> s \<in> pre\<rbrakk> \<Longrightarrow> 
                           \<exists>\<S>. AnnAwait r b P \<in> \<S> \<and> locally_respect_p \<S> ev"
   apply (rule_tac x = "{AnnAwait r b P}" in exI, simp add: locally_respect_p_def)
@@ -303,7 +304,7 @@ where
           \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnCond r b P1 P2 sat\<^sub>p ev"
 | While: "\<lbrakk> \<turnstile>\<^sub>s\<^sub>c P sat\<^sub>p ev; ann_pre P \<subseteq> r \<inter> b \<rbrakk>
           \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnWhile r b P sat\<^sub>p ev"
-| Await: "\<lbrakk> \<turnstile> P sat\<^sub>p [pre, {}, UNIV, post]; \<forall>t1 t2 u. t1 \<in> post \<and> t2 \<in> post \<longrightarrow> t1 \<sim>u\<sim> t2; 
+| Await: "\<lbrakk> \<turnstile> P sat\<^sub>p [pre, {(s, t). s = t}, UNIV, post]; \<forall>t1 t2 u. t1 \<in> post \<and> t2 \<in> post \<longrightarrow> t1 \<sim>u\<sim> t2; 
             \<forall>s1 s2 k u. s1 \<in> r \<and> s2 \<in> r \<and> s1 \<sim>u\<sim> s2 \<and> ((dome s1 k ev) \<leadsto> u \<longrightarrow> s1 \<sim>(dome s1 k ev)\<sim> s2)
             \<longrightarrow> s1 \<in> pre \<and> s2 \<in> pre\<rbrakk>
           \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnAwait r b P sat\<^sub>p ev"
@@ -438,7 +439,7 @@ lemma sc_p_While_Sound: "\<lbrakk> \<exists>\<S>. P \<in> \<S> \<and> step_consi
   by blast
 
 
-lemma sc_p_Await_Sound: "\<lbrakk> \<turnstile> P sat\<^sub>p [pre, {}, UNIV, post]; \<forall>t1 t2 u. t1 \<in> post \<and> t2 \<in> post \<longrightarrow> t1 \<sim>u\<sim> t2;
+lemma sc_p_Await_Sound: "\<lbrakk> \<turnstile> P sat\<^sub>p [pre, {(s, t). s = t}, UNIV, post]; \<forall>t1 t2 u. t1 \<in> post \<and> t2 \<in> post \<longrightarrow> t1 \<sim>u\<sim> t2;
           \<forall>s1 s2 k u. s1 \<in> r \<and> s2 \<in> r \<and> s1 \<sim>u\<sim> s2 \<and> (dome s1 k ev \<leadsto> u \<longrightarrow> s1 \<sim>dome s1 k ev\<sim> s2) \<longrightarrow>
           s1 \<in> pre \<and> s2 \<in> pre\<rbrakk> \<Longrightarrow> \<exists>\<S>. AnnAwait r b P \<in> \<S> \<and> step_consistent_p \<S> ev"
   apply (rule_tac x = "{AnnAwait r b P}" in exI, simp add: step_consistent_p_def)
