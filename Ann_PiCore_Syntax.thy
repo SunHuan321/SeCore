@@ -31,14 +31,16 @@ notation AnnSeq  ("(_;;/ _)" [60,61] 60)
 syntax
   "_Assign"    :: "'s assn \<Rightarrow> idt \<Rightarrow> 'b \<Rightarrow> 's ann_prog"                      ("(_ \<acute>_ :=/ _)" [70, 70, 65] 61)
   "_Cond"      :: "'s assn \<Rightarrow> 's bexp \<Rightarrow> 's ann_prog \<Rightarrow> 's ann_prog \<Rightarrow> 's ann_prog"  ("(0_ IF _/ THEN _/ ELSE _/FI)" [0, 0, 0, 0] 61)
-  "_While"     :: "'s assn \<Rightarrow> 's bexp \<Rightarrow> 's ann_prog \<Rightarrow> 's ann_prog"             ("(0_ WHILE _ /DO _ /OD)"  [0,0,0] 61)
-  "_Await"     :: "'s assn \<Rightarrow> 's bexp \<Rightarrow> 's ann_prog \<Rightarrow> 's ann_prog"             ("(0_ AWAIT _ /THEN /_ /END)"  [0,0,0] 61)
-  "_Atom"      :: "'s assn \<Rightarrow> 's ann_prog \<Rightarrow> 's ann_prog"                        ("(_ ATOMIC _ END)" [0] 61)
+  "_Cond2"     :: "'s assn \<Rightarrow> 's bexp \<Rightarrow> 's ann_prog  \<Rightarrow> 's ann_prog"        ("(0_ IF _/ THEN _/ /FI)" [0, 0, 0] 61)
+  "_While"     :: "'s assn \<Rightarrow> 's bexp \<Rightarrow> 's ann_prog \<Rightarrow> 's ann_prog"         ("(0_ WHILE _ /DO _ /OD)"  [0,0,0] 61)
+  "_Await"     :: "'s assn \<Rightarrow> 's bexp \<Rightarrow> 's ann_prog \<Rightarrow> 's ann_prog"         ("(0_ AWAIT _ /THEN /_ /END)"  [0,0,0] 61)
+  "_Atom"      :: "'s assn \<Rightarrow> 's ann_prog \<Rightarrow> 's ann_prog"                    ("(_ ATOMIC _ END)" [0] 61)
   "_Event"     :: "['a, 'a, 'a] \<Rightarrow> ('l,'k,'s) event" ("(EVENT _ WHERE _ THEN _ END)" [0,0,0] 61)
 
 translations
   "r \<acute>x := a" \<rightharpoonup> "CONST AnnBasic r \<guillemotleft>\<acute>(_update_name x (\<lambda>_. a))\<guillemotright>"
   "r IF b THEN c1 ELSE c2 FI" \<rightharpoonup> "CONST AnnCond r \<lbrace>b\<rbrace> c1 c2"
+  "r IF b THEN c FI" \<rightharpoonup> "r IF b THEN c ELSE (\<lbrace>-b\<rbrace> SKIP) FI"
   "r WHILE b DO c OD" \<rightharpoonup> "CONST AnnWhile r \<lbrace>b\<rbrace> c"
   "r AWAIT b THEN c END" \<rightleftharpoons> "CONST AnnAwait r \<lbrace>b\<rbrace> c"
   "r ATOMIC c END" \<rightleftharpoons> "r AWAIT CONST True THEN c END"
