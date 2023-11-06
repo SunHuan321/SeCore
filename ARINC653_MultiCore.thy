@@ -94,14 +94,18 @@ definition ch_conn :: "Config \<Rightarrow> Part \<Rightarrow> Part \<Rightarrow
 primrec ch_conn2 :: "Config \<Rightarrow> Domain \<Rightarrow> Domain \<Rightarrow> bool"
   where "ch_conn2 cfg (P p1) d2 = (case d2 of
                                     (P p2) \<Rightarrow> ch_conn cfg p1 p2 |
-                                    (S s2) \<Rightarrow> False)" |
-        "ch_conn2 cfg (S p1) d2 = False"
+                                    (S s2) \<Rightarrow> False |
+                                      F  \<Rightarrow> False)" |                                     
+        "ch_conn2 cfg (S p1) d2 = False" |
+        "ch_conn2 cfg F d2 = False"
 
 primrec part_on_core :: "Config \<Rightarrow> Domain \<Rightarrow> Domain \<Rightarrow> bool"
   where "part_on_core cfg (P d1) d2 = (case d2 of
                                         P d22 \<Rightarrow> False |
-                                        S d22 \<Rightarrow> d22 \<in>((p2s cfg) d1))" |
-        "part_on_core cfg (S d1) d2 = False"
+                                        S d22 \<Rightarrow> d22 \<in>((p2s cfg) d1) |
+                                        F \<Rightarrow> False )" |
+        "part_on_core cfg (S d1) d2 = False" |
+        "part_on_core cfg F d2 = False"
 
 
 datatype PartMode = IDLE | READY | RUN
@@ -460,8 +464,8 @@ definition domevt :: "State \<Rightarrow> Core \<Rightarrow> (EventLabel, Core, 
   where "domevt s k e \<equiv>  (if (\<exists>p m. e = Write_Sampling_Message k p m )\<or>                             
                              (\<exists>p. e = Read_Sampling_Message k p) then
                               P  ((cur s) (gsch conf k))
-                          else S (gsch conf k))"  
-      (*for convenience, we also consider domain of other(undefined) event as the sched*)
+                          else if e = Schedule k then S (gsch conf k)
+                          else F)" 
 
 definition exec_step :: "(EventLabel, Core, State, Domain) action \<Rightarrow> 
  ((EventLabel, Core, State) pesconf \<times> (EventLabel, Core, State) pesconf) set"
@@ -475,6 +479,7 @@ definition interf :: "Domain \<Rightarrow> Domain \<Rightarrow> bool" ("(_ \<lea
   where "interf d1 d2 \<equiv> if d1 = d2 then True
                          else if part_on_core conf d2 d1 then True
                          else if ch_conn2 conf d1 d2 then True
+                         else if d1 = F \<or> d2 = F then True
                          else False"
 
 definition noninterf1 :: "Domain \<Rightarrow> Domain \<Rightarrow> bool" ("(_ \<setminus>\<leadsto> _)" [70,71] 60)
@@ -494,7 +499,8 @@ definition state_obs_part :: "State \<Rightarrow> Part \<Rightarrow> State"
 
 primrec state_obs :: "State \<Rightarrow> Domain \<Rightarrow> State"
   where "state_obs s (P p) = state_obs_part s p" |
-        "state_obs s (S p) = state_obs_sched s p"
+        "state_obs s (S p) = state_obs_sched s p"|
+        "state_obs s F = s0"
 
 lemma ch_destsampport_same : "\<lbrakk>schan_obs_part s1 d = schan_obs_part s2 d; port_of_part conf p d; 
       is_dest_sampport conf p\<rbrakk> \<Longrightarrow> schan s1 (ch_destsampport conf p) = schan s2 (ch_destsampport conf p)"
@@ -732,7 +738,6 @@ lemma s0_update_help: "\<lbrakk>schan1 = schan2; recv1 = recv2 \<rbrakk> \<Longr
                       s0\<lparr> schan := schan1, recv := recv1\<rparr> = s0\<lparr> schan := schan2, recv := recv2\<rparr>"
   by blast
 
-
 lemma Core_Init_sat_SCE: "\<exists>\<S>. Core_Init k \<in> \<S> \<and> step_consistent_e \<S> (Core_Init k)"
   apply (rule sc_e_Basic, simp add: Core_Init_def)
   by (simp add: body_def  sc_p.Basic)
@@ -743,7 +748,8 @@ lemma Schedule_sat_SCE: "\<exists>\<S>. Schedule k \<in> \<S> \<and> step_consis
   apply (rule sc_p.Basic, clarsimp)
   apply (case_tac u)
    apply (simp add: state_equiv_def state_obs_part_def schan_obs_part_def)
-  by ( simp add: state_equiv_def state_obs_sched_def)
+   apply ( simp add: state_equiv_def state_obs_sched_def)
+  by ( simp add: state_equiv_def)
 
 lemma Read_Sampling_sat_SCE: "\<exists>\<S>. Read_Sampling_Message k p \<in> \<S> \<and> step_consistent_e \<S> (Read_Sampling_Message k p)"
   apply (rule sc_e_Basic, simp add: Read_Sampling_Message_def)
@@ -764,7 +770,8 @@ lemma Read_Sampling_sat_SCE: "\<exists>\<S>. Read_Sampling_Message k p \<in> \<S
    apply (rule s0_update_help, simp add: System_Init_def s0_init)
    apply (metis (no_types, lifting) State.ext_inject State.update_convs(2) State.update_convs(3) 
       System_Init_def ch_destsampport_same port_of_part_def prod.sel(1) s0_init schan_obs_part_def)
-  by (simp add: state_equiv_def state_obs_sched_def)
+  apply (simp add: state_equiv_def state_obs_sched_def)
+  by ( simp add: state_equiv_def)
 
 lemma Write_Sampling_sat_SCE: "\<exists>\<S>. Write_Sampling_Message k p m \<in> \<S> \<and> step_consistent_e \<S> (Write_Sampling_Message k p m)"
   apply (rule sc_e_Basic, simp add: Write_Sampling_Message_def)
@@ -776,28 +783,32 @@ lemma Write_Sampling_sat_SCE: "\<exists>\<S>. Write_Sampling_Message k p m \<in>
     apply (metis (no_types, lifting) State.ext_inject State.update_convs(2) State.update_convs(3) 
        System_Init_def fun_upd_restrict_conv prod.sel(1) s0_init)
    apply (simp add: System_Init_def s0_init)
-  by(simp add: state_equiv_def state_obs_sched_def)
+   apply (simp add: state_equiv_def state_obs_sched_def)
+  by ( simp add: state_equiv_def)
 
 lemma Core_Init_sat_LRE: 
   "\<forall>u s1 s2 x. (s1,s2) \<in> Guar\<^sub>f Core_Init_RGCond 
                 \<longrightarrow> ((domevt s1 k (Core_Init x)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
   apply (simp add: Core_Init_RGCond_def Guar\<^sub>f_def getrgformula_def, clarsimp)
   apply (case_tac u, simp add: vpeq_reflexive)
-  using vpeq_reflexive by force
+  using vpeq_reflexive apply force
+  by ( simp add: state_equiv_def)
+
 
 lemma Schedule_sat_LRE: 
   "\<forall>u s1 s2 x. (s1,s2) \<in> Guar\<^sub>f (Schedule_RGCond x) 
                 \<longrightarrow> ((domevt s1 k (Schedule x)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
   apply (simp add: Schedule_RGCond_def Guar\<^sub>f_def getrgformula_def, clarsimp)
+  apply (case_tac "x = k")
   apply (case_tac u, simp add: vpeq_reflexive, clarsimp)
    apply (simp add: state_equiv_def state_obs_part_def)
   using schan_obs_part_def apply presburger
   apply (simp add: vpeq_reflexive, clarsimp)
   apply (simp add: state_equiv_def state_obs_sched_def)
-  apply (simp add: domevt_def gsch_def neq_sched_rdsamp neq_sched_wrtsamp)
-  
-  sorry
-
+    apply (simp add: domevt_def gsch_def neq_sched_rdsamp neq_sched_wrtsamp)
+    apply (metis (mono_tags, lifting) inj_surj_c2s interf_def noninterf1_def surj_def)
+  using state_equiv_def state_obs.simps(3) apply presburger
+  using domevt_def interf_def neq_sched_rdsamp neq_sched_wrtsamp neq_schedule noninterf1_def by presburger
 
 
 lemma Read_Sampling_sat_LRE:
@@ -811,10 +822,11 @@ lemma Read_Sampling_sat_LRE:
    apply (simp add: state_equiv_def state_obs_part_def)
    apply (rule s0_update_help, simp add: schan_obs_part_def)
    apply blast
-   apply (simp add: state_equiv_def state_obs_sched_def)
-  sorry
+    apply (simp add: state_equiv_def state_obs_sched_def)
+  using state_equiv_def state_obs.simps(3) apply presburger
+  by (metis domevt_def interf_def neq_rd_samp neq_sched_rdsamp neq_wrtsamp_rdsamp noninterf1_def)
 
-lemma Write_Sampling_sat_LRE:
+lemma Write_Sampling_sat_LRE1:
   "\<forall>u s1 s2 k. (s1,s2) \<in> Guar\<^sub>f (Write_Sampling_Message_RGCond k p m) 
                 \<longrightarrow> ((domevt s1 k (Write_Sampling_Message k p m)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
 proof-
@@ -834,16 +846,16 @@ proof-
       {
         assume pre_cond: "is_src_sampport conf p \<and> port_of_part conf p ((cur s1) (c2s conf k))"
         have "domevt s1 k (Write_Sampling_Message k p m) = P ((cur s1) (c2s conf k))"
-          using domevt_def gsch_def by auto
+          by (metis domevt_def gsch_def)
       then have non_inter:"P ((cur s1) (c2s conf k)) \<noteq> u \<and> 
               \<not>(part_on_core conf u (P ((cur s1) (c2s conf k)) )) \<and> 
               \<not>ch_conn2 conf (P ((cur s1) (c2s conf k))) u" 
         by (metis a1 interf_def noninterf1_def)
-      then have "(\<exists>d1. u = S d1) \<or> (\<exists>d1. u=P d1)"
+      then have "(u = F \<or> (\<exists>d1. u = S d1)) \<or> (\<exists>d1. u=P d1)"
         by (metis Domain.exhaust)
       then have ?thesis
       proof
-        assume "\<exists>d1. u = S d1"
+        assume "u = F \<or> (\<exists>d1. u = S d1)"
         thus ?thesis
           using eq state_equiv_def state_obs_sched_def by force
       next
@@ -906,6 +918,12 @@ proof-
 }thus ?thesis by auto
 qed
 
+lemma Write_Sampling_sat_LRE:
+  "\<forall>u s1 s2 k. (s1,s2) \<in> Guar\<^sub>f (Write_Sampling_Message_RGCond x p m) 
+                \<longrightarrow> ((domevt s1 k (Write_Sampling_Message x p m)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
+  apply (clarsimp, case_tac "x = k")
+  using Write_Sampling_sat_LRE1 apply blast
+  by (metis domevt_def interf_def neq_sched_wrtsamp neq_wrt_samp neq_wrtsamp_rdsamp noninterf1_def)
 
 lemma uwce_LRE_help: "\<forall>x. ef \<in> all_evts_es (fst (ARINCXKernel_Spec x)) \<and> (s1,s2) \<in> Guar\<^sub>e ef \<longrightarrow> 
                                     ((domevt s1 k (E\<^sub>e ef)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
@@ -937,26 +955,26 @@ lemma uwce_LRE_help: "\<forall>x. ef \<in> all_evts_es (fst (ARINCXKernel_Spec x
             then show ?thesis 
               by (simp add: E\<^sub>e_def Guar\<^sub>e_def Guar\<^sub>f_def Schedule_RGF_def Schedule_sat_LRE) 
           next
-            assume "ef\<in>{ef. \<exists>p m. ef = Write_Sampling_Message_RGF k p m}
-                    \<or> ef\<in>{ef. \<exists>p. ef = Read_Sampling_Message_RGF k p}"
+            assume "ef\<in>{ef. \<exists>p m. ef = Write_Sampling_Message_RGF x p m}
+                    \<or> ef\<in>{ef. \<exists>p. ef = Read_Sampling_Message_RGF x p}"
             then show ?thesis 
               proof
-                assume "ef\<in>{ef. \<exists>p m. ef = Write_Sampling_Message_RGF k p m}"
-                then have "\<exists>p m. ef = Write_Sampling_Message_RGF k p m" by auto
-                then obtain p and m where "ef = Write_Sampling_Message_RGF k p m" by auto
+                assume "ef\<in>{ef. \<exists>p m. ef = Write_Sampling_Message_RGF x p m}"
+                then have "\<exists>p m. ef = Write_Sampling_Message_RGF x p m" by auto
+                then obtain p and m where "ef = Write_Sampling_Message_RGF x p m" by auto
                 then show ?thesis 
                   by (simp add: E\<^sub>e_def Guar\<^sub>e_def Guar\<^sub>f_def Write_Sampling_Message_RGF_def Write_Sampling_sat_LRE)
               next
-                assume "ef\<in>{ef. \<exists>p. ef = Read_Sampling_Message_RGF k p}"
-                then have "\<exists>p. ef = Read_Sampling_Message_RGF k p" by auto
-                then obtain p where "ef = Read_Sampling_Message_RGF k p" by auto
+                assume "ef\<in>{ef. \<exists>p. ef = Read_Sampling_Message_RGF x p}"
+                then have "\<exists>p. ef = Read_Sampling_Message_RGF x p" by auto
+                then obtain p where "ef = Read_Sampling_Message_RGF x p" by auto
                 then show ?thesis 
                   by (simp add: E\<^sub>e_def Guar\<^sub>e_def Guar\<^sub>f_def Read_Sampling_Message_RGF_def Read_Sampling_sat_LRE)
               qed
           qed
       qed
   }
-  then show ?thesis sorry
+  then show ?thesis by auto
 qed
 
 
@@ -1032,9 +1050,6 @@ theorem "noninfluence0"
 
 theorem "nonleakage"
   using UnwindingTheorem_nonleakage rg_lr_guar_imp_lr rg_sc_imp_sc uwc_oc uwce_LRE uwce_SCE by blast
-
-
-
 
 
 end
