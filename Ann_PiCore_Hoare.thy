@@ -14,24 +14,24 @@ definition stable :: "'a set \<Rightarrow> ('a \<times> 'a) set \<Rightarrow> bo
 inductive rghoare_p :: "['s ann_prog, 's set, ('s \<times> 's) set, ('s \<times> 's) set, 's set] \<Rightarrow> bool"
     ("\<turnstile> _ sat\<^sub>p [_, _, _, _]" [60,0,0,0,0] 45)
 where
-  Basic: "\<lbrakk> pre \<subseteq> r; r \<subseteq> {s. f s \<in> post}; {(s,t). s \<in> r \<and> (t=f s)} \<subseteq> guar;
-            stable r rely; stable post rely\<rbrakk>
+  Basic: "\<lbrakk> pre \<subseteq> r; pre \<subseteq> {s. f s \<in> post}; {(s,t). s \<in> pre \<and> (t=f s)} \<subseteq> guar;
+            stable pre rely; stable post rely\<rbrakk>
            \<Longrightarrow> \<turnstile> AnnBasic r f sat\<^sub>p [pre, rely, guar, post]"
 | Seq: "\<lbrakk> \<turnstile> P sat\<^sub>p [pre, rely, guar, mid]; \<turnstile> Q sat\<^sub>p [mid, rely, guar, post] \<rbrakk>
            \<Longrightarrow> \<turnstile> AnnSeq P Q sat\<^sub>p [pre, rely, guar, post]"
-| Cond: "\<lbrakk> pre \<subseteq> r;  stable r rely; \<turnstile> P1 sat\<^sub>p [r \<inter> b, rely, guar, post];
-           \<turnstile> P2 sat\<^sub>p [r \<inter> -b, rely, guar, post]; \<forall>s. (s,s)\<in>guar \<rbrakk>
+| Cond: "\<lbrakk> pre \<subseteq> r;  stable pre rely; \<turnstile> P1 sat\<^sub>p [pre \<inter> b, rely, guar, post];
+           \<turnstile> P2 sat\<^sub>p [pre \<inter> -b, rely, guar, post]; \<forall>s. (s,s)\<in>guar \<rbrakk>
           \<Longrightarrow> \<turnstile> AnnCond r b P1 P2 sat\<^sub>p [pre, rely, guar, post]"
-| While: "\<lbrakk> pre \<subseteq> r; stable r rely; (r \<inter> -b) \<subseteq> post; stable post rely;
-            \<turnstile> P sat\<^sub>p [r \<inter> b, rely, guar, r]; \<forall>s. (s,s)\<in>guar \<rbrakk>
+| While: "\<lbrakk> pre \<subseteq> r; stable pre rely; (pre \<inter> -b) \<subseteq> post; stable post rely;
+            \<turnstile> P sat\<^sub>p [pre \<inter> b, rely, guar, pre]; \<forall>s. (s,s)\<in>guar \<rbrakk>
           \<Longrightarrow> \<turnstile> AnnWhile r b P sat\<^sub>p [pre, rely, guar, post]"
-| Await: "\<lbrakk>  pre \<subseteq> r; stable r rely; stable post rely;
-            \<forall>V. \<turnstile> P sat\<^sub>p [r \<inter> b \<inter> {V}, {(s, t). s = t},
+| Await: "\<lbrakk>  pre \<subseteq> r; stable pre rely; stable post rely;
+            \<forall>V. \<turnstile> P sat\<^sub>p [pre \<inter> b \<inter> {V}, {(s, t). s = t},
                 UNIV, {s. (V, s) \<in> guar} \<inter> post] \<rbrakk>
            \<Longrightarrow> \<turnstile> AnnAwait r b P sat\<^sub>p [pre, rely, guar, post]"
-| Nondt: "\<lbrakk>pre \<subseteq> r; stable r rely;
-           r \<subseteq> {s. (\<forall>t. (s,t) \<in> f \<longrightarrow> t \<in> post) \<and> (\<exists>t. (s,t) \<in> f)}; 
-            {(s,t). s \<in> r \<and> (s,t)\<in>f} \<subseteq> guar;  stable post rely\<rbrakk>
+| Nondt: "\<lbrakk>pre \<subseteq> r; stable pre rely;
+           pre \<subseteq> {s. (\<forall>t. (s,t) \<in> f \<longrightarrow> t \<in> post) \<and> (\<exists>t. (s,t) \<in> f)}; 
+            {(s,t). s \<in> pre \<and> (s,t)\<in>f} \<subseteq> guar;  stable post rely\<rbrakk>
            \<Longrightarrow> \<turnstile> AnnNondt r f sat\<^sub>p [pre, rely, guar, post]"
 | Conseq: "\<lbrakk> pre \<subseteq> pre'; rely \<subseteq> rely'; guar' \<subseteq> guar; post' \<subseteq> post;
              \<turnstile> P sat\<^sub>p [pre', rely', guar', post'] \<rbrakk>
@@ -1436,12 +1436,6 @@ lemma Conseq_sound:
   apply force
   done
 
-
-lemma Conseq_sound_r:
-  "\<lbrakk> pre \<subseteq> r; stable r rely; \<Turnstile> P sat\<^sub>p [r, rely, guar, post]\<rbrakk>
-  \<Longrightarrow>  \<Turnstile> P sat\<^sub>p [pre, rely, guar, post]"
-  by (rule Conseq_sound, simp_all)
-
 subsubsection \<open>Soundness of the Basic rule\<close>
 
 lemma unique_ctran_Basic [rule_format]:
@@ -1486,19 +1480,17 @@ apply(rule_tac x=0 in exI,simp)
   done
 
 lemma Basic_sound:
-  " \<lbrakk> pre \<subseteq> r; r \<subseteq> {s. f s \<in> post}; {(s,t). s \<in> r \<and> (t=f s)} \<subseteq> guar;
-            stable r rely; stable post rely\<rbrakk>
+  " \<lbrakk> pre \<subseteq> r; pre \<subseteq> {s. f s \<in> post}; {(s,t). s \<in> pre \<and> (t=f s)} \<subseteq> guar;
+            stable pre rely; stable post rely\<rbrakk>
   \<Longrightarrow> \<Turnstile> AnnBasic r f sat\<^sub>p [pre, rely, guar, post]"
-  apply (rule Conseq_sound_r, simp_all)
   apply(unfold prog_validity_def)
   apply clarify
   apply (rule IntI)
-   apply(simp add:commit_p_def)
-   apply(simp add:getspc_p_def gets_p_def)
+   apply(simp add:commit_p_def getspc_p_def gets_p_def)
    apply(rule conjI, clarify)
     apply(simp add:cpts_of_p_def assume_p_def gets_p_def)
     apply clarify
-    apply(frule_tac j=0 and k=i and p= r in stability)
+    apply(frule_tac j=0 and k=i and p= pre in stability)
           apply simp_all
       apply(erule_tac x=ia in allE,simp)
      apply(erule_tac i=i and f=f in unique_ctran_Basic,simp_all)
@@ -1517,7 +1509,7 @@ lemma Basic_sound:
     apply (case_tac x,simp+)
    apply(simp add:assume_p_def gets_p_def)
    apply clarify
-   apply(frule_tac j=0 and k="j" and p=r in stability)
+   apply(frule_tac j=0 and k="j" and p= pre in stability)
          apply simp_all
      apply(erule_tac x=i in allE,simp)
     apply(erule_tac i=j and f=f in unique_ctran_Basic,simp_all)
@@ -1530,8 +1522,9 @@ lemma Basic_sound:
            apply(simp_all)
    apply(drule_tac c= b in subsetD,simp)
    apply clarify
-   apply(frule_tac j="Suc j" and k="length x - 1" and p=post in stability,simp_all)
-     apply(case_tac x,simp+)
+   apply(frule_tac j="Suc j" and k="length x - 1" and p= post in stability,simp_all)
+      apply blast
+     apply blast
     apply(erule_tac x=i in allE)
     apply(erule_tac i=j and f=f in unique_ctran_Basic,simp_all)
      apply arith+
@@ -1541,12 +1534,13 @@ lemma Basic_sound:
    apply (simp add: preserves_p_def cpts_of_p_def assume_p_def gets_p_def)
    apply clarify
    apply (case_tac "ia \<le> i")
-    apply(frule_tac j=0 and k=ia and p= r in stability, simp_all)
+    apply(frule_tac j=0 and k=ia and p= pre in stability, simp_all)
       apply blast
   using unique_ctran_Basic apply fastforce
     apply (case_tac "x!ia")
     apply (simp add: getspc_p_def)
-   apply(frule_tac j=0 and k=i and p= r in stability, simp_all)
+    apply blast
+   apply(frule_tac j=0 and k=i and p= pre in stability, simp_all)
      apply blast
     apply(erule_tac i=i and f=f in unique_ctran_Basic,simp_all)
    apply (case_tac "x ! Suc i")
@@ -1555,12 +1549,12 @@ lemma Basic_sound:
    apply (simp add: getspc_p_def)
   apply (simp add: preserves_p_def cpts_of_p_def assume_p_def gets_p_def)
   apply clarify 
-  apply(frule_tac j=0 and k=i and p= r in stability, simp_all)
+  apply(frule_tac j=0 and k=i and p= pre in stability, simp_all)
     apply blast
    apply (drule_tac m = "length x" and i = "ia" in etran_or_ctran, simp_all)
   apply (case_tac "x!i")
   apply (simp add: getspc_p_def)
-  done
+  by blast
  
 subsubsection\<open>Soundness of the Await rule\<close>
 
@@ -1628,13 +1622,12 @@ apply clarify
 done
 
 lemma Await_sound:
-  "\<lbrakk>pre \<subseteq> r; stable r rely; stable post rely;
-   \<forall>V. \<turnstile> P sat\<^sub>p [r \<inter> b \<inter> {s. s = V}, {(s, t). s = t},
+  "\<lbrakk>pre \<subseteq> r; stable pre rely; stable post rely;
+   \<forall>V. \<turnstile> P sat\<^sub>p [pre \<inter> b \<inter> {s. s = V}, {(s, t). s = t},
                  UNIV, {s. (V, s) \<in> guar} \<inter> post] \<and>
-   \<Turnstile> P sat\<^sub>p [r \<inter> b \<inter> {s. s = V}, {(s, t). s = t},
+   \<Turnstile> P sat\<^sub>p [pre \<inter> b \<inter> {s. s = V}, {(s, t). s = t},
                  UNIV, {s. (V, s) \<in> guar} \<inter> post]\<rbrakk>
    \<Longrightarrow> \<Turnstile> AnnAwait r b P sat\<^sub>p [pre, rely, guar, post]"
-  apply (rule Conseq_sound_r, simp_all)
   apply(unfold prog_validity_def)
   apply clarify
   apply (rule IntI)
@@ -1642,7 +1635,7 @@ lemma Await_sound:
    apply(rule conjI, clarify)
     apply(simp add:cpts_of_p_def assume_p_def gets_p_def getspc_p_def)
     apply clarify
-    apply(frule_tac j=0 and k=i and p= r in stability,simp_all)
+    apply(frule_tac j=0 and k=i and p= pre in stability,simp_all)
       apply(erule_tac x=ia in allE,simp)
      apply(subgoal_tac "x\<in> cpts_of_p (Some(AnnAwait r b P)) s")
       apply(erule_tac i=i in unique_ctran_Await,force,simp_all)
@@ -1672,7 +1665,7 @@ lemma Await_sound:
    apply clarify
    apply(simp add:assume_p_def gets_p_def getspc_p_def)
    apply clarify
-   apply(frule_tac j=0 and k="j" and p= r and rely = rely in stability,simp_all)
+   apply(frule_tac j=0 and k="j" and p= pre and rely = rely in stability,simp_all)
     apply(erule_tac i=j in unique_ctran_Await,force,simp_all)
    apply(case_tac "x!j")
    apply clarify
@@ -1705,40 +1698,43 @@ lemma Await_sound:
    apply (simp add: preserves_p_def cpts_of_p_def assume_p_def gets_p_def)
    apply clarify
    apply (case_tac "ia \<le> i")
-    apply(frule_tac j=0 and k=ia and p= r in stability, simp_all)
+    apply(frule_tac j=0 and k=ia and p= pre in stability, simp_all)
       apply blast
   using unique_ctran_Await apply fastforce
     apply (case_tac "x!ia")
     apply (simp add: getspc_p_def)
-   apply(frule_tac j=0 and k=i and p= r in stability, simp_all)
+    apply blast
+   apply(frule_tac j=0 and k=i and p= pre in stability, simp_all)
      apply blast
-    apply(erule_tac i=i in unique_ctran_Await,simp_all)
+    apply (smt (verit, best) le_eq_less_or_eq le_trans less_trans_Suc nat_neq_iff unique_ctran_Await)
    apply (case_tac "x ! Suc i")
    apply (erule ptran.cases, simp_all)
-   apply (drule_tac i = "Suc i" and j = ia in not_ctran_Finish, simp_all)
+    apply (drule_tac i = "Suc i" and j = ia in not_ctran_Finish, simp_all)
    apply (simp add: getspc_p_def)
-  apply (simp add: preserves_p_def cpts_of_p_def assume_p_def gets_p_def)
-  apply clarify 
-  apply(frule_tac j=0 and k=i and p= r in stability, simp_all)
-    apply blast
-   apply (drule_tac m = "length x" and i = "ia" in etran_or_ctran, simp_all)
-  apply (case_tac "x!i")
-  apply (simp add: getspc_p_def)
-  done
+  apply (subgoal_tac "\<forall>i. Suc i < length x \<longrightarrow> x!i -pe\<rightarrow> x!Suc i")
+   apply (simp add: assume_p_def gets_p_def cpts_of_p_def preserves_p_def, clarify)
+   apply(frule_tac j=0 and k="i" and p= pre and rely = rely in stability,simp_all)
+   apply (case_tac "getspc_p (x ! i)", simp, simp add: getspc_p_def)
+   apply blast
+  by (metis (mono_tags, lifting) CollectD cpts_of_p_def dual_order.refl etran_or_ctran)
 
+
+lemma Conseq_sound_r:
+  "\<lbrakk> pre \<subseteq> r; stable r rely; \<Turnstile> P sat\<^sub>p [r, rely, guar, post]\<rbrakk>
+  \<Longrightarrow>  \<Turnstile> P sat\<^sub>p [pre, rely, guar, post]"
+  by (rule Conseq_sound, simp_all)
 
 subsubsection\<open>Soundness of the Conditional rule\<close>
 lemma all_impD : "\<lbrakk>\<forall>a. P a \<longrightarrow> Q a ; P a \<rbrakk> \<Longrightarrow> Q a"
   by simp
 
 lemma all_imp2D : "\<lbrakk>\<forall>a. P a \<longrightarrow> Q a \<longrightarrow> R a; P a; Q a\<rbrakk> \<Longrightarrow> R a"
-  by simp
+  by simp  
 
 lemma Cond_sound:
-  "\<lbrakk> pre \<subseteq> r;  stable r rely; \<Turnstile> P1 sat\<^sub>p [r \<inter> b, rely, guar, post];
-     \<Turnstile> P2 sat\<^sub>p [r \<inter> -b, rely, guar, post]; \<forall>s. (s,s)\<in>guar \<rbrakk>
+  "\<lbrakk> pre \<subseteq> r;  stable pre rely; \<Turnstile> P1 sat\<^sub>p [pre \<inter> b, rely, guar, post];
+     \<Turnstile> P2 sat\<^sub>p [pre \<inter> -b, rely, guar, post]; \<forall>s. (s,s)\<in>guar \<rbrakk>
     \<Longrightarrow> \<Turnstile> AnnCond r b P1 P2 sat\<^sub>p [pre, rely, guar, post]"
-  apply (rule Conseq_sound_r, simp_all)
   apply(unfold prog_validity_def)
   apply clarify
   apply (rule IntI)
@@ -1748,7 +1744,7 @@ lemma Cond_sound:
     prefer 2
     apply simp
     apply clarify
-   apply(frule_tac j="0" and k="length x - 1" and p= r in stability,simp+)
+   apply(frule_tac j="0" and k="length x - 1" and p= pre in stability,simp+)
        apply(case_tac x,simp+)
       apply(simp add:assume_p_def gets_p_def)
      apply(simp add:assume_p_def gets_p_def)
@@ -1758,7 +1754,7 @@ lemma Cond_sound:
    apply(drule_tac n=i and P="\<lambda>i. H i \<and> (J i, I i) \<in> ptran" for H J I in Ex_first_occurrence)
   apply clarify
   apply (simp add:assume_p_def gets_p_def)
-  apply(frule_tac j=0 and k="m" and p= "r" in stability,simp+)
+  apply(frule_tac j=0 and k="m" and p= pre in stability,simp+)
    apply(erule_tac m="Suc m" in etran_or_ctran,simp+)
   apply(erule ptran.cases,simp_all)
     apply(erule_tac x="sa" in allE)
@@ -1804,30 +1800,32 @@ lemma Cond_sound:
   apply(case_tac "\<exists>i. Suc i<length x \<and> x!i -c\<rightarrow> x!Suc i")
    prefer 2
   apply clarsimp
-   apply(frule_tac j="0" and k="i" and p= r in stability,simp+)
+   apply(frule_tac j="0" and k="i" and p= pre in stability,simp+)
       apply(simp add:assume_p_def gets_p_def)
      apply(simp add:assume_p_def gets_p_def)
     apply(erule_tac m="length x" in etran_or_ctran,simp+)
    apply (case_tac "x!i")
    apply (simp add: getspc_p_def)
+   apply blast
   apply(erule exE, simp add: assume_p_def gets_p_def)
   apply(drule_tac n=i and P="\<lambda>i. H i \<and> (J i, I i) \<in> ptran" for H J I in Ex_first_occurrence)
   apply clarify
   apply (case_tac " ia < m")
-   apply(frule_tac j="0" and k= "ia" and p= r in stability,simp+)
+   apply(frule_tac j="0" and k= "ia" and p= pre in stability,simp+)
     apply (drule_tac m = "m" and i = "ib" in etran_or_ctran, simp_all)
    apply (case_tac "x!ia")
    apply (simp add: gets_p_def)
-  apply(frule_tac j="0" and k= "m" and p= r in stability,simp+)
+   apply blast
+  apply(frule_tac j="0" and k= "m" and p= pre in stability,simp+)
    apply(erule_tac m="Suc m" in etran_or_ctran,simp+)
   apply (case_tac "ia = m")
    apply (case_tac "x!m")
    apply (simp add: gets_p_def, clarsimp)
+   apply blast
   apply(erule ptran.cases,simp_all)
-   apply (erule_tac x = sa in allE)
-   apply auto[1]
+   apply (erule_tac x = sa in allE, clarify)
    apply(drule_tac c="drop (Suc m) x" in subsetD)
-  back
+    back
     apply clarsimp
     apply (simp add: dropcptn_is_cptn)
    apply clarsimp
@@ -1966,35 +1964,6 @@ lemma ann_preserves_pre : "\<forall>s. cpts_of_p (Some P) s \<inter> assume_p (p
 lemma preserves_p_append : "\<lbrakk> l = xs @ ys; xs \<in> preserves_p; ys \<in> preserves_p \<rbrakk> \<Longrightarrow> l \<in> preserves_p"
   by (simp add: preserves_p_def nth_append)
 
-(*
-lemma lift_step : "lift Q (xs ! i) -c\<rightarrow> lift Q (xs ! Suc i) \<Longrightarrow> fst (xs ! i) \<noteq> None \<Longrightarrow> xs ! i -c\<rightarrow> xs ! Suc i"
-proof-
-  assume a1: "lift Q (xs ! i) -c\<rightarrow> lift Q (xs ! Suc i)"
-  and    a2: "fst (xs ! i) \<noteq> None"
-  then have "\<exists>P s. xs ! i = (Some P, s)" by (metis eq_fst_iff not_None_eq)
-  then obtain P and s where b1 : "xs ! i = (Some P, s)"  by auto
-  then show ?thesis
-  proof(induct "fst (xs ! (Suc i))")
-    case None
-    then have "\<exists>t. xs ! (Suc i) = (None, t)"  by (metis prod.collapse)
-    then obtain t where b2: "xs ! (Suc i) = (None, t)" by auto
-    then have "(Some (AnnSeq P Q), s) -c\<rightarrow> (Some Q, t)"
-      using a1 b1 by (simp add: lift_def)
-    with b1 and b2 show ?case
-      apply simp
-      by (erule ptran.cases, simp_all)
-  next
-    case (Some R)
-    then have "\<exists>t. xs ! (Suc i) = (Some R, t)"  by (metis prod.collapse)
-    then obtain R and t where b3: "xs ! (Suc i) = (Some R, t)" by auto
-    then have "(Some (AnnSeq P Q), s) -c\<rightarrow> (Some (AnnSeq R Q), t)"
-      using a1 b1 by (simp add: lift_def)
-      with b1 and b3 show ?case
-        apply simp
-        by (erule ptran.cases, simp_all)
-    qed
-  qed
-*)
 
 lemma lift_step : "lift Q P -c\<rightarrow> lift Q P' \<Longrightarrow> fst P \<noteq> None \<Longrightarrow> P -c\<rightarrow> P'"
   apply (case_tac "fst P")
@@ -2279,9 +2248,9 @@ lemma lift_assume : "map (lift P) l \<in> assume_p (pre, rely) \<Longrightarrow>
 
 
 lemma While_sound_aux [rule_format]:
-  "\<lbrakk> r \<inter> - b \<subseteq> post; \<Turnstile> P sat\<^sub>p [r \<inter> b, rely, guar, r]; \<forall>s. (s, s) \<in> guar;
-   stable r rely;  stable post rely; x \<in> cpt_p_mod \<rbrakk>
-  \<Longrightarrow>  \<forall>s xs. x=(Some(AnnWhile r b P),s)#xs \<longrightarrow> x\<in>assume_p(r, rely) \<longrightarrow> x \<in> commit_p (guar, post)"
+  "\<lbrakk> pre \<inter> - b \<subseteq> post; \<Turnstile> P sat\<^sub>p [pre \<inter> b, rely, guar, pre]; \<forall>s. (s, s) \<in> guar;
+   stable pre rely;  stable post rely; x \<in> cpt_p_mod \<rbrakk>
+  \<Longrightarrow>  \<forall>s xs. x= (Some (AnnWhile r b P),s)#xs \<longrightarrow> x\<in>assume_p(pre, rely) \<longrightarrow> x \<in> commit_p (guar, post)"
   apply(erule cpt_p_mod.induct)
           apply safe
       apply (simp_all del:last.simps)
@@ -2363,7 +2332,7 @@ lemma While_sound_aux [rule_format]:
 (*WhileMore*)                                                              
   apply(rule ctran_in_comm,simp del:last.simps)
 (*metiendo la hipotesis antes de dividir la conclusion.*)
-   apply(subgoal_tac "(Some (AnnWhile r b P), snd (last ((Some P, sa) # xs))) # ys \<in> assume_p (r, rely)")
+   apply(subgoal_tac "(Some (AnnWhile r b P), snd (last ((Some P, sa) # xs))) # ys \<in> assume_p (pre, rely)")
     apply (simp del:last.simps)
    apply(erule assum_after_body)
       apply (simp del:last.simps)+
@@ -2440,7 +2409,7 @@ lemma While_sound_aux [rule_format]:
   apply simp
   done
 
-lemma lift_assume_p : "map (lift Q) l \<in> assume_p (r, rely) \<Longrightarrow> l \<in> assume_p (r, rely)"
+lemma lift_assume_p : "map (lift Q) l \<in> assume_p (pre, rely) \<Longrightarrow> l \<in> assume_p (pre, rely)"
   apply (simp add: assume_p_def)
   apply (rule conjI)
    apply (metis gets_p_def length_0_conv list.simps(8) neq0_conv nth_map snd_lift)
@@ -2454,18 +2423,20 @@ lemma lift_assume_p : "map (lift Q) l \<in> assume_p (r, rely) \<Longrightarrow>
   using petran.intros by fastforce
 
 lemma While_sound_aux1 [rule_format]:
-  "\<lbrakk> r \<inter> - b \<subseteq> post; \<Turnstile> P sat\<^sub>p [r \<inter> b, rely, guar, r]; \<forall>s. (s, s) \<in> guar;
-   stable r rely;  stable post rely; x \<in> cpt_p_mod \<rbrakk>
-  \<Longrightarrow>  \<forall>s xs. x=(Some(AnnWhile r b P),s)#xs \<longrightarrow> x\<in>assume_p(r, rely) \<longrightarrow> x \<in> preserves_p"
+  "\<lbrakk> pre \<subseteq> r; pre \<inter> - b \<subseteq> post; \<Turnstile> P sat\<^sub>p [pre \<inter> b, rely, guar, pre]; \<forall>s. (s, s) \<in> guar;
+   stable pre rely;  stable post rely; x \<in> cpt_p_mod \<rbrakk>
+  \<Longrightarrow>  \<forall>s xs. x=(Some(AnnWhile r b P),s)#xs \<longrightarrow> x\<in>assume_p(pre, rely) \<longrightarrow> x \<in> preserves_p"
   apply(erule cpt_p_mod.induct)
           apply safe
       apply (simp_all del:last.simps)
 (*5 subgoals left*)
       apply(simp add:preserves_p_def assume_p_def getspc_p_def gets_p_def)
+      apply blast
 (*4 subgoals left*)
   apply (rule_tac xs = "[(Some (AnnWhile r b P), sa)]" and ys = "(Some (AnnWhile r b P), t) # xs"
          in preserves_p_append, simp)
-  apply (simp add: assume_p_def preserves_p_def gets_p_def getspc_p_def)
+      apply (simp add: assume_p_def preserves_p_def gets_p_def getspc_p_def)
+      apply blast
      apply (erule impE, simp add: assume_p_def gets_p_def)
       apply (clarify, rule conjI)
        apply (erule_tac x = "0" in allE, simp add: petran.intros stable_def)
@@ -2474,6 +2445,7 @@ lemma While_sound_aux1 [rule_format]:
 (*While-None*)
     apply (rule_tac xs = "[(Some (AnnWhile r b P), sa)]" and ys = "(None, sa) # xs" in preserves_p_append, simp)
      apply (simp add: preserves_p_def assume_p_def gets_p_def getspc_p_def)
+     apply blast
     apply (simp add: preserves_p_def, clarify)
     apply (subgoal_tac "getspc_p (((None, sa) # xs) ! i) = None", simp)
     apply (rule not_ctran_None3', simp_all del: last.simps)
@@ -2484,11 +2456,12 @@ lemma While_sound_aux1 [rule_format]:
   apply (rule_tac xs = "[(Some (AnnWhile r b P), sa)]" and ys = "map (lift (AnnWhile r b P)) ((Some P, sa) # xs)"
           in preserves_p_append, simp)
     apply (simp add: preserves_p_def assume_p_def gets_p_def getspc_p_def)
-   apply (subgoal_tac "(Some P, sa) # xs \<in> assume_p (r, rely)")
+    apply blast
+   apply (subgoal_tac "(Some P, sa) # xs \<in> assume_p (pre, rely)")
    apply (simp add: preserves_p_def del: list.map, clarify)
    apply(case_tac "fst(((Some P, sa) # xs) ! i)")
     apply(case_tac "((Some P, sa) # xs) ! i")
-    apply (simp add: getspc_p_def lift_def gets_p_def del: list.map)
+     apply (simp add: getspc_p_def lift_def gets_p_def del: list.map)
     apply(simp only:prog_validity_def cpts_of_p_def cpts_iff_cpt_p_mod)
     apply (erule_tac x = "sa" in allE, simp del: list.map)
     apply (drule conjunct1)
@@ -2500,16 +2473,16 @@ lemma While_sound_aux1 [rule_format]:
     apply (drule conjunct2)
     apply (erule impE, simp add: getspc_p_def del: take_Suc_Cons)
      apply (metis fst_conv last_snoc length_Cons take_Suc_conv_app_nth)
-    apply (simp add: gets_p_def del: take_Suc_Cons)
-    apply (metis last_snoc length_Cons snd_conv take_Suc_conv_app_nth)
-   apply(simp only:prog_validity_def cpts_of_p_def cpts_iff_cpt_p_mod)
-   apply (erule_tac x = "sa" in allE, simp del: list.map)
-   apply (drule conjunct2)
-   apply(drule_tac c="(Some P, sa) # xs" in subsetD)
-    apply (simp add:assume_p_def gets_p_def del:list.map)
-   apply (simp add: preserves_p_def del: list.map)
-   apply (erule_tac x = "i" in allE, simp del: list.map)
-   apply(case_tac "((Some P, sa) # xs) ! i")
+     apply (simp add: gets_p_def del: take_Suc_Cons)
+     apply (metis last_snoc length_Cons snd_conv subset_iff take_Suc_conv_app_nth)
+    apply(simp only:prog_validity_def cpts_of_p_def cpts_iff_cpt_p_mod)
+    apply (erule_tac x = "sa" in allE, simp del: list.map)
+    apply (drule conjunct2)
+    apply(drule_tac c="(Some P, sa) # xs" in subsetD)
+     apply (simp add:assume_p_def gets_p_def del:list.map)
+    apply (simp add: preserves_p_def del: list.map)
+    apply (erule_tac x = "i" in allE, simp del: list.map)
+    apply(case_tac "((Some P, sa) # xs) ! i")
     apply (simp add: getspc_p_def gets_p_def lift_def del: list.map)
    apply (rule_tac Q = "(AnnWhile r b P)" in lift_assume_p)
    apply (simp add: assume_p_def gets_p_def)
@@ -2518,7 +2491,7 @@ lemma While_sound_aux1 [rule_format]:
    apply (erule_tac x = "Suc i" in allE, erule impE, simp)
    apply (erule impE, simp, simp)
 (*WhileMore*)
-  apply(subgoal_tac "(Some (AnnWhile r b P), snd (last ((Some P, sa) # xs))) # ys \<in> assume_p (r, rely)")
+  apply(subgoal_tac "(Some (AnnWhile r b P), snd (last ((Some P, sa) # xs))) # ys \<in> assume_p (pre, rely)")
    apply (simp del:last.simps)
    prefer 2
    apply(erule assum_after_body)
@@ -2526,10 +2499,11 @@ lemma While_sound_aux1 [rule_format]:
   apply (rule_tac xs = "[(Some (AnnWhile r b P), sa)]" and ys = "(Some (AnnSeq P (AnnWhile r b P)), sa) 
         # map (lift (AnnWhile r b P)) xs @ ys" in preserves_p_append, simp)
    apply (simp add: assume_p_def preserves_p_def gets_p_def getspc_p_def)
+   apply blast
   apply (rule_tac xs = "(Some (AnnSeq P (AnnWhile r b P)), sa) # map (lift (AnnWhile r b P)) xs" 
         and ys = " ys" in preserves_p_append, simp)
    apply (simp only: Cons_lift)
-   apply (subgoal_tac " map (lift (AnnWhile r b P)) ((Some P, sa) # xs) \<in> assume_p (r, rely)")
+   apply (subgoal_tac " map (lift (AnnWhile r b P)) ((Some P, sa) # xs) \<in> assume_p (pre, rely)")
     prefer 2
     apply (simp add: assume_p_def gets_p_def getspc_p_def del: last.simps list.map)
     apply (rule conjI, simp add: lift_def)
@@ -2540,7 +2514,7 @@ lemma While_sound_aux1 [rule_format]:
     apply (erule impE)
      apply (metis (no_types, lifting) Cons_lift_append length_Cons length_map less_SucI nth_Cons_Suc nth_append nth_map)
     apply (metis (no_types, lifting) Cons_lift_append le_imp_less_Suc length_Cons length_map less_imp_le nth_Cons_Suc nth_append nth_map)
-   apply (subgoal_tac "(Some P, sa) # xs \<in> assume_p (r, rely)")
+   apply (subgoal_tac "(Some P, sa) # xs \<in> assume_p (pre, rely)")
     apply (simp only: preserves_p_def, clarify)
     apply (case_tac "((Some P, sa) # xs) ! i")
     apply (case_tac "a")
@@ -2554,7 +2528,7 @@ lemma While_sound_aux1 [rule_format]:
      apply clarify
      apply (simp add: commit_p_def getspc_p_def gets_p_def lift_def del: take_Suc_Cons last.simps)
      apply (drule conjunct2)
-     apply (metis (no_types, lifting) fst_conv last_snoc length_Cons snd_conv take_Suc_conv_app_nth)
+     apply (metis (no_types, lifting) fst_conv last_snoc length_Cons snd_conv subsetD take_Suc_conv_app_nth)
     apply(simp only:prog_validity_def cpts_of_p_def cpts_iff_cpt_p_mod)
     apply (erule_tac x = "sa" in allE, simp del: list.map take_Suc_Cons last.simps)
     apply (drule conjunct2)
@@ -2569,8 +2543,8 @@ lemma While_sound_aux1 [rule_format]:
   done
 
 lemma While_sound:
-  "\<lbrakk> pre \<subseteq> r; stable r rely; r \<inter> - b \<subseteq> post; stable post rely;
-    \<Turnstile> P sat\<^sub>p [r \<inter> b, rely, guar, r]; \<forall>s. (s,s)\<in>guar\<rbrakk>
+  "\<lbrakk> pre \<subseteq> r; stable pre rely; pre \<inter> - b \<subseteq> post; stable post rely;
+    \<Turnstile> P sat\<^sub>p [pre \<inter> b, rely, guar, pre]; \<forall>s. (s,s)\<in>guar\<rbrakk>
   \<Longrightarrow> \<Turnstile> AnnWhile r b P sat\<^sub>p [pre, rely, guar, post]"
   apply(unfold prog_validity_def)
   apply clarify
@@ -2579,30 +2553,26 @@ lemma While_sound:
          apply(simp add:prog_validity_def)
         apply force
        apply simp_all
-     apply(simp add:cpts_iff_cpt_p_mod cpts_of_p_def)
+    apply(simp add:cpts_iff_cpt_p_mod cpts_of_p_def)
     apply(simp add:cpts_of_p_def)
     apply clarify
     apply(rule nth_equalityI)
      apply simp_all
      apply(case_tac x,simp+)
     apply(case_tac i,simp+)
-    apply(case_tac x,simp+)
-   apply (simp add: assume_p_def)
-   apply blast
-   apply(erule_tac xs="tl x" in While_sound_aux1)
-         apply(simp add:prog_validity_def)
-        apply force
-       apply simp_all
-     apply(simp add:cpts_iff_cpt_p_mod cpts_of_p_def)
-    apply(simp add:cpts_of_p_def)
-    apply clarify
-    apply(rule nth_equalityI)
-     apply simp_all
-     apply(case_tac x,simp+)
-    apply(case_tac i,simp+)
-    apply(case_tac x,simp+)
-   apply (simp add: assume_p_def)
-  apply blast
+   apply(case_tac x,simp+)
+   apply(erule_tac xs="tl x" in While_sound_aux1, simp)
+        apply(simp add:prog_validity_def)
+       apply force
+      apply simp_all
+   apply(simp add:cpts_iff_cpt_p_mod cpts_of_p_def)
+  apply(simp add:cpts_of_p_def)
+  apply clarify
+  apply(rule nth_equalityI)
+   apply simp_all
+   apply(case_tac x,simp+)
+  apply(case_tac i,simp+)
+  apply(case_tac x,simp+)
   done
 
 
@@ -2648,10 +2618,9 @@ apply(rule_tac x=0 in exI,simp)
 done
 
 lemma Nondt_sound:
-  "\<lbrakk>pre \<subseteq> r; stable r rely; r \<subseteq> {s. (\<forall>t. (s,t) \<in> f \<longrightarrow> t \<in> post) \<and> (\<exists>t. (s,t) \<in> f)}; 
-            {(s,t). s \<in> r \<and> (s,t)\<in>f} \<subseteq> guar;  stable post rely\<rbrakk>
+  "\<lbrakk>pre \<subseteq> r; stable pre rely; pre \<subseteq> {s. (\<forall>t. (s,t) \<in> f \<longrightarrow> t \<in> post) \<and> (\<exists>t. (s,t) \<in> f)}; 
+            {(s,t). s \<in> pre \<and> (s,t)\<in>f} \<subseteq> guar;  stable post rely\<rbrakk>
            \<Longrightarrow> \<Turnstile> AnnNondt r f sat\<^sub>p [pre, rely, guar, post]"
-  apply (rule Conseq_sound_r, simp_all)
   apply(unfold prog_validity_def)
   apply clarify
   apply (rule IntI)
@@ -2660,7 +2629,7 @@ lemma Nondt_sound:
    apply(rule conjI, clarify)
     apply(simp add:cpts_of_p_def assume_p_def gets_p_def)
     apply clarify
-    apply(frule_tac j=0 and k=i and p= r in stability)
+    apply(frule_tac j=0 and k=i and p= pre in stability)
           apply simp_all
       apply(erule_tac x=ia in allE,simp)
      apply(erule_tac i=i and r=r in unique_ctran_Nondt,simp_all)
@@ -2679,7 +2648,7 @@ lemma Nondt_sound:
     apply (case_tac x,simp+)
    apply(simp add:assume_p_def gets_p_def)
    apply clarify
-   apply(frule_tac j=0 and k="j" and p=r in stability)
+   apply(frule_tac j=0 and k="j" and p= pre in stability)
          apply simp_all
      apply(erule_tac x=i in allE,simp)
     apply(erule_tac i=j and r=r in unique_ctran_Nondt,simp_all)
@@ -2693,6 +2662,7 @@ lemma Nondt_sound:
    apply(drule_tac c=sa in subsetD,simp)
    apply clarify
    apply(frule_tac j="Suc j" and k="length x - 1" and p=post in stability,simp_all)
+      apply blast
      apply(case_tac x,simp+)
     apply(erule_tac x=i in allE)
     apply(erule_tac i=j and r=r in unique_ctran_Nondt, simp_all)
@@ -2703,26 +2673,28 @@ lemma Nondt_sound:
    apply (simp add: preserves_p_def cpts_of_p_def assume_p_def gets_p_def)
    apply clarify
    apply (case_tac "ia \<le> i")
-    apply(frule_tac j=0 and k=ia and p= r in stability, simp_all)
+    apply(frule_tac j=0 and k=ia and p= pre in stability, simp_all)
       apply blast
   using unique_ctran_Nondt apply fastforce
     apply (case_tac "x!ia")
     apply (simp add: getspc_p_def)
-   apply(frule_tac j=0 and k=i and p= r in stability, simp_all)
+    apply blast
+   apply(frule_tac j=0 and k=i and p= pre in stability, simp_all)
      apply blast
-    apply(erule_tac i=i and f=f in unique_ctran_Nondt,simp_all)
+     apply(erule_tac i=i and f=f in unique_ctran_Nondt,simp_all)
    apply (case_tac "x ! Suc i")
    apply (erule ptran.cases, simp_all)
    apply (drule_tac i = "Suc i" and j = ia in not_ctran_Finish, simp_all)
    apply (simp add: getspc_p_def)
   apply (simp add: preserves_p_def cpts_of_p_def assume_p_def gets_p_def)
   apply clarify 
-  apply(frule_tac j=0 and k=i and p= r in stability, simp_all)
+  apply(frule_tac j=0 and k=i and p= pre in stability, simp_all)
     apply blast
    apply (drule_tac m = "length x" and i = "ia" in etran_or_ctran, simp_all)
   apply (case_tac "x!i")
   apply (simp add: getspc_p_def)
-  done
+  by blast
+
 
 
 subsubsection \<open>Soundness of the system for programs\<close>
@@ -2738,7 +2710,7 @@ theorem rgsound_p:
    apply(force elim:Nondt_sound)
   apply(erule Conseq_sound,simp+)
   done
-                                      
+
 subsection \<open>Soundness of Events\<close>
 
 lemma anony_cfgs0 : "\<lbrakk>\<exists>P. getspc_e (es ! 0) = AnonyEvent P; es \<in> cpts_ev\<rbrakk> 

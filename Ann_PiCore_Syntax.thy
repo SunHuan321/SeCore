@@ -36,6 +36,9 @@ syntax
   "_Await"     :: "'s assn \<Rightarrow> 's bexp \<Rightarrow> 's ann_prog \<Rightarrow> 's ann_prog"         ("(0_ AWAIT _ /THEN /_ /END)"  [0,0,0] 61)
   "_Atom"      :: "'s assn \<Rightarrow> 's ann_prog \<Rightarrow> 's ann_prog"                    ("(_ ATOMIC _ END)" [0] 61)
   "_Event"     :: "['a, 'a, 'a] \<Rightarrow> ('l,'k,'s) event" ("(EVENT _ WHERE _ THEN _ END)" [0,0,0] 61)
+  "_Event2"     :: " ['a, 'a] \<Rightarrow> ('l,'k,'s) event" ("(EVENT _ THEN _ END)" [0,0] 61)
+
+
 
 translations
   "r \<acute>x := a" \<rightharpoonup> "CONST AnnBasic r \<guillemotleft>\<acute>(_update_name x (\<lambda>_. a))\<guillemotright>"
@@ -45,6 +48,7 @@ translations
   "r AWAIT b THEN c END" \<rightleftharpoons> "CONST AnnAwait r \<lbrace>b\<rbrace> c"
   "r ATOMIC c END" \<rightleftharpoons> "r AWAIT CONST True THEN c END"
   "EVENT l WHERE g THEN bd END" \<rightharpoonup> "CONST BasicEvent (l,(\<lbrace>g\<rbrace>,bd))"
+  "EVENT l THEN bd END" \<rightleftharpoons> "EVENT l WHERE CONST True THEN bd END"
 
 
 text \<open>Translations for variables before and after a transition:\<close>
