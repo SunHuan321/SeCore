@@ -24,6 +24,9 @@ primrec ann_pre ::"'s ann_prog \<Rightarrow> 's assn"  where
 
 type_synonym ('l,'s) event' = "'l \<times> ('s guard \<times> 's ann_prog)"
 
+definition label :: "('l,'s) event' \<Rightarrow> 'l" where 
+  "label ev \<equiv> fst ev"
+
 definition guard :: "('l,'s) event' \<Rightarrow> 's guard" where
   "guard ev \<equiv> fst (snd ev)"
 
@@ -32,7 +35,8 @@ definition body :: "('l,'s) event' \<Rightarrow> 's ann_prog" where
 
 datatype ('l,'k,'s) event =
       AnonyEvent "('s ann_prog) option" 
-    | BasicEvent "('l,'s) event'" 
+    | BasicEvent "(('l,'s) event')" 
+
 
 datatype ('l,'k,'s) esys = 
       EvtSeq "('l,'k,'s) event" "('l,'k,'s) esys"
@@ -50,6 +54,15 @@ primrec is_basicevt :: "('l,'k,'s) event \<Rightarrow> bool"
 primrec is_anonyevt :: "('l,'k,'s) event \<Rightarrow> bool"
   where "is_anonyevt (AnonyEvent _) = True" |
         "is_anonyevt (BasicEvent _) = False"
+
+primrec label_e :: "('l,'k,'s) event \<Rightarrow> 'l option"
+  where "label_e (AnonyEvent _) = None" |
+        "label_e (BasicEvent ev) = Some (label ev)"
+
+primrec body_e :: "('l,'k,'s) event \<Rightarrow> 's ann_prog option"
+  where "body_e (AnonyEvent P) = None" |
+        "body_e (BasicEvent ev) = Some (body ev)"
+
 
 lemma basicevt_isnot_anony: "is_basicevt e \<Longrightarrow> \<not> is_anonyevt e"
   by (metis event.exhaust is_anonyevt.simps(2) is_basicevt.simps(1)) 

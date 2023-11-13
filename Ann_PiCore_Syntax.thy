@@ -26,6 +26,9 @@ parse_translation \<open>
 abbreviation AnnSkip :: "'s assn \<Rightarrow> 's ann_prog"  ("_//SKIP" [90] 63)
   where "r SKIP \<equiv> AnnBasic r id"
 
+abbreviation Wrap_prog :: "'s ann_prog \<Rightarrow> 's ann_prog option" ("W(_)" 0)
+  where "Wrap_prog p \<equiv> Some p"
+
 notation AnnSeq  ("(_;;/ _)" [60,61] 60)
 
 syntax

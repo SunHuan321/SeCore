@@ -22,15 +22,15 @@ locale InfoFlow =
   fixes interference :: "'d \<Rightarrow> 'd \<Rightarrow> bool" ("(_ \<leadsto> _)" [70,71] 60)
   fixes vpeq ::  "'s \<Rightarrow> 'd \<Rightarrow> 's \<Rightarrow> bool" ("(_ \<sim>_\<sim> _)" [70,69,70] 60)
   fixes obs ::  "'s \<Rightarrow> 'd \<Rightarrow> 'o" (infixl "\<guillemotright>"  55)
-  fixes dome :: "'s \<Rightarrow> 'k \<Rightarrow> ('l,'k,'s) event \<Rightarrow> 'd"
+  fixes dome :: "'s  \<Rightarrow> ('l,'k,'s) event \<Rightarrow> 'd"
   assumes vpeq_transitive : "\<forall> a b c u. (a \<sim> u \<sim> b) \<and> (b \<sim> u \<sim> c) \<longrightarrow> (a \<sim> u \<sim> c)"
     and   vpeq_symmetric : "\<forall> a b u. (a \<sim> u \<sim> b) \<longrightarrow> (b \<sim> u \<sim> a)"
     and   vpeq_reflexive : "\<forall> a u. (a \<sim> u \<sim> a)"
     and   step_def : "step a \<equiv> {(P,Q). (P -pes-(actk a)\<rightarrow> Q) \<and> 
                                         ((\<exists>e k. actk a = ((EvtEnt e)\<sharp>k) \<and> eventof a = e 
-                                              \<and> dome (gets P) k e = domain a) \<or>
+                                              \<and> dome (gets P)  e = domain a) \<or>
                                         (\<exists>c k. actk a = ((Cmd c)\<sharp>k) \<and> eventof a = (getx P) k 
-                                          \<and> dome (gets P) k (eventof a) = domain a))}"
+                                          \<and> dome (gets P) (eventof a) = domain a))}"
     (*and   step_def : "step a \<equiv> {(P,Q). (P -pes-(actk a)\<rightarrow> Q) \<and> (*domc dome P (actk a)*) 
                                 dom_helper dome (gets P) (getx P) (Act (actk a)) (K (actk a)) = domain a}"*)
 begin

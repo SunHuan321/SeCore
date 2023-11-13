@@ -24,10 +24,11 @@ record Config = c2s :: "Core \<Rightarrow> Sched"
   
 axiomatization conf::Config 
   where bij_c2s: "bij (c2s conf)" 
+(*
     and surj_p2c: "surj (p2s conf)" 
     and portsrc_disj: "\<forall>c1 c2. c1 \<noteq> c2 \<longrightarrow> (chsrc conf) c1 \<noteq> (chsrc conf) c2" 
     and portdest_disj: "\<forall>c1 c2. c1 \<noteq> c2 \<longrightarrow> (chdest conf) c1 \<noteq> (chdest conf) c2" 
-    and portsrcdest_disj: "\<forall>c1 c2. (chsrc conf) c1 \<noteq> (chdest conf) c2"
+*)
 
 lemma inj_surj_c2s: "inj (c2s conf) \<and> surj (c2s conf)"
   using bij_c2s by (simp add: bij_def) 
@@ -62,6 +63,12 @@ type_synonym EventLabel = "EL \<times> (parameter list \<times> Core)"
 
 definition get_evt_label :: "EL \<Rightarrow> parameter list \<Rightarrow> Core \<Rightarrow> EventLabel" ("_ _ \<rhd> _" [0,0,0] 20)
   where "get_evt_label el ps k \<equiv> (el,(ps,k))"
+
+definition get_evt_core :: "(EventLabel, Core, State) event \<Rightarrow> Core"
+  where "get_evt_core ev =  snd (snd (the (label_e ev)))"
+
+definition get_evt_el :: "(EventLabel, Core, State) event \<Rightarrow> EL"
+  where "get_evt_el ev =  fst (the (label_e ev))"
 
 definition Core_Init :: "Core \<Rightarrow> (EventLabel, Core, State) event" 
   where "Core_Init k \<equiv> 
@@ -129,10 +136,11 @@ definition Recv_Que_Message :: "Core \<Rightarrow> Port \<Rightarrow> (EventLabe
       \<and> \<acute>cur ((c2s conf) k) \<noteq> None
       \<and> port_of_part conf p (the (\<acute>cur ((c2s conf) k)))
     THEN 
-      \<lbrace>True\<rbrace> AWAIT \<acute>qbufsize (ch_destqport conf p) > 0 THEN 
-        \<lbrace>True\<rbrace> \<acute>qbuf := \<acute>qbuf (ch_destqport conf p := tl (\<acute>qbuf (ch_destqport conf p)));;
-        \<lbrace>True\<rbrace> \<acute>qbufsize := \<acute>qbufsize (ch_destqport conf p := \<acute>qbufsize (ch_destqport conf p) - 1)
-      END
+        \<lbrace>is_dest_qport conf p  \<and> \<acute>cur ((c2s conf) k) \<noteq> None \<and> port_of_part conf p (the (\<acute>cur ((c2s conf) k))) \<rbrace>
+        AWAIT \<acute>qbufsize (ch_destqport conf p) > 0 THEN 
+          \<lbrace>True\<rbrace> \<acute>qbuf := \<acute>qbuf (ch_destqport conf p := tl (\<acute>qbuf (ch_destqport conf p)));;
+          \<lbrace>True\<rbrace> \<acute>qbufsize := \<acute>qbufsize (ch_destqport conf p := \<acute>qbufsize (ch_destqport conf p) - 1)
+        END
     END"
 
 subsection \<open>Rely-guarantee condition of events\<close>
@@ -173,6 +181,7 @@ abbreviation "snd_send_guar k p \<equiv>
     (\<forall>c. c \<noteq> ch_srcqport conf p \<longrightarrow> \<ordfeminine>qbuf c = \<ordmasculine>qbuf c \<and> \<ordfeminine>qbufsize c = \<ordmasculine>qbufsize c)) \<and> 
     ((\<not>(is_src_qport conf p \<and> \<ordmasculine>cur ((c2s conf) k) \<noteq> None \<and> port_of_part conf p (the (\<ordmasculine>cur ((c2s conf) k)))))
     \<longrightarrow> (\<ordfeminine>qbuf  = \<ordmasculine>qbuf  \<and> \<ordfeminine>qbufsize  = \<ordmasculine>qbufsize))\<rbrace>"
+
 
 abbreviation "snd_recv_guar k p \<equiv> 
     \<lbrace>\<ordfeminine>cur = \<ordmasculine>cur \<and> \<ordfeminine>partst = \<ordmasculine>partst \<and>  (\<ordmasculine>qbufsize (ch_destqport conf p) = length (\<ordmasculine>qbuf (ch_destqport conf p))
@@ -584,12 +593,13 @@ subsection \<open>Security Specification\<close>
 datatype Domain = P Part | S Sched | F 
 
 
-definition domevt :: "State \<Rightarrow> Core \<Rightarrow> (EventLabel, Core, State) event \<Rightarrow> Domain"
-  where "domevt s k e \<equiv>  (if ((\<exists>p m. e = Send_Que_Message k p m )\<or> (\<exists>p. e = Recv_Que_Message k p)) 
-                              \<and> (cur s) (c2s conf k) \<noteq> None
-                              then P (the ((cur s) (c2s conf k)))
-                          else if e = (Core_Init k) \<or> (\<exists>p. e = Schedule k p) then S (c2s conf k) 
-                          else F)" 
+definition domevt :: "State  \<Rightarrow> (EventLabel, Core, State) event \<Rightarrow> Domain"
+  where "domevt s e \<equiv> let c = get_evt_core e in (let el = get_evt_el e in  
+                         (if (el = Send_Que_MessageE \<or> el = Recv_Que_MessageE) 
+                              \<and> (cur s) (c2s conf c) \<noteq> None
+                              then P (the ((cur s) (c2s conf c)))
+                          else if (el = Core_InitE \<or> el = ScheduleE) then S (c2s conf c)
+                          else F))" 
 
 primrec part_on_core :: "Config \<Rightarrow> Domain \<Rightarrow> Domain \<Rightarrow> bool"
   where "part_on_core cfg (P d1) d2 = (case d2 of
@@ -614,7 +624,6 @@ definition interf :: "Domain \<Rightarrow> Domain \<Rightarrow> bool" ("(_ \<lea
   where "interf d1 d2 \<equiv> if d1 = d2 then True
                          else if part_on_core conf d2 d1 then True
                          else if ch_conn2 conf d1 d2 then True
-                         else if d1 = F \<or> d2 = F then True
                          else False"
 
 definition noninterf1 :: "Domain \<Rightarrow> Domain \<Rightarrow> bool" ("(_ \<setminus>\<leadsto> _)" [70,71] 60)
@@ -658,8 +667,8 @@ lemma state_equiv_reflexive : "s \<sim> d \<sim> s"
 definition exec_step :: "(EventLabel, Core, State, Domain) action \<Rightarrow> 
  ((EventLabel, Core, State) pesconf \<times> (EventLabel, Core, State) pesconf) set"
   where "exec_step a \<equiv> {(P,Q). (P -pes-(actk a)\<rightarrow> Q) \<and>((\<exists>e k. actk a = ((EvtEnt e)\<sharp>k) \<and> eventof a = e 
-                         \<and> domevt (gets P) k e = domain a) \<or> (\<exists>c k. actk a = ((Cmd c)\<sharp>k) 
-                         \<and> eventof a = (getx P) k \<and> domevt (gets P) k (eventof a) = domain a))}"
+                         \<and> domevt (gets P) e = domain a) \<or> (\<exists>c k. actk a = ((Cmd c)\<sharp>k) 
+                         \<and> eventof a = (getx P) k \<and> domevt (gets P) (eventof a) = domain a))}"
 
 
 subsection \<open>Instantiate the Security Model\<close>
@@ -886,40 +895,34 @@ lemma s0_update_help: "\<lbrakk>partst1 = partst2; qbufsize1 = qbufsize2 \<rbrak
 
 lemma Core_Init_sat_LRE: 
   "\<forall>u s1 s2 x. (s1,s2) \<in> Guar\<^sub>f (Core_Init_RGCond x)
-                \<longrightarrow> ((domevt s1 k (Core_Init x)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
+                \<longrightarrow> ((domevt s1 (Core_Init x)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
   apply (simp add: Core_Init_RGCond_def Guar\<^sub>f_def getrgformula_def, clarsimp)
-  apply (case_tac "x = k", simp add: vpeq_reflexive)
-  apply (simp add: domevt_def neq_coreinit_rdsamp neq_coreinit_wrtsamp)
-   apply (case_tac u, clarsimp)
-     apply (case_tac "p2s conf x1 = c2s conf k")
-      apply (simp add: interf_def noninterf1_def)
-      apply (simp add: state_equiv_def state_obs_part_def)
-     apply (rule s0_update_help)
-      apply (metis bij_c2s bij_pointE)
+  apply (simp add: domevt_def get_evt_core_def Core_Init_def label_def get_evt_el_def get_evt_label_def)
+  apply (case_tac u, clarify)
+    apply (case_tac "p2s conf x1 = c2s conf x")
+     apply (simp add: interf_def noninterf1_def)
+    apply (simp add: state_equiv_def state_obs_part_def, clarify)
+    apply (rule s0_update_help)
+     apply (metis bij_c2s bij_pointE)
   using obs_cap_equiv apply presburger
-    apply (simp add: vpeq_reflexive state_equiv_def state_obs_sched_def)
-   apply (simp add: state_equiv_def)
-  using domevt_def interf_def neq_coreinit neq_coreinit_rdsamp neq_coreinit_sched neq_coreinit_wrtsamp noninterf1_def by presburger
+   apply (simp add: vpeq_reflexive state_equiv_def state_obs_sched_def)
+  by (simp add: state_equiv_def)
 
 lemma Schedule_sat_LRE: 
   "\<forall>u s1 s2 x p. (s1,s2) \<in> Guar\<^sub>f (Schedule_RGCond x p) 
-                \<longrightarrow> ((domevt s1 k (Schedule x p)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
-  apply (simp add: Schedule_RGCond_def Guar\<^sub>f_def getrgformula_def, clarsimp)
-  apply (case_tac "x = k", simp add: vpeq_reflexive)
-   apply (subgoal_tac "domevt s1 k (Schedule k p) = S (c2s conf k)")
-    prefer 2
-    apply (meson domevt_def neq_sched_rdsamp neq_sched_wrtsamp)
-   apply (case_tac u)
-     apply (simp add: state_equiv_def state_obs_part_def, clarsimp)
-     apply (rule s0_update_help)
-      apply (case_tac "p2s conf x1 = c2s conf k")
-       apply (simp add: interf_def noninterf1_def)
-      apply presburger
+                \<longrightarrow> ((domevt s1 (Schedule x p)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
+  apply (simp add: Schedule_RGCond_def Guar\<^sub>f_def getrgformula_def vpeq_reflexive, clarsimp)
+  apply (simp add: domevt_def get_evt_core_def Schedule_def label_def get_evt_el_def get_evt_label_def)
+  apply (case_tac u)
+    apply (simp add: state_equiv_def state_obs_part_def, clarsimp)
+    apply (rule s0_update_help)
+     apply (case_tac "p2s conf x1 = c2s conf x")
+      apply (simp add: interf_def noninterf1_def)
+     apply presburger
   using obs_cap_part_def apply presburger
-    apply (simp add: state_equiv_def state_obs_sched_def)
-    apply (metis fun_upd_other interf_def noninterf1_def)
-  using state_equiv_def apply auto[1]
-  by (metis domevt_def interf_def neq_coreinit_sched neq_sched_rdsamp neq_sched_wrtsamp neq_schedule noninterf1_def)
+   apply (simp add: state_equiv_def state_obs_sched_def)
+   apply (metis fun_upd_other interf_def noninterf1_def)
+  using state_equiv_def by auto[1]
 
 
 lemma ch_chonn_help1 : "\<lbrakk>port_of_part conf p y; c = ch_srcqport conf p; is_src_qport conf p; y \<noteq> p2p conf (chdest conf c)\<rbrakk> 
@@ -934,56 +937,45 @@ lemma ch_chonn_help2 : "\<lbrakk>port_of_part conf p y; is_src_qport conf p; y \
 
 lemma Send_Que_sat_LRE:
   "\<forall>u s1 s2 k. (s1,s2) \<in> Guar\<^sub>f (Send_Que_Message_RGCond x p m) 
-                \<longrightarrow> ((domevt s1 k (Send_Que_Message x p m)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
+                \<longrightarrow> ((domevt s1 (Send_Que_Message x p m)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
   apply (simp add: Send_Que_Message_RGCond_def Guar\<^sub>f_def getrgformula_def, clarsimp)
-  apply (case_tac "x = k", simp add: vpeq_reflexive, clarsimp)
-   apply (case_tac "(cur s1) (c2s conf x) = None")
-  apply (metis domevt_def interf_def neq_coreinit_wrtsamp neq_sched_wrtsamp noninterf1_def)
-   apply (subgoal_tac "domevt s1 x (Send_Que_Message x p m) = P (the ((cur s1) (c2s conf x)))")
-    prefer 2
-    apply (meson domevt_def)
-   apply (case_tac u) 
-     apply (case_tac "x1 = the ((cur s1) (c2s conf x))")
-      apply (metis interf_def noninterf1_def)
-     apply (simp add: state_equiv_def  state_obs_part_def)
-     apply (rule s0_update_help)
-      apply blast
-     apply (rule obs_cap_equiv, clarsimp)
-     apply (metis ch_chonn_help2)
-    apply (simp add: state_equiv_def state_obs_sched_def)
-   apply (simp add: interf_def noninterf1_def)
-  by (metis domevt_def interf_def neq_coreinit_wrtsamp neq_sched_wrtsamp neq_wrt_samp neq_wrtsamp_rdsamp noninterf1_def)
+  apply (simp add: domevt_def get_evt_core_def Send_Que_Message_def label_def get_evt_el_def get_evt_label_def)
+  apply (case_tac "(cur s1) (c2s conf x) = None")
+  apply (metis State.surjective old.unit.exhaust vpeq_reflexive)
+  apply (case_tac u, clarsimp)
+    apply (case_tac "is_src_qport conf p \<and> port_of_part conf p y", simp)
+     apply (metis ch_chonn_help2 interf_def noninterf1_def obs_cap_equiv state_equiv_def state_obs.simps(1) state_obs_part_def)
+    apply (simp add: state_equiv_def state_obs_def)
+    apply (metis State.surjective old.unit.exhaust)
+   apply (simp add: state_equiv_def state_obs_sched_def)
+  using state_equiv_def state_obs.simps(3) by presburger
 
 lemma Recv_Que_sat_LRE:
   "\<forall>u s1 s2 k. (s1,s2) \<in> Guar\<^sub>f (Recv_Que_Message_RGCond x p) 
-                \<longrightarrow> ((domevt s1 k (Recv_Que_Message x p)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
+                \<longrightarrow> ((domevt s1 (Recv_Que_Message x p)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
   apply (simp add: Recv_Que_Message_RGCond_def Guar\<^sub>f_def getrgformula_def, clarsimp)
-  apply (case_tac "x = k",  simp add: vpeq_reflexive, clarsimp)
-   apply (case_tac "(cur s1) (c2s conf x) = None")
-    apply (metis domevt_def interf_def neq_coreinit_rdsamp neq_sched_rdsamp noninterf1_def)
-   apply (subgoal_tac "domevt s1 x (Recv_Que_Message x p) = P (the ((cur s1) (c2s conf x)))")
-    prefer 2
-    apply (metis domevt_def)
-   apply (case_tac u)
-     apply (case_tac "x1 = the ((cur s1) (c2s conf x))")
+  apply (simp add: domevt_def get_evt_core_def Recv_Que_Message_def label_def get_evt_el_def get_evt_label_def)
+  apply (case_tac "(cur s1) (c2s conf x) = None")
+   apply (metis State.surjective old.unit.exhaust vpeq_reflexive)
+  apply (case_tac u)
+    apply (case_tac "x1 = the ((cur s1) (c2s conf x))")
   using interf_def noninterf1_def apply force
-     apply (simp add: state_equiv_def  state_obs_part_def)
-     apply (rule s0_update_help)
-      apply blast
-     apply (rule obs_cap_equiv, clarsimp)
-     apply (case_tac "is_dest_qport conf p \<and> port_of_part conf p y", simp)
-      apply (drule_tac a = c in all_impD)
-       apply (simp add: ch_destqport_def is_dest_qport_def port_of_part_def image_def)
-       apply (metis (mono_tags, lifting)  someI)
-      apply blast
-     apply presburger
-    apply (simp add: state_equiv_def state_obs_sched_def)
-  using interf_def noninterf1_def apply force
-  by (metis domevt_def interf_def neq_coreinit_rdsamp neq_rd_samp neq_sched_rdsamp neq_wrtsamp_rdsamp noninterf1_def)
+    apply (simp add: state_equiv_def  state_obs_part_def)
+    apply (rule s0_update_help)
+     apply blast
+    apply (rule obs_cap_equiv, clarsimp)
+    apply (case_tac "is_dest_qport conf p \<and> port_of_part conf p y", simp)
+     apply (drule_tac a = c in all_impD)
+      apply (simp add: ch_destqport_def is_dest_qport_def port_of_part_def image_def)
+      apply (metis (mono_tags, lifting)  someI)
+     apply blast
+    apply presburger
+   apply (simp add: state_equiv_def state_obs_sched_def)
+  using state_equiv_def state_obs.simps(3) by presburger
 
 
 lemma uwce_LRE_help: "\<forall>x. ef \<in> all_evts_es (fst (ARINCXKernel_Spec x)) \<and> (s1,s2) \<in> Guar\<^sub>e ef \<longrightarrow> 
-                                    ((domevt s1 k (E\<^sub>e ef)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
+                                    ((domevt s1 (E\<^sub>e ef)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
   proof -
   {
     fix x
@@ -992,7 +984,7 @@ lemma uwce_LRE_help: "\<forall>x. ef \<in> all_evts_es (fst (ARINCXKernel_Spec x
     then have "ef\<in>insert (Core_Init_RGF x) (all_evts_es (fst (EvtSys1_on_Core_RGF x)))" 
       by (simp add:EvtSys_on_Core_RGF_def)
     then have "ef = (Core_Init_RGF x) \<or> ef\<in>all_evts_es (fst (EvtSys1_on_Core_RGF x))" by auto
-    then have "(s1,s2) \<in> Guar\<^sub>e ef \<longrightarrow> ((domevt s1 k (E\<^sub>e ef)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
+    then have "(s1,s2) \<in> Guar\<^sub>e ef \<longrightarrow> ((domevt s1 (E\<^sub>e ef)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
       proof
         assume a0: "ef = Core_Init_RGF x"
         then show ?thesis
@@ -1072,8 +1064,25 @@ lemma Schedule_sat_SCE_h1: "
    apply (simp add: stable_def)+
   by force
 
-
-
+lemma Schedule_sat_SCE_h2: "\<turnstile> \<lbrace>True \<rbrace> \<acute>cur := \<acute>cur(c2s conf k \<mapsto> p) ;;
+                         \<lbrace>True \<rbrace> \<acute>partst := \<acute>partst (p := RUN)
+      sat\<^sub>p [\<lbrace>p2s conf p = c2s conf k \<and> \<acute>cur (c2s conf k) = None\<rbrace> \<inter>  {V}, {(s, t). s = t}, UNIV, 
+            \<lbrace>\<acute>qbuf = qbuf V \<and> \<acute>qbufsize = qbufsize V \<and> \<acute>cur = (cur V)(c2s conf k \<mapsto> p) \<and> 
+             \<acute>partst = (partst V)(the (\<acute>cur (c2s conf k)) := RUN) \<and> (\<forall>p. p2s conf p \<noteq> c2s conf k 
+             \<longrightarrow> \<acute>partst p = partst V p)\<rbrace>]"
+  apply(case_tac "p2s conf p = c2s conf k \<and> (cur V) (c2s conf k) = None", simp)
+   apply(rule rghoare_p.Seq[where mid="{s. s = V \<lparr> cur := (cur V) (c2s conf k := Some p)\<rparr>}"])
+    apply (rule rghoare_p.Basic)
+        apply (simp add: stable_def)+
+   apply (rule rghoare_p.Basic, simp, simp)
+  using inj_surj_c2s injI surj_def apply (simp add: inj_eq)
+    apply(simp add:stable_def)+
+  apply(rule rghoare_p.Seq[where mid="{}"])
+   apply (rule rghoare_p.Basic, simp)
+      apply(simp add:stable_def)+
+  apply (rule rghoare_p.Basic, simp)
+     apply (simp add: stable_def)+
+  by force
 
 lemma Schedule_sat_SCE: "\<exists>\<S>. Schedule k p \<in> \<S> \<and> step_consistent_e \<S> (Schedule k p)"
   apply (rule sc_e_Basic, simp add: Schedule_def)
@@ -1089,39 +1098,242 @@ lemma Schedule_sat_SCE: "\<exists>\<S>. Schedule k p \<in> \<S> \<and> step_cons
       apply (rule allI)
   using Schedule_sat_SCE_h1 apply auto[1]
      apply simp
-    apply clarsimp
-    apply (case_tac "ka = k", simp )
-     apply (subgoal_tac "domevt s1 k (Schedule k p) = S (c2s conf k)")
-      prefer 2
-      apply (meson domevt_def neq_sched_rdsamp neq_sched_wrtsamp, simp)
+    apply (simp add: domevt_def get_evt_core_def Schedule_def label_def get_evt_el_def get_evt_label_def, clarify)
      apply (case_tac u)
-       apply (case_tac "p2s conf x1 = c2s conf k")
-        apply (simp add: interf_def state_equiv_def state_obs_sched_def state_obs_part_def s0_init System_Init_def)
+      apply (case_tac "p2s conf x1 = c2s conf k")
+       apply (simp add: interf_def state_equiv_def state_obs_sched_def state_obs_part_def s0_init System_Init_def)
         apply (smt (verit, best) State.ext_inject State.update_convs(1) State.update_convs(3) State.update_convs(4) 
               fst_conv fun_upd_other fun_upd_same obs_cap_equiv1)
-       apply (metis fun_upd_other obs_cap_equiv1 state_equiv_def state_obs.simps(1) state_obs_part_def)
-      apply (simp add: System_Init_def s0_init state_equiv_def state_obs_sched_def)
+      apply (metis obs_cap_equiv1 state_equiv_def state_obs.simps(1) state_obs_part_def)
+     apply (simp add: System_Init_def s0_init state_equiv_def state_obs_sched_def)
   using state_equiv_def state_obs.simps(3) apply presburger
-  sledgehammer
+   apply (rule sc_p.Basic, simp)
+    apply (rule_tac pre = "\<lbrace>p2s conf p = c2s conf k \<and> \<acute>cur (c2s conf k) = None\<rbrace>" 
+          and rely = Id and post = "\<lbrace>True\<rbrace>" and guar = "\<lbrace>\<ordfeminine>qbuf = \<ordmasculine>qbuf \<and> \<ordfeminine>qbufsize = \<ordmasculine>qbufsize \<and>  
+          \<ordfeminine>cur = \<ordmasculine>cur(c2s conf k := Some p) \<and> \<ordfeminine>partst = \<ordmasculine>partst(the (\<ordfeminine>cur(c2s conf k)) := RUN) \<and> 
+          (\<forall>p. p2s conf p \<noteq> c2s conf k \<longrightarrow> \<ordfeminine>partst  p = \<ordmasculine>partst p)\<rbrace>" in sc_p.Await)
+    apply (rule rghoare_p.Await, simp)
+      apply (simp add: stable_def)+
+    apply (rule allI)
+  using Schedule_sat_SCE_h2 apply auto[1]
+    apply simp
+   apply (simp add: domevt_def get_evt_core_def Schedule_def label_def get_evt_el_def get_evt_label_def, clarify)
+   apply (case_tac u)
+     apply (case_tac "p2s conf x1 = c2s conf k")
+      apply (simp add: interf_def state_equiv_def state_obs_sched_def state_obs_part_def s0_init System_Init_def)
+      apply (smt (verit, best) State.ext_inject State.update_convs(1) State.update_convs(3) State.update_convs(4) 
+              fst_conv fun_upd_other fun_upd_same obs_cap_equiv1)
+     apply (metis obs_cap_equiv1 state_equiv_def state_obs.simps(1) state_obs_part_def)
+    apply (simp add: System_Init_def s0_init state_equiv_def state_obs_sched_def)
+  using state_equiv_def state_obs.simps(3) by presburger
+
+lemma Send_Que_sat_SCE_h1: "\<turnstile> \<lbrace>True \<rbrace> \<acute>qbuf := \<acute>qbuf(ch_srcqport conf p := \<acute>qbuf (ch_srcqport conf p) @ [m]) ;;
+                              \<lbrace>True \<rbrace> \<acute>qbufsize := \<acute>qbufsize (ch_srcqport conf p := Suc (\<acute>qbufsize (ch_srcqport conf p)))
+     sat\<^sub>p [\<lbrace>is_src_qport conf p \<and> (\<exists>y. \<acute>cur (c2s conf k) = Some y) \<and> port_of_part conf p (the (\<acute>cur (c2s conf k)))\<rbrace> 
+            \<inter> {V} \<inter> \<lbrace>\<acute>qbufsize (ch_srcqport conf p) < chmax conf (ch_srcqport conf p)\<rbrace>, 
+            {(s, t). s = t}, UNIV, \<lbrace>\<acute>cur = cur V \<and> \<acute>partst = partst V \<and> (is_src_qport conf p \<and> 
+            (\<exists>y. cur V (c2s conf k) = Some y) \<and> port_of_part conf p (the (cur V (c2s conf k))) \<longrightarrow>
+            (\<forall>c. c \<noteq> ch_srcqport conf p \<longrightarrow> \<acute>qbuf c = qbuf V c \<and> \<acute>qbufsize c = qbufsize V c) \<and>
+            (qbufsize V (ch_srcqport conf p) < chmax conf (ch_srcqport conf p) \<longrightarrow> 
+            \<acute>qbufsize (ch_srcqport conf p) = Suc (qbufsize V (ch_srcqport conf p))) \<and>
+            (chmax conf (ch_srcqport conf p) \<le> qbufsize V (ch_srcqport conf p) \<longrightarrow> 
+            \<acute>qbuf = qbuf V \<and> \<acute>qbufsize = qbufsize V)) \<and> ((is_src_qport conf p \<longrightarrow> cur V (c2s conf k) = None 
+            \<or> \<not> port_of_part conf p (the (cur V (c2s conf k)))) \<longrightarrow> \<acute>qbuf = qbuf V \<and> \<acute>qbufsize = qbufsize V)\<rbrace>]"
+  apply(case_tac "is_src_qport conf p \<and> (\<exists>y. (cur V) ((c2s conf) k) = Some y) \<and> port_of_part conf p 
+      (the ((cur V) ((c2s conf) k)))\<and> (qbufsize V) (ch_srcqport conf p) < chmax conf (ch_srcqport conf p)")
+   apply simp
+   apply(rule rghoare_p.Seq[where mid="{s. s = V\<lparr>qbuf := (qbuf V)(ch_srcqport conf p := (qbuf V) (ch_srcqport conf p) @ [m])\<rparr>}"])
+    apply(rule rghoare_p.Basic)
+        apply auto[1]
+       apply(simp add: stable_def)+
+   apply(rule rghoare_p.Basic, simp)
+      apply auto[1]
+     apply(simp add: stable_def)+
+  apply(rule rghoare_p.Seq[where mid="{}"])
+   apply(rule rghoare_p.Basic, simp)
+      apply(simp add:stable_def)+
+      apply fastforce
+     apply simp
+    apply (simp add: stable_def)+
+  apply(rule rghoare_p.Basic)
+      apply(simp add:stable_def)+
+  done
 
 
+lemma Send_Que_sat_SCE: "\<exists>\<S>. Send_Que_Message k p m \<in> \<S> \<and> step_consistent_e \<S> (Send_Que_Message k p m)"
+  apply (rule sc_e_Basic, simp add: Send_Que_Message_def)
+  apply (simp add: body_def)
+  apply (rule_tac pre = "\<lbrace>is_src_qport conf p \<and> (\<exists>y. \<acute>cur (c2s conf k) = Some y) \<and> port_of_part conf p (the (\<acute>cur (c2s conf k)))\<rbrace>" 
+          and rely = Id and post = "\<lbrace>True\<rbrace>" and guar = "\<lbrace>\<ordfeminine>cur = \<ordmasculine>cur \<and> \<ordfeminine>partst = \<ordmasculine>partst \<and> 
+          ((is_src_qport conf p \<and> \<ordmasculine>cur ((c2s conf) k) \<noteq> None \<and> port_of_part conf p (the (\<ordmasculine>cur ((c2s conf) k)))) 
+          \<longrightarrow> (\<forall>c. c \<noteq> ch_srcqport conf p \<longrightarrow> \<ordfeminine>qbuf c = \<ordmasculine>qbuf c \<and> \<ordfeminine>qbufsize c = \<ordmasculine>qbufsize c) \<and> 
+          (\<ordmasculine>qbufsize (ch_srcqport conf p) < chmax conf (ch_srcqport conf p) \<longrightarrow> 
+          \<ordfeminine>qbufsize (ch_srcqport conf p) = \<ordmasculine>qbufsize (ch_srcqport conf p) + 1) \<and>
+          (\<ordmasculine>qbufsize (ch_srcqport conf p) \<ge> chmax conf (ch_srcqport conf p) \<longrightarrow> 
+          \<ordfeminine>qbuf = \<ordmasculine>qbuf \<and> \<ordfeminine>qbufsize  = \<ordmasculine>qbufsize)) \<and> ((\<not>(is_src_qport conf p \<and> 
+          \<ordmasculine>cur ((c2s conf) k) \<noteq> None \<and> port_of_part conf p (the (\<ordmasculine>cur ((c2s conf) k)))))\<longrightarrow> 
+          (\<ordfeminine>qbuf  = \<ordmasculine>qbuf  \<and> \<ordfeminine>qbufsize  = \<ordmasculine>qbufsize))\<rbrace>" in sc_p.Await)
+    apply (rule rghoare_p.Await, simp)
+      apply (simp add: stable_def)+
+    apply (rule allI)
+    apply (rule rghoare_p.Cond, simp, simp add: stable_def)
+  using Send_Que_sat_SCE_h1 apply auto[1]
+     apply (rule rghoare_p.Basic)
+         apply blast
+        apply auto[1]
+       apply simp
+      apply (simp add: stable_def)+
+  apply (simp add: domevt_def get_evt_core_def Send_Que_Message_def label_def get_evt_el_def get_evt_label_def, clarify)
+  apply (case_tac u)
+    apply (simp add: state_equiv_def state_obs_part_def)
+    apply (rule s0_update_help)
+     apply (smt (z3) State.ext_inject State.surjective State.update_convs(3) State.update_convs(4))
+    apply (rule obs_cap_equiv, clarsimp)
+    apply (subgoal_tac "qbufsize s1 c = qbufsize s2 c")
+     apply (case_tac "c = ch_srcqport conf p")
+      apply (erule impE)
+       apply (metis ch_chonn_help2 interf_def noninterf1_def)
+      apply (case_tac "qbufsize s1 c < chmax conf (ch_srcqport conf p)", simp)
+      apply (case_tac "qbufsize s2 c < chmax conf (ch_srcqport conf p)")
+       apply linarith
+      apply (metis linorder_not_le)
+     apply presburger
+    apply (metis (no_types, lifting) State.ext_inject State.surjective State.update_convs(3) obs_cap_part_def)
+   apply (simp add: state_equiv_def state_obs_sched_def)
+  using state_equiv_def state_obs.simps(3) by presburger
+
+lemma Recv_Que_sat_SCE_h1: "\<turnstile> \<lbrace>True\<rbrace> \<acute>qbuf := \<acute>qbuf(ch_destqport conf p := tl (\<acute>qbuf (ch_destqport conf p)));;
+                         \<lbrace>True \<rbrace>\<acute>qbufsize := \<acute>qbufsize (ch_destqport conf p := \<acute>qbufsize (ch_destqport conf p) - Suc 0)
+  sat\<^sub>p [\<lbrace>is_dest_qport conf p \<and> (\<exists>y. \<acute>cur (c2s conf k) = Some y) \<and> port_of_part conf p (the (\<acute>cur (c2s conf k)))\<rbrace> 
+        \<inter> \<lbrace>0 < \<acute>qbufsize (ch_destqport conf p)\<rbrace> \<inter> {V}, {(s, t). s = t}, UNIV, \<lbrace>\<acute>cur = cur V \<and>
+       \<acute>partst = partst V \<and> (is_dest_qport conf p \<and> (\<exists>y. cur V (c2s conf k) = Some y) \<and> 
+        port_of_part conf p (the (cur V (c2s conf k))) \<longrightarrow> (\<forall>c. c \<noteq> ch_destqport conf p \<longrightarrow> 
+        \<acute>qbuf c = qbuf V c \<and> \<acute>qbufsize c = qbufsize V c) \<and> (0 < qbufsize V (ch_destqport conf p) \<longrightarrow> 
+        \<acute>qbufsize (ch_destqport conf p) = qbufsize V (ch_destqport conf p) - Suc 0) \<and> 
+         (qbufsize V (ch_destqport conf p) = 0 \<longrightarrow> \<acute>qbuf = qbuf V \<and> \<acute>qbufsize = qbufsize V)) \<and>
+         ((is_dest_qport conf p \<longrightarrow> cur V (c2s conf k) = None \<or> \<not> port_of_part conf p (the (cur V (c2s conf k)))) 
+          \<longrightarrow> \<acute>qbuf = qbuf V \<and> \<acute>qbufsize = qbufsize V)\<rbrace>]"
+  apply(case_tac "is_dest_qport conf p \<and> (\<exists>y. (cur V) ((c2s conf) k) = Some y) \<and> 
+        port_of_part conf p (the ((cur V) ((c2s conf) k))) \<and> 0 < (qbufsize V) (ch_destqport conf p)")
+   apply simp
+   apply(rule rghoare_p.Seq[where mid="{s. s = V\<lparr>qbuf := (qbuf V)(ch_destqport conf p := tl ((qbuf V) (ch_destqport conf p)))\<rparr>}"])
+    apply(rule rghoare_p.Basic)
+        apply auto[1]
+       apply auto[1]
+      apply blast
+  apply(simp add: stable_def)+
+   apply(rule rghoare_p.Basic, simp)
+      apply auto[1]
+  apply(simp add: stable_def)+
+  apply(rule rghoare_p.Seq[where mid="{}"])
+   apply(rule rghoare_p.Basic)
+       apply(simp add:stable_def)+
+  apply(rule rghoare_p.Basic, simp)
+     apply(simp add:stable_def)+
+  done
+
+lemma Recv_Que_sat_SCE: "\<exists>\<S>. Recv_Que_Message k p \<in> \<S> \<and> step_consistent_e \<S> (Recv_Que_Message k p)"
+  apply (rule sc_e_Basic, simp add: Recv_Que_Message_def)
+  apply (simp add: body_def)
+  apply (rule_tac pre = "\<lbrace>is_dest_qport conf p \<and> (\<exists>y. \<acute>cur (c2s conf k) = Some y) \<and> port_of_part conf p (the (\<acute>cur (c2s conf k)))\<rbrace>" 
+          and rely = Id and post = "\<lbrace>True\<rbrace>" and guar = "\<lbrace>\<ordfeminine>cur = \<ordmasculine>cur \<and> \<ordfeminine>partst = \<ordmasculine>partst \<and> 
+          ((is_dest_qport conf p \<and> \<ordmasculine>cur ((c2s conf) k) \<noteq> None \<and> port_of_part conf p (the (\<ordmasculine>cur ((c2s conf) k)))) 
+          \<longrightarrow> (\<forall>c. c \<noteq> ch_destqport conf p \<longrightarrow> \<ordfeminine>qbuf c = \<ordmasculine>qbuf c \<and> \<ordfeminine>qbufsize c = \<ordmasculine>qbufsize c) \<and> 
+          (\<ordmasculine>qbufsize (ch_destqport conf p) > 0 \<longrightarrow> \<ordfeminine>qbufsize (ch_destqport conf p) = \<ordmasculine>qbufsize (ch_destqport conf p) - 1) \<and>
+          (\<ordmasculine>qbufsize (ch_destqport conf p) = 0 \<longrightarrow> \<ordfeminine>qbuf = \<ordmasculine>qbuf \<and> \<ordfeminine>qbufsize  = \<ordmasculine>qbufsize)) 
+          \<and> ((\<not>(is_dest_qport conf p \<and> \<ordmasculine>cur ((c2s conf) k) \<noteq> None \<and> port_of_part conf p (the (\<ordmasculine>cur ((c2s conf) k)))))
+          \<longrightarrow> (\<ordfeminine>qbuf  = \<ordmasculine>qbuf  \<and> \<ordfeminine>qbufsize  = \<ordmasculine>qbufsize))\<rbrace>" in sc_p.Await)
+    apply (rule rghoare_p.Await, simp)
+      apply (simp add: stable_def)+
+    apply (rule allI)
+  using Recv_Que_sat_SCE_h1 apply auto[1]
+   apply simp
+  apply (simp add: domevt_def get_evt_core_def Recv_Que_Message_def label_def get_evt_el_def get_evt_label_def, clarify)
+  apply (case_tac u)
+    apply (simp add: state_equiv_def state_obs_part_def)
+    apply (rule s0_update_help)
+     apply (smt (z3) State.ext_inject State.surjective State.update_convs(3) State.update_convs(4))
+    apply (rule obs_cap_equiv, clarsimp)
+  apply (subgoal_tac "qbufsize s1 c = qbufsize s2 c")
+     apply (metis bot_nat_0.not_eq_extremum)
+    apply (metis (no_types, lifting) State.ext_inject State.surjective State.update_convs(3) obs_cap_part_def)
+   apply (simp add: state_equiv_def state_obs_sched_def)
+  using state_equiv_def state_obs.simps(3) by presburger
+
+lemma uwce_SCE_help: "\<forall>k. ef \<in> all_evts_es (fst (ARINCXKernel_Spec k)) \<longrightarrow> (\<exists>\<S>. E\<^sub>e ef \<in> \<S> \<and> step_consistent_e \<S> (E\<^sub>e ef))"
+  proof -
+  {
+    fix k
+    assume p0: "ef\<in>all_evts_es (fst (ARINCXKernel_Spec k))" 
+    then have "ef\<in>all_evts_es (fst (EvtSys_on_Core_RGF k))" by (simp add:ARINCXKernel_Spec_def)
+    then have "ef\<in>insert (Core_Init_RGF k) (all_evts_es (fst (EvtSys1_on_Core_RGF k)))" 
+      by (simp add:EvtSys_on_Core_RGF_def)
+    then have "ef = (Core_Init_RGF k) \<or> ef\<in>all_evts_es (fst (EvtSys1_on_Core_RGF k))" by auto
+    then have "\<exists>\<S>. E\<^sub>e ef \<in> \<S> \<and> step_consistent_e \<S> (E\<^sub>e ef)"
+      proof
+        assume a0: "ef = Core_Init_RGF k"
+        then show ?thesis 
+          by (simp add: Core_Init_RGF_def Core_Init_sat_SCE E\<^sub>e_def)  
+      next
+        assume a1: "ef\<in>all_evts_es (fst (EvtSys1_on_Core_RGF k))"
+        then have "ef\<in>{ef. \<exists>p. ef = Schedule_RGF k p} \<union>
+                      {ef. \<exists>p m. ef = Send_Que_Message_RGF k p m} \<union>
+                      {ef. \<exists>p. ef = Recv_Que_Message_RGF k p}" 
+          using all_evts_es_esys EvtSys1_on_Core_RGF_def by auto
+        then have "ef\<in>{ef. \<exists>p. ef = Schedule_RGF k p} 
+                  \<or> ef\<in>{ef. \<exists>p m. ef = Send_Que_Message_RGF k p m} 
+                  \<or> ef\<in>{ef. \<exists>p. ef = Recv_Que_Message_RGF k p}" by auto
+        then show ?thesis
+          proof
+            assume "ef\<in>{ef. \<exists>p. ef = Schedule_RGF k p}"
+            then have "\<exists>p. ef = Schedule_RGF k p" by auto
+            then obtain p where "ef = Schedule_RGF k p" by auto
+            then show ?thesis 
+              by (simp add: E\<^sub>e_def Schedule_RGF_def Schedule_sat_SCE) 
+          next
+            assume "ef\<in>{ef. \<exists>p m. ef = Send_Que_Message_RGF k p m}
+                    \<or> ef\<in>{ef. \<exists>p. ef = Recv_Que_Message_RGF k p}"
+            then show ?thesis 
+              proof
+                assume "ef\<in>{ef. \<exists>p m. ef = Send_Que_Message_RGF k p m}"
+                then have "\<exists>p m. ef = Send_Que_Message_RGF k p m" by auto
+                then obtain p and m where "ef = Send_Que_Message_RGF k p m" by auto
+                then show ?thesis 
+                  by (simp add: E\<^sub>e_def Send_Que_Message_RGF_def Send_Que_sat_SCE)
+              next
+                assume "ef\<in>{ef. \<exists>p. ef = Recv_Que_Message_RGF k p}"
+                then have "\<exists>p. ef = Recv_Que_Message_RGF k p" by auto
+                then obtain p where "ef = Recv_Que_Message_RGF k p" by auto
+                then show ?thesis 
+                  by (simp add: E\<^sub>e_def Recv_Que_Message_RGF_def Recv_Que_sat_SCE)
+              qed
+          qed
+      qed
+  }
+  then show ?thesis by auto
+qed
+
+theorem uwc_oc: "observed_consistent"
+  apply(simp add:observed_consistent_def)
+  by(simp add:state_equiv_def)
 
 
+theorem uwce_LRE: "locally_respect_events_guar"
+  apply (simp add: locally_respect_events_guar_def all_evts_def, clarify)
+  using all_evts_def[of ARINCXKernel_Spec] uwce_LRE_help 
+  using noninterf1_def noninterf_def by blast
+                                               
+
+theorem uwce_SCE: "step_consistent_events"
+  apply (simp add: step_consistent_events_def)
+  using all_evts_def[of ARINCXKernel_Spec] uwce_SCE_help by auto
 
 
-  oops
+theorem "noninfluence0"
+  using uwc_oc uwce_LRE uwce_SCE UnwindingTheoremE_noninfluence0_guar by simp
 
-
-  
-
-
-
-
-
-
-
-
-
+theorem "nonleakage"
+  using UnwindingTheorem_nonleakage rg_lr_guar_imp_lr rg_sc_imp_sc uwc_oc uwce_LRE uwce_SCE by blast
 
 
 end
