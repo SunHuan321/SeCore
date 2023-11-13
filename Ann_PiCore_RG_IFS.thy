@@ -32,6 +32,9 @@ lemma all2D: "\<lbrakk>\<forall>a b. P a b\<rbrakk> \<Longrightarrow> P a b"
 lemma all2_impD: "\<lbrakk> \<forall>a b . P a b  \<longrightarrow> Q a b  ; P a b  \<rbrakk>\<Longrightarrow> Q a b"  
   by blast
 
+lemma all4_impD: "\<lbrakk> \<forall>a b c d. P a b c d \<longrightarrow> Q a b c d ; P a b c d \<rbrakk>\<Longrightarrow> Q a b c d"  
+  by blast
+
 lemma all5_impD: "\<lbrakk> \<forall>a b c d e. P a b c d e \<longrightarrow> Q a b c d e ; P a b c d e \<rbrakk>\<Longrightarrow> Q a b c d e"  
   by blast
 
@@ -156,6 +159,19 @@ lemma Await_post: "\<lbrakk>\<turnstile> P sat\<^sub>p [pre, {(s, t). s = t}, UN
    apply (metis (mono_tags, lifting) cpts_of_p_def etran_or_ctran2 mem_Collect_eq snd_conv)
   apply (simp add: commit_p_def gets_p_def getspc_p_def)
   done
+
+lemma Await_guar: "\<lbrakk>\<turnstile> AnnAwait r b P sat\<^sub>p [pre, rely, guar, post]; (Some (AnnAwait r b P), s) -c\<rightarrow> (P', s'); s \<in> pre\<rbrakk> \<Longrightarrow> (s, s') \<in> guar"
+  apply (drule rgsound_p, simp add: prog_validity_def)
+  apply (drule_tac a = s in allD)
+  apply (drule conjunct1)
+  apply (drule_tac c = "[(Some (AnnAwait r b P), s), (P', s')]" in subsetD)
+   apply (simp add: assume_p_def, rule conjI)
+    apply (simp add: cpts_of_p_def cpts_p.CptsPComp cpts_p.CptsPOne)
+   apply (rule conjI, simp add: gets_p_def)
+  using petran.cases apply force
+  apply (simp add: commit_p_def gets_p_def)
+  done
+
 
 lemma lr_p_Await_Sound: "\<lbrakk>\<turnstile> P sat\<^sub>p [pre, {(s, t). s = t}, UNIV, post]; \<forall>s t u. s \<in> r \<and> t \<in> post \<longrightarrow> s \<sim>u\<sim> t;  
                           \<forall>s k u. s \<in> r \<and> dome s k ev \<setminus>\<leadsto> u \<longrightarrow> s \<in> pre\<rbrakk> \<Longrightarrow> 
@@ -304,9 +320,9 @@ where
           \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnCond r b P1 P2 sat\<^sub>p ev"
 | While: "\<lbrakk> \<turnstile>\<^sub>s\<^sub>c P sat\<^sub>p ev; ann_pre P \<subseteq> r \<inter> b \<rbrakk>
           \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnWhile r b P sat\<^sub>p ev"
-| Await: "\<lbrakk> \<turnstile> P sat\<^sub>p [pre, {(s, t). s = t}, UNIV, post]; \<forall>t1 t2 u. t1 \<in> post \<and> t2 \<in> post \<longrightarrow> t1 \<sim>u\<sim> t2; 
-            \<forall>s1 s2 k u. s1 \<in> r \<and> s2 \<in> r \<and> s1 \<sim>u\<sim> s2 \<and> ((dome s1 k ev) \<leadsto> u \<longrightarrow> s1 \<sim>(dome s1 k ev)\<sim> s2)
-            \<longrightarrow> s1 \<in> pre \<and> s2 \<in> pre\<rbrakk>
+| Await: "\<lbrakk> \<turnstile> AnnAwait r b P sat\<^sub>p [pre, rely, guar, post];  r \<subseteq> pre;
+            \<forall>s1 s2 k u. s1 \<in> pre \<and> s2 \<in> pre \<and> s1 \<sim>u\<sim> s2 \<and> ((dome s1 k ev) \<leadsto> u \<longrightarrow> s1 \<sim>(dome s1 k ev)\<sim> s2)
+            \<longrightarrow> (\<forall>t1 t2. (s1, t1) \<in> guar \<and> (s2, t2) \<in> guar \<longrightarrow> t1 \<sim>u\<sim> t2)\<rbrakk>
           \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnAwait r b P sat\<^sub>p ev"
 | Nondt: "\<lbrakk>\<forall>s1 s2 k u.  s1 \<in> r \<and> s2 \<in> r \<and> s1 \<sim>u\<sim> s2 \<and> ((dome s1 k ev) \<leadsto> u \<longrightarrow> s1 \<sim>(dome s1 k ev)\<sim> s2) \<longrightarrow>
            (\<forall>t1 t2. (s1, t1) \<in> f \<and> (s2, t2) \<in> f \<longrightarrow> t1 \<sim>u\<sim> t2) \<rbrakk>
@@ -439,13 +455,19 @@ lemma sc_p_While_Sound: "\<lbrakk> \<exists>\<S>. P \<in> \<S> \<and> step_consi
   by blast
 
 
-lemma sc_p_Await_Sound: "\<lbrakk> \<turnstile> P sat\<^sub>p [pre, {(s, t). s = t}, UNIV, post]; \<forall>t1 t2 u. t1 \<in> post \<and> t2 \<in> post \<longrightarrow> t1 \<sim>u\<sim> t2;
-          \<forall>s1 s2 k u. s1 \<in> r \<and> s2 \<in> r \<and> s1 \<sim>u\<sim> s2 \<and> (dome s1 k ev \<leadsto> u \<longrightarrow> s1 \<sim>dome s1 k ev\<sim> s2) \<longrightarrow>
-          s1 \<in> pre \<and> s2 \<in> pre\<rbrakk> \<Longrightarrow> \<exists>\<S>. AnnAwait r b P \<in> \<S> \<and> step_consistent_p \<S> ev"
+lemma sc_p_Await_Sound: " \<lbrakk>\<turnstile> AnnAwait r b P sat\<^sub>p [pre, rely, guar, post] ; r \<subseteq> pre; 
+                          \<forall>s1 s2 k u. s1 \<in> pre \<and> s2 \<in> pre  \<and> s1 \<sim>u\<sim> s2 \<and> (dome s1 k ev \<leadsto> u 
+                          \<longrightarrow> s1 \<sim>dome s1 k ev\<sim> s2) \<longrightarrow> (\<forall>t1 t2. (s1, t1) \<in> guar \<and> (s2, t2) \<in> guar 
+                          \<longrightarrow> t1 \<sim>u\<sim> t2)\<rbrakk> \<Longrightarrow> \<exists>\<S>. AnnAwait r b P \<in> \<S> \<and> step_consistent_p \<S> ev"
   apply (rule_tac x = "{AnnAwait r b P}" in exI, simp add: step_consistent_p_def)
-  apply (rule conjI, simp add: step_consistent_p1_def, clarify)
-   apply (metis Await_post)
-  using step_consistent_p2_def by auto
+  apply (rule conjI)
+   apply (rule step_consistent_p1_eq, clarify)
+   apply (drule_tac a = s1 and b = s2 and c = k and d = u in all4_impD, simp add: subset_eq)
+   apply (erule all2_impD, simp add: ann_preserves_p_def)
+   apply (simp add: Await_guar subset_eq)
+  sledgehammer
+  sorry
+
 
 
 lemma sc_p_Nondt_Sound: "\<forall>s1 s2 k u. s1 \<in> r \<and> s2 \<in> r \<and> s1 \<sim>u\<sim> s2 \<and> (dome s1 k ev \<leadsto> u \<longrightarrow> s1 \<sim>dome s1 k ev\<sim> s2) 
@@ -466,7 +488,7 @@ lemma sc_p_sound : " \<turnstile>\<^sub>s\<^sub>c P sat\<^sub>p ev \<Longrightar
   using sc_p_Seq_Sound apply auto[1]
   using sc_p_Cond_Sound apply auto[1]
   using sc_p_While_Sound apply auto[1]
-  using sc_p_Await_Sound apply auto[1]
+   apply (smt (verit, del_insts) sc_p_Await_Sound)
   by (smt (verit, best) sc_p_Nondt_Sound)
 
 subsection \<open>step consistent program\<close>
