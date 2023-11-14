@@ -196,7 +196,7 @@ subsection \<open>local respect event\<close>
 
 definition locally_respect_e1 :: "('l, 'k, 's) event \<Rightarrow> ('l, 'k, 's) event \<Rightarrow> bool"
   where "locally_respect_e1 e ev \<equiv> \<forall> s x e' s' x' u t.  ann_preserves_e e s 
-  \<and> (dome s  ev) \<setminus>\<leadsto> u \<and> (e, s, x) -et-t\<rightarrow> (e', s', x') \<longrightarrow> s \<sim>u\<sim> s'"
+  \<and> (dome s ev) \<setminus>\<leadsto> u \<and> (e, s, x) -et-t\<rightarrow> (e', s', x') \<longrightarrow> s \<sim>u\<sim> s'"
 
 definition locally_respect_e2 :: "('l, 'k, 's) event \<Rightarrow> ('l, 'k, 's) event set \<Rightarrow> bool"
   where "locally_respect_e2 e \<S> \<equiv> AnonyEvent None \<in> \<S> \<and> (\<forall>x s t e' s' x'. 
@@ -275,6 +275,18 @@ lemma lr_e_Basic: "\<lbrakk>ev = BasicEvent e;  \<turnstile>\<^sub>l\<^sub>r bod
    apply blast
   by (metis ent_spec2' noevtent_notran)
 
+lemma lr_e_Basic1: "\<lbrakk>is_basicevt ev;  \<turnstile>\<^sub>l\<^sub>r the (body_e ev) sat\<^sub>p ev\<rbrakk> \<Longrightarrow> \<exists>\<S>. ev \<in> \<S> \<and> locally_respect_e \<S> ev"
+proof-
+  assume a0: " is_basicevt ev"
+    and  a1: "\<turnstile>\<^sub>l\<^sub>r the (body_e ev) sat\<^sub>p ev"
+  from a0 have "\<exists>e. ev = BasicEvent e" 
+    by (metis event.exhaust is_basicevt.simps(1))
+  then obtain e where b0: "ev = BasicEvent e" by auto
+  with a1 have " \<turnstile>\<^sub>l\<^sub>r body e sat\<^sub>p ev" by simp
+  with b0 show ?thesis
+    by (rule_tac e = e in lr_e_Basic, simp_all)
+qed
+
 
 lemma locally_respect_event : "\<lbrakk>getspc_e c \<in> \<S> ; locally_respect_e \<S> ev; ann_preserves_e (getspc_e c) (gets_e c); 
                                \<exists>t. c -et-t\<rightarrow> c'\<rbrakk>  \<Longrightarrow> getspc_e c' \<in> \<S>"
@@ -293,8 +305,6 @@ lemma locally_respect_forall : "\<lbrakk>e \<in> \<S> ; locally_respect_e \<S> e
   apply (case_tac "getspc_e (el ! i) = getspc_e (el ! Suc i)", simp)
   apply (simp add: preserves_e_def)
   by (meson Suc_lessD locally_respect_event notran_confeqi)
-
-
 
 
 subsection \<open>step consistent program\<close>
@@ -574,6 +584,20 @@ lemma sc_e_Basic: "\<lbrakk>ev = BasicEvent e;  \<turnstile>\<^sub>s\<^sub>c bod
    apply blast
   by (metis ent_spec2' noevtent_notran)
 
+lemma sc_e_Basic1: "\<lbrakk>is_basicevt ev;  \<turnstile>\<^sub>s\<^sub>c the (body_e ev) sat\<^sub>p ev\<rbrakk> \<Longrightarrow> \<exists>\<S>. ev \<in> \<S> \<and> step_consistent_e \<S> ev"
+proof-
+  assume a0: "is_basicevt ev"
+    and  a1: "\<turnstile>\<^sub>s\<^sub>c the (body_e ev) sat\<^sub>p ev"
+  from a0 have "\<exists>e. ev = BasicEvent e" 
+    by (metis anonyevt_isnot_basic event.exhaust is_anonyevt.simps(1))
+  then obtain e where b0: "ev = BasicEvent e" by auto
+  with a1 have "\<turnstile>\<^sub>s\<^sub>c body e sat\<^sub>p ev" by simp
+  with b0 show ?thesis
+    by (rule_tac e = e in sc_e_Basic, simp_all)
+qed
+
+
+
 lemma consistent_next_event : "\<lbrakk>getspc_e c \<in> \<S> ; step_consistent_e \<S> ev; ann_preserves_e (getspc_e c) (gets_e c); 
                                \<exists>t. c -et-t\<rightarrow> c'\<rbrakk>  \<Longrightarrow> getspc_e c' \<in> \<S>"
   apply (case_tac "c", case_tac c', simp add: step_consistent_e_def getspc_e_def gets_e_def)
@@ -790,21 +814,23 @@ lemma reachable0_impl_cpts: "reachable0 C \<Longrightarrow> \<exists>c. c\<in>cp
   using reachable_impl_cpts reachable0_def by simp
 
 definition locally_respect_events :: "bool" where
-  "locally_respect_events \<equiv> \<forall>ef. ef\<in>all_evts pesf  \<longrightarrow> (\<exists>\<S>. (E\<^sub>e ef) \<in> \<S> \<and> locally_respect_e \<S> (E\<^sub>e ef))"
+  "locally_respect_events \<equiv> \<forall>ef. ef\<in>all_evts pesf  \<longrightarrow> \<turnstile>\<^sub>l\<^sub>r the (body_e (E\<^sub>e ef)) sat\<^sub>p (E\<^sub>e ef)"
 
 definition locally_respect_events_guar :: "bool" where
   "locally_respect_events_guar \<equiv> \<forall>ef u s1 s2 . ef\<in>all_evts pesf \<and> (s1,s2) \<in> Guar\<^sub>e ef \<longrightarrow> 
                                     ((dome s1 (E\<^sub>e ef)) \<setminus>\<leadsto> u \<longrightarrow> s1 \<sim>u\<sim> s2)"
 
+
 definition step_consistent_events :: "bool" where
-  "step_consistent_events \<equiv> \<forall>ef. ef\<in>all_evts pesf  \<longrightarrow> (\<exists>\<S>. (E\<^sub>e ef) \<in> \<S> \<and> step_consistent_e \<S> (E\<^sub>e ef))"
+  "step_consistent_events \<equiv> \<forall>ef. ef\<in>all_evts pesf  \<longrightarrow> \<turnstile>\<^sub>s\<^sub>c the (body_e (E\<^sub>e ef)) sat\<^sub>p (E\<^sub>e ef)"
+
 
 
 lemma rg_lr_imp_lr: "locally_respect_events \<Longrightarrow> locally_respect"
 proof-
   assume p0: "locally_respect_events"
   then have p1: "\<forall>ef. ef\<in>all_evts pesf  \<longrightarrow> (\<exists>\<S>. (E\<^sub>e ef) \<in> \<S> \<and> locally_respect_e \<S> (E\<^sub>e ef))"
-    by (simp add: locally_respect_events_def)
+    using all_evts_are_basic locally_respect_events_def lr_e_Basic1 by blast
   show ?thesis
   proof-
     {
@@ -1099,7 +1125,7 @@ lemma rg_sc_imp_sc: "step_consistent_events \<Longrightarrow> step_consistent"
 proof-
   assume p0: "step_consistent_events"
   then have p1: "\<forall>ef. ef\<in>all_evts pesf  \<longrightarrow> (\<exists>\<S>. (E\<^sub>e ef) \<in> \<S> \<and> step_consistent_e \<S> (E\<^sub>e ef))"
-    by (simp add: step_consistent_events_def)
+    by (simp add: all_evts_are_basic sc_e_Basic1 step_consistent_events_def)
   show ?thesis
   proof-
     {

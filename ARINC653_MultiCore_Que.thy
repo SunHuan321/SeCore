@@ -1029,9 +1029,9 @@ lemma uwce_LRE_help: "\<forall>x. ef \<in> all_evts_es (fst (ARINCXKernel_Spec x
 qed
 
 
-lemma Core_Init_sat_SCE: "\<exists>\<S>. Core_Init k \<in> \<S> \<and> step_consistent_e \<S> (Core_Init k)"
-  apply (rule sc_e_Basic, simp add: Core_Init_def)
-  apply (simp add: body_def sc_p.Basic)
+
+lemma Core_Init_sat_SCE: "sc_p (the (body_e (Core_Init k))) (Core_Init k)"
+  apply (simp add: body_e_def Core_Init_def body_def sc_p.Basic)
   apply (rule sc_p.Basic, clarsimp)
   apply (case_tac u)
     apply (simp add: state_equiv_def state_obs_part_def)
@@ -1084,9 +1084,8 @@ lemma Schedule_sat_SCE_h2: "\<turnstile> \<lbrace>True \<rbrace> \<acute>cur := 
      apply (simp add: stable_def)+
   by force
 
-lemma Schedule_sat_SCE: "\<exists>\<S>. Schedule k p \<in> \<S> \<and> step_consistent_e \<S> (Schedule k p)"
-  apply (rule sc_e_Basic, simp add: Schedule_def)
-  apply (simp add: body_def)
+lemma Schedule_sat_SCE: "sc_p (the (body_e (Schedule k p))) (Schedule k p)"
+  apply (simp add: body_def Schedule_def)
   apply (rule sc_p.Seq)
    apply (rule sc_p.Cond)
     apply (rule_tac pre = "\<lbrace>p2s conf p = c2s conf k \<and> p2s conf (the (\<acute>cur (c2s conf k))) = c2s conf k\<rbrace>" 
@@ -1160,9 +1159,8 @@ lemma Send_Que_sat_SCE_h1: "\<turnstile> \<lbrace>True \<rbrace> \<acute>qbuf :=
   done
 
 
-lemma Send_Que_sat_SCE: "\<exists>\<S>. Send_Que_Message k p m \<in> \<S> \<and> step_consistent_e \<S> (Send_Que_Message k p m)"
-  apply (rule sc_e_Basic, simp add: Send_Que_Message_def)
-  apply (simp add: body_def)
+lemma Send_Que_sat_SCE: "sc_p (the (body_e (Send_Que_Message k p m))) (Send_Que_Message k p m)"
+  apply (simp add: body_def Send_Que_Message_def)
   apply (rule_tac pre = "\<lbrace>is_src_qport conf p \<and> (\<exists>y. \<acute>cur (c2s conf k) = Some y) \<and> port_of_part conf p (the (\<acute>cur (c2s conf k)))\<rbrace>" 
           and rely = Id and post = "\<lbrace>True\<rbrace>" and guar = "\<lbrace>\<ordfeminine>cur = \<ordmasculine>cur \<and> \<ordfeminine>partst = \<ordmasculine>partst \<and> 
           ((is_src_qport conf p \<and> \<ordmasculine>cur ((c2s conf) k) \<noteq> None \<and> port_of_part conf p (the (\<ordmasculine>cur ((c2s conf) k)))) 
@@ -1232,9 +1230,8 @@ lemma Recv_Que_sat_SCE_h1: "\<turnstile> \<lbrace>True\<rbrace> \<acute>qbuf := 
      apply(simp add:stable_def)+
   done
 
-lemma Recv_Que_sat_SCE: "\<exists>\<S>. Recv_Que_Message k p \<in> \<S> \<and> step_consistent_e \<S> (Recv_Que_Message k p)"
-  apply (rule sc_e_Basic, simp add: Recv_Que_Message_def)
-  apply (simp add: body_def)
+lemma Recv_Que_sat_SCE: "sc_p (the (body_e (Recv_Que_Message k p))) (Recv_Que_Message k p )"
+  apply (simp add: body_def Recv_Que_Message_def)
   apply (rule_tac pre = "\<lbrace>is_dest_qport conf p \<and> (\<exists>y. \<acute>cur (c2s conf k) = Some y) \<and> port_of_part conf p (the (\<acute>cur (c2s conf k)))\<rbrace>" 
           and rely = Id and post = "\<lbrace>True\<rbrace>" and guar = "\<lbrace>\<ordfeminine>cur = \<ordmasculine>cur \<and> \<ordfeminine>partst = \<ordmasculine>partst \<and> 
           ((is_dest_qport conf p \<and> \<ordmasculine>cur ((c2s conf) k) \<noteq> None \<and> port_of_part conf p (the (\<ordmasculine>cur ((c2s conf) k)))) 
@@ -1260,7 +1257,7 @@ lemma Recv_Que_sat_SCE: "\<exists>\<S>. Recv_Que_Message k p \<in> \<S> \<and> s
    apply (simp add: state_equiv_def state_obs_sched_def)
   using state_equiv_def state_obs.simps(3) by presburger
 
-lemma uwce_SCE_help: "\<forall>k. ef \<in> all_evts_es (fst (ARINCXKernel_Spec k)) \<longrightarrow> (\<exists>\<S>. E\<^sub>e ef \<in> \<S> \<and> step_consistent_e \<S> (E\<^sub>e ef))"
+lemma uwce_SCE_help: "\<forall>k. ef \<in> all_evts_es (fst (ARINCXKernel_Spec k)) \<longrightarrow> sc_p (the (body_e (E\<^sub>e ef))) (E\<^sub>e ef)"
   proof -
   {
     fix k
@@ -1269,7 +1266,7 @@ lemma uwce_SCE_help: "\<forall>k. ef \<in> all_evts_es (fst (ARINCXKernel_Spec k
     then have "ef\<in>insert (Core_Init_RGF k) (all_evts_es (fst (EvtSys1_on_Core_RGF k)))" 
       by (simp add:EvtSys_on_Core_RGF_def)
     then have "ef = (Core_Init_RGF k) \<or> ef\<in>all_evts_es (fst (EvtSys1_on_Core_RGF k))" by auto
-    then have "\<exists>\<S>. E\<^sub>e ef \<in> \<S> \<and> step_consistent_e \<S> (E\<^sub>e ef)"
+    then have "sc_p (the (body_e (E\<^sub>e ef))) (E\<^sub>e ef)"
       proof
         assume a0: "ef = Core_Init_RGF k"
         then show ?thesis 
