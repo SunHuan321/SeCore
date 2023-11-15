@@ -1315,8 +1315,8 @@ theorem uwc_oc: "observed_consistent"
   by(simp add:state_equiv_def)
 
 
-theorem uwce_LRE: "locally_respect_events_guar"
-  apply (simp add: locally_respect_events_guar_def all_evts_def, clarify)
+theorem uwce_LRE: "locally_respect_events"
+  apply (simp add: locally_respect_events_def all_evts_def, clarify)
   using all_evts_def[of ARINCXKernel_Spec] uwce_LRE_help 
   using noninterf1_def noninterf_def by blast
                                                
@@ -1327,10 +1327,10 @@ theorem uwce_SCE: "step_consistent_events"
 
 
 theorem "noninfluence0"
-  using uwc_oc uwce_LRE uwce_SCE UnwindingTheoremE_noninfluence0_guar by simp
+  using uwc_oc uwce_LRE uwce_SCE UnwindingTheoremE_noninfluence0 by simp
 
 theorem "nonleakage"
-  using UnwindingTheorem_nonleakage rg_lr_guar_imp_lr rg_sc_imp_sc uwc_oc uwce_LRE uwce_SCE by blast
+  using UnwindingTheorem_nonleakage rg_lr_imp_lr rg_sc_imp_sc uwc_oc uwce_LRE uwce_SCE by blast
 
 
 end
