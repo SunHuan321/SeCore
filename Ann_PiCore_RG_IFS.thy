@@ -54,8 +54,7 @@ where
            \<Longrightarrow> \<turnstile>\<^sub>l\<^sub>r AnnSeq P Q sat\<^sub>p ev"
 | Cond: "\<lbrakk> \<turnstile>\<^sub>l\<^sub>r P1 sat\<^sub>p ev;  \<turnstile>\<^sub>l\<^sub>r P2 sat\<^sub>p ev \<rbrakk>
           \<Longrightarrow> \<turnstile>\<^sub>l\<^sub>r AnnCond r b P1 P2 sat\<^sub>p ev"
-| While: "\<lbrakk> \<turnstile>\<^sub>l\<^sub>r P sat\<^sub>p ev; ann_pre P \<subseteq> r \<inter> b \<rbrakk>
-          \<Longrightarrow> \<turnstile>\<^sub>l\<^sub>r AnnWhile r b P sat\<^sub>p ev"
+| While: "\<lbrakk> \<turnstile>\<^sub>l\<^sub>r P sat\<^sub>p ev \<rbrakk> \<Longrightarrow> \<turnstile>\<^sub>l\<^sub>r AnnWhile r b P sat\<^sub>p ev"
 | Await: "\<lbrakk> \<turnstile> AnnAwait r b P sat\<^sub>p [pre, rely, guar, post]; r \<subseteq> pre; \<forall>s u. s \<in> pre \<and> (dome s ev) \<setminus>\<leadsto> u 
            \<longrightarrow> (\<forall>t. (s, t) \<in> guar \<longrightarrow> s \<sim>u\<sim> t)\<rbrakk>
           \<Longrightarrow> \<turnstile>\<^sub>l\<^sub>r AnnAwait r b P sat\<^sub>p ev"
@@ -131,7 +130,7 @@ lemma lr_p_Cond_Sound: "\<lbrakk>\<exists>\<S>. P1 \<in> \<S> \<and> locally_res
   using locally_respect_p1_def vpeq_reflexive apply fastforce
   using UnI1 locally_respect_p2_def by fastforce
 
-lemma lr_p_While_Sound: "\<lbrakk>\<exists>\<S>. P \<in> \<S> \<and> locally_respect_p \<S> ev;  ann_pre P \<subseteq> r \<inter> b \<rbrakk> 
+lemma lr_p_While_Sound: "\<lbrakk>\<exists>\<S>. P \<in> \<S> \<and> locally_respect_p \<S> ev \<rbrakk> 
                       \<Longrightarrow> \<exists>\<S>. AnnWhile r b P \<in> \<S> \<and> locally_respect_p \<S> ev"
   apply (erule exE)
   apply (rule_tac x = "lift_prog_set (AnnWhile r b P) \<S>" in exI)
@@ -319,8 +318,7 @@ where
            \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnSeq P Q sat\<^sub>p ev"
 | Cond: "\<lbrakk> \<turnstile>\<^sub>s\<^sub>c P1 sat\<^sub>p ev;  \<turnstile>\<^sub>s\<^sub>c P2 sat\<^sub>p ev \<rbrakk>
           \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnCond r b P1 P2 sat\<^sub>p ev"
-| While: "\<lbrakk> \<turnstile>\<^sub>s\<^sub>c P sat\<^sub>p ev; ann_pre P \<subseteq> r \<inter> b \<rbrakk>
-          \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnWhile r b P sat\<^sub>p ev"
+| While: "\<lbrakk> \<turnstile>\<^sub>s\<^sub>c P sat\<^sub>p ev \<rbrakk> \<Longrightarrow> \<turnstile>\<^sub>s\<^sub>c AnnWhile r b P sat\<^sub>p ev"
 | Await: "\<lbrakk> \<turnstile> AnnAwait r b P sat\<^sub>p [pre, rely, guar, post];  r \<subseteq> pre;
             \<forall>s1 s2  u. s1 \<in> pre \<and> s2 \<in> pre \<and> s1 \<sim>u\<sim> s2 \<and> ((dome s1  ev) \<leadsto> u \<longrightarrow> s1 \<sim>(dome s1  ev)\<sim> s2)
             \<longrightarrow> (\<forall>t1 t2. (s1, t1) \<in> guar \<and> (s2, t2) \<in> guar \<longrightarrow> t1 \<sim>u\<sim> t2)\<rbrakk>
@@ -416,7 +414,7 @@ lemma sc_p_Cond_Sound: "\<lbrakk>\<exists>\<S>. P1 \<in> \<S> \<and> step_consis
   using step_consistent_p1_def apply auto[1]
   using step_consistent_p2_def by auto
 
-lemma sc_p_While_Sound: "\<lbrakk> \<exists>\<S>. P \<in> \<S> \<and> step_consistent_p \<S> ev; ann_pre P \<subseteq> r \<inter> b\<rbrakk>
+lemma sc_p_While_Sound: "\<lbrakk> \<exists>\<S>. P \<in> \<S> \<and> step_consistent_p \<S> ev\<rbrakk>
                       \<Longrightarrow> \<exists>\<S>. AnnWhile r b P \<in> \<S> \<and> step_consistent_p \<S> ev"
   apply (erule exE)
   apply (rule_tac x = "lift_prog_set (AnnWhile r b P) \<S>" in exI)
@@ -1263,7 +1261,6 @@ proof-
     then show ?thesis using step_consistent_def by blast
   qed
 qed
-
 
 theorem UnwindingTheoremE_noninfluence0: 
     assumes p1: observed_consistent

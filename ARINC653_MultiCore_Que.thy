@@ -89,7 +89,7 @@ definition Schedule :: "Core \<Rightarrow> Part \<Rightarrow> (EventLabel, Core,
   where "Schedule k p \<equiv> 
     EVENT ScheduleE [Partition p] \<rhd> k 
     WHERE
-      p2s conf p = c2s conf k \<and> (\<acute>partst p \<noteq> IDLE) \<and> (\<acute>cur((c2s conf) k) = None 
+      p2s conf p = c2s conf k \<and> (\<acute>partst p \<noteq> IDLE) \<and> (\<acute>cur (c2s conf k) = None 
           \<or> p2s conf (the (\<acute>cur((c2s conf) k))) = c2s conf k)
     THEN 
       \<lbrace>p2s conf p = c2s conf k \<and> (\<acute>partst p \<noteq> IDLE) \<and> (\<acute>cur((c2s conf) k) = None \<or> p2s conf (the (\<acute>cur((c2s conf) k))) = c2s conf k)\<rbrace> 
@@ -103,7 +103,7 @@ definition Schedule :: "Core \<Rightarrow> Part \<Rightarrow> (EventLabel, Core,
       
       (\<lbrace>p2s conf p = c2s conf k \<and> \<acute>cur(c2s conf k) = None \<rbrace>
          ATOMIC
-        \<lbrace>True\<rbrace> \<acute>cur := \<acute>cur((c2s conf) k := Some p);;
+        \<lbrace>True\<rbrace> \<acute>cur := \<acute>cur((c2s conf k) := Some p);;
         \<lbrace>True\<rbrace> \<acute>partst := \<acute>partst(p := RUN)
         END)
 
@@ -115,10 +115,10 @@ definition Send_Que_Message :: "Core \<Rightarrow> Port \<Rightarrow> Message \<
     EVENT Send_Que_MessageE [Port p, Message m] \<rhd> k 
     WHERE
       is_src_qport conf p
-      \<and> \<acute>cur ((c2s conf) k) \<noteq> None
-      \<and> port_of_part conf p (the (\<acute>cur ((c2s conf) k)))
+      \<and> \<acute>cur (c2s conf k) \<noteq> None
+      \<and> port_of_part conf p (the (\<acute>cur (c2s conf k)))
     THEN
-     \<lbrace>is_src_qport conf p \<and> \<acute>cur ((c2s conf) k) \<noteq> None \<and> port_of_part conf p (the (\<acute>cur ((c2s conf) k)))\<rbrace> 
+     \<lbrace>is_src_qport conf p \<and> \<acute>cur (c2s conf k) \<noteq> None \<and> port_of_part conf p (the (\<acute>cur (c2s conf k)))\<rbrace> 
      ATOMIC
      \<lbrace>True\<rbrace> IF \<acute>qbufsize (ch_srcqport conf p) < chmax conf (ch_srcqport conf p) THEN 
      \<lbrace>True\<rbrace> \<acute>qbuf := \<acute>qbuf (ch_srcqport conf p := \<acute>qbuf (ch_srcqport conf p) @ [m]);;
@@ -133,10 +133,10 @@ definition Recv_Que_Message :: "Core \<Rightarrow> Port \<Rightarrow> (EventLabe
     EVENT Recv_Que_MessageE [Port p] \<rhd> k 
     WHERE
       is_dest_qport conf p 
-      \<and> \<acute>cur ((c2s conf) k) \<noteq> None
-      \<and> port_of_part conf p (the (\<acute>cur ((c2s conf) k)))
+      \<and> \<acute>cur (c2s conf k) \<noteq> None
+      \<and> port_of_part conf p (the (\<acute>cur (c2s conf k)))
     THEN 
-        \<lbrace>is_dest_qport conf p  \<and> \<acute>cur ((c2s conf) k) \<noteq> None \<and> port_of_part conf p (the (\<acute>cur ((c2s conf) k))) \<rbrace>
+        \<lbrace>is_dest_qport conf p  \<and> \<acute>cur (c2s conf k) \<noteq> None \<and> port_of_part conf p (the (\<acute>cur ((c2s conf) k))) \<rbrace>
         AWAIT \<acute>qbufsize (ch_destqport conf p) > 0 THEN 
           \<lbrace>True\<rbrace> \<acute>qbuf := \<acute>qbuf (ch_destqport conf p := tl (\<acute>qbuf (ch_destqport conf p)));;
           \<lbrace>True\<rbrace> \<acute>qbufsize := \<acute>qbufsize (ch_destqport conf p := \<acute>qbufsize (ch_destqport conf p) - 1)
@@ -177,7 +177,7 @@ abbreviation "snd_recv_rely k \<equiv> \<lbrace>\<ordfeminine>cur (c2s conf k) =
 abbreviation "snd_send_guar k p \<equiv> 
     \<lbrace>\<ordfeminine>cur = \<ordmasculine>cur \<and> \<ordfeminine>partst = \<ordmasculine>partst \<and> (\<ordmasculine>qbufsize (ch_srcqport conf p) = length (\<ordmasculine>qbuf (ch_srcqport conf p))
       \<longrightarrow> \<ordfeminine>qbufsize (ch_srcqport conf p) = length (\<ordfeminine>qbuf (ch_srcqport conf p))) \<and>
-    ((is_src_qport conf p \<and> \<ordmasculine>cur ((c2s conf) k) \<noteq> None \<and> port_of_part conf p (the (\<ordmasculine>cur ((c2s conf) k)))) \<longrightarrow>
+    ((is_src_qport conf p \<and> \<ordmasculine>cur (c2s conf k) \<noteq> None \<and> port_of_part conf p (the (\<ordmasculine>cur (c2s conf k)))) \<longrightarrow>
     (\<forall>c. c \<noteq> ch_srcqport conf p \<longrightarrow> \<ordfeminine>qbuf c = \<ordmasculine>qbuf c \<and> \<ordfeminine>qbufsize c = \<ordmasculine>qbufsize c)) \<and> 
     ((\<not>(is_src_qport conf p \<and> \<ordmasculine>cur ((c2s conf) k) \<noteq> None \<and> port_of_part conf p (the (\<ordmasculine>cur ((c2s conf) k)))))
     \<longrightarrow> (\<ordfeminine>qbuf  = \<ordmasculine>qbuf  \<and> \<ordfeminine>qbufsize  = \<ordmasculine>qbufsize))\<rbrace>"
@@ -231,7 +231,7 @@ definition EvtSys_on_Core_RGF :: "Core \<Rightarrow> (EventLabel, Core, State) r
 
 definition ARINCXKernel_Spec :: "(EventLabel, Core, State) rgformula_par"
   where "ARINCXKernel_Spec \<equiv> (\<lambda>k. EvtSys_on_Core_RGF k)"
-
+                                       
 
 axiomatization s0 where s0_init: "s0 \<equiv> fst (System_Init conf)"
 axiomatization x0 where x0_init: "x0 \<equiv> snd (System_Init conf)"
