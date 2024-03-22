@@ -548,7 +548,6 @@ lemma EvtSys1_on_core_SatRG:
   by simp
 
 
-
 lemma EvtSys_on_core_SatRG: 
   "\<forall>k.  \<turnstile> fst (EvtSys_on_Core_RGF k) sat\<^sub>s 
           [Pre\<^sub>f (snd (EvtSys_on_Core_RGF k)), 
@@ -570,22 +569,22 @@ lemma EvtSys_on_core_SatRG:
    apply(simp add:EvtSys1_on_Core_RGF_def Core_Init_RGCond_def Guar\<^sub>f_def getrgformula_def)
   by (simp add:EvtSys1_on_Core_RGF_def Core_Init_RGF_def Core_Init_RGCond_def Post\<^sub>e_def Pre\<^sub>f_def getrgformula_def)
 
-lemma spec_sat_rg: " \<turnstile> ARINCXKernel_Spec SAT [{s0}, {}, UNIV, UNIV]"
-  apply (rule ParallelESys)
-       apply(simp add:ARINCXKernel_Spec_def Guar\<^sub>e\<^sub>s_def Guar\<^sub>f_def Post\<^sub>e\<^sub>s_def Post\<^sub>f_def Pre\<^sub>e\<^sub>s_def 
-            Pre\<^sub>f_def Rely\<^sub>e\<^sub>s_def Rely\<^sub>f_def)
-       apply (metis EvtSys_on_core_SatRG Guar\<^sub>f_def Post\<^sub>f_def Pre\<^sub>f_def Rely\<^sub>f_def)
-      apply(simp add:ARINCXKernel_Spec_def EvtSys_on_Core_RGF_def Pre\<^sub>e\<^sub>s_def getrgformula_def 
-            System_Init_def s0_init)
-     apply simp
-    apply clarsimp
+lemma spec_sat_rg: "\<forall>k. \<turnstile> fst (ARINCXKernel_Spec k) sat\<^sub>s [Pre\<^sub>e\<^sub>s (ARINCXKernel_Spec k),
+           Rely\<^sub>e\<^sub>s (ARINCXKernel_Spec k), Guar\<^sub>e\<^sub>s (ARINCXKernel_Spec k), Post\<^sub>e\<^sub>s (ARINCXKernel_Spec k)]"
+  apply (simp add:ARINCXKernel_Spec_def Guar\<^sub>e\<^sub>s_def Guar\<^sub>f_def Post\<^sub>e\<^sub>s_def Post\<^sub>f_def Pre\<^sub>e\<^sub>s_def  Pre\<^sub>f_def Rely\<^sub>e\<^sub>s_def Rely\<^sub>f_def)
+  by (metis EvtSys_on_core_SatRG Guar\<^sub>f_def Post\<^sub>f_def Pre\<^sub>f_def Rely\<^sub>f_def)
+
+lemma spec_sat_init: "\<forall>k. {s0} \<subseteq> Pre\<^sub>e\<^sub>s (ARINCXKernel_Spec k)"
+  by(simp add:ARINCXKernel_Spec_def EvtSys_on_Core_RGF_def Pre\<^sub>e\<^sub>s_def getrgformula_def System_Init_def s0_init)
+
+lemma spec_rg_com: "\<forall>k j. j \<noteq> k \<longrightarrow> Guar\<^sub>e\<^sub>s (ARINCXKernel_Spec j) \<subseteq> Rely\<^sub>e\<^sub>s (ARINCXKernel_Spec k)"
+  apply (clarsimp)
   apply(simp add:ARINCXKernel_Spec_def EvtSys_on_Core_RGF_def Guar\<^sub>e\<^sub>s_def Rely\<^sub>e\<^sub>s_def getrgformula_def)  
-    apply auto[1]
-      apply (simp add: inj_eq inj_surj_c2s)
-     apply (metis inj_eq inj_surj_c2s)
-    apply metis
-   apply simp+
-  done
+  apply auto[1]
+    apply (simp add: inj_eq inj_surj_c2s)
+   apply (metis inj_eq inj_surj_c2s)
+  by metis
+
 
 
 subsection \<open>Security Specification\<close>
@@ -880,12 +879,12 @@ lemma bsc_evts_rgfs: "\<forall>erg\<in>all_evts (ARINCXKernel_Spec). (evtrgffun 
 interpretation RG_InfoFlow C0 exec_step interf state_equiv state_obs domevt 
   ARINCXKernel_Spec s0 x0 evtrgffun "paresys_spec ARINCXKernel_Spec"
     using state_equiv_transitive state_equiv_reflexive state_equiv_symmetric exec_step_def 
-      C0_init all_basic_evts_arinc bsc_evts_rgfs spec_sat_rg
+      C0_init all_basic_evts_arinc bsc_evts_rgfs spec_sat_rg spec_sat_init spec_rg_com
     InfoFlow.intro[of state_equiv exec_step domevt]
     RG_InfoFlow.intro[of exec_step state_equiv domevt C0 ARINCXKernel_Spec 
                         s0 x0 evtrgffun "paresys_spec ARINCXKernel_Spec"]
-    RG_InfoFlow_axioms.intro[of C0 ARINCXKernel_Spec s0 x0 "paresys_spec ARINCXKernel_Spec" evtrgffun]  
-    by (metis (no_types, lifting) option.sel)
+    RG_InfoFlow_axioms.intro[of C0 ARINCXKernel_Spec s0 x0 "paresys_spec ARINCXKernel_Spec" evtrgffun]
+    by (metis (no_types, lifting) insert_subset option.sel)
 
 subsection \<open>Proof of Events satisfy the UCs \<close>
 
@@ -1325,12 +1324,12 @@ theorem uwce_SCE: "step_consistent_events"
   apply (simp add: step_consistent_events_def)
   using all_evts_def[of ARINCXKernel_Spec] uwce_SCE_help by auto
 
+theorem "nonleakage"
+  using UnwindingTheoremE_nonleakage uwc_oc uwce_SCE by blast
 
 theorem "noninfluence0"
   using uwc_oc uwce_LRE uwce_SCE UnwindingTheoremE_noninfluence0 by simp
 
-theorem "nonleakage"
-  using UnwindingTheorem_nonleakage rg_lr_imp_lr rg_sc_imp_sc uwc_oc uwce_LRE uwce_SCE by blast
 
 
 end

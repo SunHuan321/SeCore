@@ -567,7 +567,54 @@ lemma sources_preserved_left:
 
     qed
   qed
-
+         
+theorem UnwindingTheorem_nonleakage:
+    assumes p1: observed_consistent
+    and     p2: step_consistent 
+  shows nonleakage
+  proof(subst nonleakage_def)
+    show "\<forall>as C1 C2 u. (reachable0 C1) \<and> (reachable0 C2) \<longrightarrow> (C1 \<approx>.(sources as u).\<approx> C2) 
+                                 \<longrightarrow> (C1 \<lhd> as \<simeq> u \<simeq> C2 \<lhd> as)"
+      proof -
+      {
+        fix as
+        have "\<forall>C1 C2 u. (reachable0 C1) \<and> (reachable0 C2) \<longrightarrow> (C1 \<approx>.(sources as u).\<approx> C2) 
+                                 \<longrightarrow> (C1 \<lhd> as \<simeq> u \<simeq> C2 \<lhd> as)"
+          proof(induct as)
+            case Nil 
+            show ?case 
+              proof -
+              {
+                fix C1 C2 u
+                assume a0: "C1 \<approx>.(sources [] u).\<approx> C2"
+                then have a1: "(C1 \<sim>.u.\<sim> C2)" 
+                  by (simp add: ivpeqc_def sources_Nil) 
+                then have "C1 \<lhd> [] \<simeq> u \<simeq> C2 \<lhd> []"  unfolding exec_equiv_def
+                   using observed_consistent_def p1 vpeqc_def by fastforce
+              }
+              then show ?thesis by auto
+              qed
+          next
+            case (Cons b bs)
+            assume a0: "\<forall>C1 C2 u. (reachable0 C1) \<and> (reachable0 C2) \<longrightarrow> (C1 \<approx>.(sources bs u).\<approx> C2) 
+                                 \<longrightarrow> (C1 \<lhd> bs \<simeq> u \<simeq> C2 \<lhd> bs)"
+            show ?case
+              proof -
+              {
+                fix C1 C2 u
+                assume b0: "(reachable0 C1) \<and> (reachable0 C2)"
+                assume b1: "C1 \<approx>.(sources (b#bs) u).\<approx> C2"
+                have "\<forall>C1' C2'. C1'\<in>nextc C1 b \<and> C2'\<in>nextc C2 b \<longrightarrow> (C1' \<lhd> bs \<simeq> u \<simeq> C2' \<lhd> bs)"
+                  by (metis b0 b1 local.Cons mem_Collect_eq nextc_def p2 reachableStep sources_unwinding_step)
+                then have "C1 \<lhd> (b # bs) \<simeq> u \<simeq> C2 \<lhd> (b # bs)" using b0 b1 exec_equiv_both by auto 
+              }
+              then show ?thesis by auto
+              qed
+          qed
+      }
+      then show ?thesis by auto
+      qed
+    qed
 
 theorem UnwindingTheorem_noninfluence0:
     assumes p1: observed_consistent
@@ -622,158 +669,6 @@ theorem UnwindingTheorem_noninfluence0:
                       by (metis CollectD a0 b0 b1 b2 d0 nextc_def p2 reachableStep sources_preserved_left)
                     then show ?thesis by (metis b0 d1 exec_equiv_leftI) 
                   qed
-              }
-              then show ?thesis by auto
-              qed
-          qed
-      }
-      then show ?thesis by auto
-      qed
-  qed
-
-(*
-theorem UnwindingTheorem_noninfluence1:
-    assumes p1: observed_consistent
-    and     p2: locally_respect
-    and     p3: step_consistent
-  shows g:noninfluence1
-  proof(subst noninfluence1_def)
-    show "\<forall>as bs C1 C2 u. (reachable0 C1) \<and> (reachable0 C2) \<longrightarrow> (C1 \<approx>.(sources as u).\<approx> C2) 
-              \<longrightarrow> ipurge as u = ipurge bs u \<longrightarrow> C1 \<lhd> as \<simeq> u \<simeq> C2 \<lhd> bs"
-      proof -
-      {
-        fix as bs C1 C2 u
-        assume a0: "(reachable0 C1) \<and> (reachable0 C2)"
-          and  a1: "(C1 \<approx>.(sources as u).\<approx> C2)"
-          and  a2: "ipurge as u = ipurge bs u"
-        then have a3: "sources as u = sources bs u" using sources_ipurge by metis
-        from p1 p2 p3 a0 a1 a2 have a4: "(C1 \<lhd> as \<simeq> u \<simeq> C2 \<lhd> (ipurge as u))" 
-          using UnwindingTheorem_noninfluence0 noninfluence0_def by blast
-        
-        from p1 p2 p3 a0 a1 a2 a3 have "(C1 \<lhd> bs \<simeq> u \<simeq> C2 \<lhd> (ipurge bs u))" 
-          using UnwindingTheorem_noninfluence0 noninfluence0_def by fastforce 
-        
-        with a2 a4 have "C1 \<lhd> as \<simeq> u \<simeq> C2 \<lhd> bs" sorry
-      }
-      then show ?thesis by auto
-      qed
-  qed
-
-theorem UnwindingTheorem_noninfluence1:
-    assumes p1: observed_consistent
-    and     p2: locally_respect
-    and     p3: step_consistent
-  shows g:noninfluence1
-  proof(subst noninfluence1_def)
-    show "\<forall>as bs C1 C2 u. (reachable0 C1) \<and> (reachable0 C2) \<longrightarrow> (C1 \<approx>.(sources as u).\<approx> C2) 
-              \<longrightarrow> ipurge as u = ipurge bs u \<longrightarrow> C1 \<lhd> as \<simeq> u \<simeq> C2 \<lhd> bs"
-      proof -
-      {
-        fix as 
-        have "\<forall>bs C1 C2 u. (reachable0 C1) \<and> (reachable0 C2) \<longrightarrow> (C1 \<approx>.(sources as u).\<approx> C2) 
-              \<longrightarrow> ipurge as u = ipurge bs u \<longrightarrow> C1 \<lhd> as \<simeq> u \<simeq> C2 \<lhd> bs"
-          proof(induct as)
-            case Nil show ?case
-              proof -
-              {
-                fix bs C1 C2 u
-                assume a0: "reachable0 C1 \<and> reachable0 C2"
-                  and  a1: "C1 \<approx>.sources [] u.\<approx> C2"
-                  and  a2: "ipurge [] u = ipurge bs u"
-
-                have a3:"C1 \<sim>.u.\<sim> C2" using a1 ivpeqc_def sources_Nil by auto 
-                have a4:"ipurge [] u = []" by simp
-                from a3 have "C1 \<lhd> [] \<simeq> u \<simeq> C2 \<lhd> []" unfolding exec_equiv_def
-                  using observed_consistent_def p1 vpeqc_def by fastforce
-                with a4 have "C1 \<lhd> [] \<simeq> u \<simeq> C2 \<lhd> ipurge [] u" by auto
-
-                with a2 have "C1 \<lhd> [] \<simeq> u \<simeq> C2 \<lhd> bs"
-                  by (metis InfoFlow.exec_equiv_trans InfoFlow_axioms 
-                    UnwindingTheorem_noninfluence0 a0 a4 exec_equiv_sym 
-                    lm7 noninterference0_r_def p1 p2 p3 runnable_empty) 
-              }
-              then show ?thesis by auto
-              qed
-          next
-            case (Cons c cs)
-            assume a0: "\<forall>bs C1 C2 u. reachable0 C1 \<and> reachable0 C2 
-                          \<longrightarrow> (C1 \<approx>.sources cs u.\<approx> C2) \<longrightarrow> ipurge cs u = ipurge bs u 
-                          \<longrightarrow> C1 \<lhd> cs \<simeq> u \<simeq> C2 \<lhd> bs"
-            show ?case
-              proof -
-              {
-                fix bs C1 C2 u
-                assume b0: "reachable0 C1"
-                  and  b1: "reachable0 C2"
-                  and  b2: "C1 \<approx>.sources (c # cs) u.\<approx> C2"
-                  and  b3: "ipurge (c # cs) u = ipurge bs u"
-                then have "sources (c # cs) u = sources bs u"
-                  using sources_ipurge by metis
-                then have "C1 \<lhd> (c # cs) \<simeq> u \<simeq> C2 \<lhd> bs" 
-                  proof(cases "domain c\<in>sources (c # cs) u")
-                    assume d0: "domain c\<in>sources (c # cs) u" 
-                    then have d1: "ipurge (c # cs) u = c # ipurge cs u" by simp
-                    have "\<forall>C1'. C1'\<in>nextc C1 c 
-                          \<longrightarrow> (C1' \<lhd> cs \<simeq> u \<simeq> C2 \<lhd> bs)" sorry
-                    then show ?thesis using b0 exec_equiv_leftI by blast
-                  next
-                    assume d0: "\<not> domain c\<in>sources (c # cs) u"
-                    then have d1: "ipurge (c # cs) u = ipurge cs u" by simp
-                    have "\<forall>C1'. C1'\<in>nextc C1 c  \<longrightarrow> (C1' \<lhd> cs \<simeq> u \<simeq> C2 \<lhd> bs)"
-                      by (metis InfoFlow.nextc_def InfoFlow.sources_preserved_left 
-                        InfoFlow_axioms a0 b0 b1 b2 b3 d0 d1 mem_Collect_eq p2 reachableStep) 
-                    then show ?thesis using b0 exec_equiv_leftI by blast 
-                  qed
-              }
-              then show ?thesis by auto
-              qed
-          qed
-       }
-      then show ?thesis by auto
-      qed
-  qed
-*)
-
-theorem UnwindingTheorem_nonleakage:
-    assumes p1: observed_consistent
-    and     p2: locally_respect
-    and     p3: step_consistent 
-  shows nonleakage
-  proof(subst nonleakage_def)
-    show "\<forall>as C1 C2 u. (reachable0 C1) \<and> (reachable0 C2) \<longrightarrow> (C1 \<approx>.(sources as u).\<approx> C2) 
-                                 \<longrightarrow> (C1 \<lhd> as \<simeq> u \<simeq> C2 \<lhd> as)"
-      proof -
-      {
-        fix as
-        have "\<forall>C1 C2 u. (reachable0 C1) \<and> (reachable0 C2) \<longrightarrow> (C1 \<approx>.(sources as u).\<approx> C2) 
-                                 \<longrightarrow> (C1 \<lhd> as \<simeq> u \<simeq> C2 \<lhd> as)"
-          proof(induct as)
-            case Nil 
-            show ?case 
-              proof -
-              {
-                fix C1 C2 u
-                assume a0: "C1 \<approx>.(sources [] u).\<approx> C2"
-                then have a1: "(C1 \<sim>.u.\<sim> C2)" 
-                  by (simp add: ivpeqc_def sources_Nil) 
-                then have "C1 \<lhd> [] \<simeq> u \<simeq> C2 \<lhd> []"  unfolding exec_equiv_def
-                   using observed_consistent_def p1 vpeqc_def by fastforce
-              }
-              then show ?thesis by auto
-              qed
-          next
-            case (Cons b bs)
-            assume a0: "\<forall>C1 C2 u. (reachable0 C1) \<and> (reachable0 C2) \<longrightarrow> (C1 \<approx>.(sources bs u).\<approx> C2) 
-                                 \<longrightarrow> (C1 \<lhd> bs \<simeq> u \<simeq> C2 \<lhd> bs)"
-            show ?case
-              proof -
-              {
-                fix C1 C2 u
-                assume b0: "(reachable0 C1) \<and> (reachable0 C2)"
-                assume b1: "C1 \<approx>.(sources (b#bs) u).\<approx> C2"
-                have "\<forall>C1' C2'. C1'\<in>nextc C1 b \<and> C2'\<in>nextc C2 b \<longrightarrow> (C1' \<lhd> bs \<simeq> u \<simeq> C2' \<lhd> bs)"
-                          by (metis CollectD Cons.hyps b0 b1 b0 nextc_def p3 reachableStep sources_unwinding_step) 
-                then have "C1 \<lhd> (b # bs) \<simeq> u \<simeq> C2 \<lhd> (b # bs)" using b0 b1 exec_equiv_both by auto 
               }
               then show ?thesis by auto
               qed

@@ -19,7 +19,9 @@ locale RG_InfoFlow = InfoFlow C0 step interference vpeq obs dome
   assumes C0_ParSys: "C0 = (paresys_spec pesf, s0, x0)"
     and   spec_of_parsys: "spec_of_parsys = paresys_spec pesf"
     and   all_evts_are_basic: "\<forall>ef\<in>all_evts pesf. is_basicevt (E\<^sub>e ef)"
-    and   parsys_sat_rg: "\<turnstile> pesf SAT [{s0}, {}, UNIV, UNIV]"
+    and   parsys_sat_rg: "\<forall>k. \<turnstile> fst (pesf k) sat\<^sub>s [Pre\<^sub>e\<^sub>s (pesf k), Rely\<^sub>e\<^sub>s (pesf k), Guar\<^sub>e\<^sub>s (pesf k), Post\<^sub>e\<^sub>s (pesf k)]"
+    and   parsys_sat_init: "\<forall>k. s0 \<in> Pre\<^sub>e\<^sub>s (pesf k)"
+    and   parsys_rg_com: "\<forall>k j. j\<noteq>k \<longrightarrow>  Guar\<^sub>e\<^sub>s (pesf j) \<subseteq> Rely\<^sub>e\<^sub>s (pesf k)"
     and   evt_in_parsys_in_evtrgfs: "\<forall>erg\<in>all_evts pesf. the (evtrgfs (E\<^sub>e erg)) = snd erg" 
 begin
 
@@ -43,6 +45,9 @@ lemma all5_impD: "\<lbrakk> \<forall>a b c d e. P a b c d e \<longrightarrow> Q 
 
 lemma all7_impD: "\<lbrakk> \<forall>a b c d e f g. P a b c d e f g \<longrightarrow> Q a b c d e f g ; P a b c d e f g \<rbrakk>\<Longrightarrow> Q a b c d e f g"  
   by blast
+
+lemma parsys_sat: "\<turnstile> pesf SAT [{s0}, {}, UNIV, UNIV]"
+  by (rule ParallelESys, simp_all add: parsys_sat_rg  parsys_sat_init parsys_rg_com)
 
 subsection \<open>local respect program\<close>
 inductive lr_p :: "'s ann_prog \<Rightarrow> ('l, 'k, 's) event \<Rightarrow> bool"
@@ -798,7 +803,8 @@ lemma run_cpt_preserves: "\<lbrakk>l \<in> cpts_of_pes (paresys_spec pesf) s0 x0
    apply (drule conjunct2)
    apply (drule_tac c = l in subsetD)
     apply (simp add: assume_pes_def gets_def cpts_of_pes_def, simp)
-  by (simp add: parsys_sat_rg rgsound_pes)
+  apply (rule rgsound_pes)
+  using parsys_sat by blast
 
 lemma reachable_impl_cpts: "reachable C1 C2 \<Longrightarrow> \<exists>c. c\<in>cpts_pes \<and> c!0 = C1 \<and> last c = C2" 
   proof -
@@ -883,7 +889,7 @@ proof-
                   length_append_singleton nth_append nth_append_length) 
             ultimately have r1: "(gets C, gets C')\<in>Guar\<^sub>f (the (evtrgfs (getx C k)))" 
               using b1 b3 b4 c0 c1 act_cptpes_sat_guar_curevt_new2 [rule_format, of pesf "{s0}" UNIV s0 evtrgfs "c@[C']"]
-                     step_def[of a] parsys_sat_rg all_evts_are_basic evt_in_parsys_in_evtrgfs
+                     step_def[of a] parsys_sat_rg all_evts_are_basic evt_in_parsys_in_evtrgfs parsys_sat
               by (smt One_nat_def Suc_1 append_is_Nil_conv butlast_snoc diff_Suc_1  diff_Suc_eq_diff_pred 
                  diff_Suc_less insertI1 length_butlast length_greater_0_conv not_Cons_self2)      
             from c3 c50 have c51: "\<forall>k i. Suc i < length (c @ [C']) \<longrightarrow> (\<exists>ca. (c @ [C']) ! i -pes-Cmd ca\<sharp>k\<rightarrow> 
@@ -931,7 +937,8 @@ proof-
                   have "\<exists>el j.  getspc_e (el!0) = getx C k \<and> j < length el \<and>  el!j = rm_evtsys1 
                         ((getspc C k), gets C, getx C) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
                     using act_cptpes_sat_e_sim[rule_format, of pesf "{s0}" UNIV s0 evtrgfs "c @ [C']"
-                        x0 ?i k] parsys_sat_rg all_evts_are_basic evt_in_parsys_in_evtrgfs c1 c3 c4 c5 c50 c52
+                        x0 ?i k] parsys_sat_rg all_evts_are_basic evt_in_parsys_in_evtrgfs c1 c3 c4
+                        c5 c50 c52 parsys_sat
                     by (smt One_nat_def Suc_1 Suc_diff_Suc Suc_less_eq diff_less insertI1
                         length_append_singleton zero_less_Suc)
                   then obtain el and j where e0: "getspc_e (el!0) = getx C k \<and> j < length el \<and> 
@@ -1262,20 +1269,18 @@ proof-
   qed
 qed
 
+theorem UnwindingTheoremE_nonleakage:
+    assumes p1: observed_consistent
+    and     p2: step_consistent_events
+  shows nonleakage
+  by (simp add: UnwindingTheorem_nonleakage p1 p2  rg_lr_imp_lr rg_sc_imp_sc)
+
 theorem UnwindingTheoremE_noninfluence0: 
     assumes p1: observed_consistent
     and     p2: locally_respect_events
     and     p3: step_consistent_events
   shows     noninfluence0
   by (simp add: UnwindingTheorem_noninfluence0 p1 p2 p3 rg_lr_imp_lr rg_sc_imp_sc)
-
-theorem UnwindingTheoremE_nonleakage:
-    assumes p1: observed_consistent
-    and     p2: locally_respect_events
-    and     p3: step_consistent_events
-  shows nonleakage
-  by (simp add: UnwindingTheorem_nonleakage p1 p2 p3 rg_lr_imp_lr rg_sc_imp_sc)
-
 
 end
 
