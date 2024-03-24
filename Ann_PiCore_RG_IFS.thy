@@ -1165,9 +1165,10 @@ proof-
                 have "\<exists>el j.  getspc_e (el!0) = getx C1 k \<and> j < length el \<and> 
                      el!j = rm_evtsys1 ((getspc C1 k), gets C1, getx C1) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
                   using act_cptpes_sat_e_sim[rule_format, of pesf "{s0}" UNIV s0 evtrgfs "c1 @ [C1']"
-                        x0 ?i k] parsys_sat_rg all_evts_are_basic evt_in_parsys_in_evtrgfs c1 c3 c4 c5 c50 c52
-                  by (smt One_nat_def Suc_1 Suc_diff_Suc Suc_less_eq diff_less insertI1 
-                      length_append_singleton zero_less_Suc)
+                        x0 ?i k] parsys_sat_rg all_evts_are_basic evt_in_parsys_in_evtrgfs c1 c3 c4
+                       c5 c50 c52 parsys_sat
+                  by (smt One_nat_def Suc_1 Suc_diff_Suc Suc_less_eq diff_less insertI1  length_append_singleton 
+                      zero_less_Suc)
                 then obtain el and j where e0: "getspc_e (el!0) = getx C1 k \<and> j < length el \<and> 
                      el!j = rm_evtsys1 ((getspc C1 k), gets C1, getx C1) \<and> el \<in> cpts_ev \<and> el \<in> preserves_e"
                   by auto
@@ -1273,7 +1274,7 @@ theorem UnwindingTheoremE_nonleakage:
     assumes p1: observed_consistent
     and     p2: step_consistent_events
   shows nonleakage
-  by (simp add: UnwindingTheorem_nonleakage p1 p2  rg_lr_imp_lr rg_sc_imp_sc)
+  by (simp add: UnwindingTheorem_nonleakage p1 p2 rg_sc_imp_sc)
 
 theorem UnwindingTheoremE_noninfluence0: 
     assumes p1: observed_consistent
